@@ -20,7 +20,7 @@ import { LIBRARY, referencePalette, REFERENCE_AUTHORITY } from './library.js';
 
 export { FAMILIES, REFERENCES, LIBRARY_VERSION } from './families.js';
 export { LIBRARY, createLibrary, colourName, referencePalette } from './library.js';
-export const DIRECTION_VERSION = 3;
+export const DIRECTION_VERSION = 4;
 
 // Global Sonmira constraints: true for every family and every tier.
 // Materiality is independent of abstraction: Loose, Gathered and Resolved all
@@ -76,6 +76,40 @@ const EMOTION = {
   intense: 'Intense: the deepest, richest version of these colours, stronger contrast and weight.',
 };
 
+// How the voice moved, as marks (spec.expression, from the recording):
+// gesture varies within the reference's language, never its identity.
+export const EXPRESSION = {
+  range: { narrow: 'strokes kept close and contained', moderate: 'strokes that rise and fall a little', wide: 'long, travelling strokes that sweep across the sheet' },
+  flow: { connected: 'one connected flow of washes', broken: 'separate islands of marks with paper between them' },
+  dynamics: { even: 'even pressure throughout', swelling: 'washes swelling from pale to deep and back' },
+  vibrato: 'a gently trembling edge to some strokes',
+};
+
+export function expressionLine(x) {
+  if (!x) return null;
+  const parts = [EXPRESSION.range[x.range], EXPRESSION.flow[x.flow], EXPRESSION.dynamics[x.dynamics], x.vibrato ? EXPRESSION.vibrato : null].filter(Boolean);
+  return parts.length ? `Gesture, from how the voice moved: ${parts.join('; ')}.` : null;
+}
+
+// What the painting expresses, from the song's words (spec.concept). The
+// tier decides how recognisable it is; the family and reference decide how it
+// looks. Figurative language is painted as its meaning.
+function subjectFromConcept(tier, c) {
+  const article = (label) => `${/^[aeiou]/.test(label) ? 'An' : 'A'} ${label}`;
+  if (tier === 'loose') return `${article(LEVELS.loose.label)}. It depicts nothing; its marks carry the feeling of the sung words: ${c.text}`;
+  if (tier === 'gathered') return `${article(LEVELS.gathered.label)}, only suggesting, never spelling out: ${c.text}`;
+  return `${article(LEVELS.resolved.label)} of: ${c.text}`;
+}
+
+function meaningLine(tier, c) {
+  const out = [];
+  if (c.theme?.length) out.push(`theme: ${c.theme.join(', ')}`);
+  if (tier !== 'loose' && c.imagery?.length) out.push(`imagery: ${c.imagery.join(', ')}`);
+  let line = out.length ? `From the sung words — ${out.join('; ')}.` : '';
+  if (c.figurative?.length) line += ` Figurative words are painted as their meaning, never literally: ${c.figurative.map((f) => `"${f.phrase}" means ${f.meaning}`).join('; ')}.`;
+  return line.trim() || null;
+}
+
 const ENERGY = {
   calm: 'Marks: slow and settled.',
   moderate: 'Marks: settled washes with a few quick strokes.',
@@ -127,17 +161,28 @@ export function direct(spec) {
   if (P.accent) chosen.push(P.accent);
   const swatches = fromRef ? fromRef.swatches : chosen;
 
+  // The subject: from the song's words when there are any; a Loose take
+  // without words expresses the sound itself; otherwise (no understanding
+  // step, e.g. tools) the family's own subject for the motif.
+  const concept = spec.concept?.text ? spec.concept : null;
+  const subjectLine = concept ? subjectFromConcept(tier, concept)
+    : tier === 'loose' && spec.soundOnly ? `${/^[aeiou]/.test(LEVELS.loose.label) ? 'An' : 'A'} ${LEVELS.loose.label} that expresses the sound of the voice itself, not any subject or story.`
+    : `${/^[aeiou]/.test(LEVELS[tier].label) ? 'An' : 'A'} ${LEVELS[tier].label}${subject ? ` of ${subject}` : ''}.`;
   const sections = {
-    subject: `${/^[aeiou]/.test(LEVELS[tier].label) ? 'An' : 'A'} ${LEVELS[tier].label}${subject ? ` of ${subject}` : ''}.`,
-    family: `Style — ${F.label}: ${F.rules}`,
+    subject: subjectLine,
+    meaning: concept ? meaningLine(tier, concept) : null,
+    family: `Style — ${F.label}: ${F.rules}${concept ? ' Where this style names people, places or objects, use them only if they fit the subject above.' : ''}`,
     form: LEVELS[tier].form,
-    palette: fromRef ? fromRef.text : `Colour: ${P.colors.filter((p) => chosen.includes(p)).map((p) => p.name).join(', ')}, on white or warm white paper${P.accent ? `, with ${P.accent.name} as the only accent, kept small` : ''}.`,
+    // With a subject from the words, the reference's light note (which can
+    // name its own objects, e.g. "sun through leaves") becomes its quality only.
+    palette: fromRef ? (concept ? fromRef.text.replace(/Light: [^.]*\./, 'Light: the reference\'s own quality and direction of light, carried onto the new subject.') : fromRef.text) : `Colour: ${P.colors.filter((p) => chosen.includes(p)).map((p) => p.name).join(', ')}, on white or warm white paper${P.accent ? `, with ${P.accent.name} as the only accent, kept small` : ''}.`,
     // Sound varies mood and marks inside the reference's language, never its identity.
     emotion: `${reference ? 'Mood, within the reference\'s own colours and light — ' : ''}${EMOTION[spec.emotion] || EMOTION.tender}`,
     energy: ENERGY[energy],
+    gesture: expressionLine(spec.expression),
     style: GLOBAL_STYLE,
   };
-  const prompt = [sections.subject, sections.family, sections.form, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.energy, sections.style, `Avoid: ${AVOID.join(', ')}.`].join('\n');
+  const prompt = [sections.subject, sections.meaning, sections.family, sections.form, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.energy, sections.gesture, sections.style, `Avoid: ${AVOID.join(', ')}.`].filter(Boolean).join('\n');
   return {
     version: DIRECTION_VERSION, level: tier, requestedLevel: level,
     family: familyId, familyLabel: F.label, refs: library.pool(familyId).map((e) => e.path.split('/').pop()),
@@ -145,6 +190,7 @@ export function direct(spec) {
     reference: reference ? { id: reference.id, path: reference.path, family: reference.family } : null,
     referencePrompt: reference ? REFERENCE_AUTHORITY : null,
     libraryVersion: library.version, seed: spec.seed >>> 0,
-    subject, pigments: swatches.map((p) => p.name), swatches, sections, prompt, avoid: AVOID.slice(),
+    subject: concept ? concept.text : subject, subjectSource: concept ? 'lyrics' : tier === 'loose' && spec.soundOnly ? 'sound' : 'family',
+    pigments: swatches.map((p) => p.name), swatches, sections, prompt, avoid: AVOID.slice(),
   };
 }

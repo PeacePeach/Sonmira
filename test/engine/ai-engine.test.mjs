@@ -14,7 +14,7 @@ function hum(sr = 22050, sec = 4, hz = 220) {
 const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
 test('the app uses the AI engine by default', async () => {
-  assert.equal((await getEngine()).id, 'ai-openai-v1');
+  assert.equal((await getEngine()).id, 'ai-openai-v2');
 });
 
 test('generate sends the spec from the real analysis and returns the server painting with diagnostics', async () => {

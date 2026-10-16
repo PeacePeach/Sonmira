@@ -66,6 +66,13 @@ async function run() {
     if (failNext) { failNext = false; return route.fulfill({ status: 502, json: { ok: false, error: 'upstream', code: 'provider_error' } }); }
     return route.fulfill({ json: { ok: true, provider: 'openai', model: 'gpt-image-2', quality: 'medium', size: '1024x1536', ms: 1, family: 'R5-light-as-subject', familyLabel: 'Light as subject', reference: 'resolved_04', referenceSent: true, libraryVersion: 'test', seed: body.spec?.seed, prompt: 'P', image: `data:image/png;base64,${jpg}` } });
   });
+  // /api/understand: the recording is a hum, so no words.
+  const understandCalls = [];
+  await ctx.route('**/api/understand', async (route) => {
+    const body = JSON.parse(route.request().postData() || '{}');
+    understandCalls.push({ mime: body.mime, bytes: body.audio?.length ?? 0 });
+    return route.fulfill({ json: { ok: true, transcript: { text: '', wordCount: 0, lexicalWords: 0, distinctLexicalWords: 0, nonLexicalWords: 0, lexicalRatio: 0, musicTags: 0, hallucination: false, asrConfidence: null, model: 'mock' }, lyrics: null, ms: 1 } });
+  });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -131,6 +138,9 @@ async function run() {
     assert.equal(apiCalls.length, 2, 'one failed and one successful generation request');
     const s = apiCalls[1].spec;
     assert.ok(['loose', 'gathered', 'resolved'].includes(s.completeness) && Number.isInteger(s.seed) && typeof s.motif === 'string', 'spec from the real analysis: ' + JSON.stringify(s));
+    assert.ok(understandCalls.length >= 1 && understandCalls.every((c) => c.bytes > 0), 'the recording was sent for transcription');
+    assert.equal(s.completeness, 'loose', 'a hum with no words is Loose');
+    assert.equal(s.soundOnly, true, 'and expresses the sound itself');
   }
   await page.fill('.caption-input', 'Rain on the window, again');
 

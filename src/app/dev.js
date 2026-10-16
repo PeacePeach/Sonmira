@@ -60,24 +60,44 @@ export function mountDevPanel(app) {
   const sel = h('select', { onChange: (e) => { app.dev.completeness = e.target.value || null; } },
     h('option', { value: '' }, 'auto (from voice)'), COMPLETENESS.map((c) => h('option', { value: c }, c)));
   const sim = h('input', { type: 'checkbox', onChange: (e) => { app.dev.simulate = e.target.checked; } });
+  const only = h('input', { type: 'checkbox', onChange: (e) => { app.dev.analyzeOnly = e.target.checked; } });
   const refresh = () => app.current?.name === 'diary' ? app.navigate('diary') : null;
   document.body.append(h('details', { class: 'devpanel' },
     h('summary', {}, `dev · ${app.engine.id}`),
     h('label', {}, 'completeness ', sel),
     h('label', {}, sim, ' sample voice (no mic)'),
+    h('label', {}, only, ' analyze only (no image call)'),
     h('button', { onClick: async () => { await seed(app); refresh(); } }, 'add sample entries'),
     h('button', { onClick: async () => { if (confirm('Clear the whole diary?')) { await clearEntries(); app.entries = []; refresh(); } } }, 'clear diary'),
     h('div', { style: 'margin-top:6px' }, h('a', { href: 'dev/gallery.html' + location.search, target: '_blank' }, 'engine gallery ↗')),
     h('div', { style: 'margin-top:6px;opacity:.7' }, 'engine: ', h('a', { href: '?dev&engine=ai' }, 'ai'), ' · ', h('a', { href: '?dev&engine=real' }, 'real'), ' · ', h('a', { href: '?dev&engine=mock' }, 'mock')),
     diag));
-  // Last generation: what actually made the painting.
+  // Last generation: how the recording was understood and what made the
+  // painting. Ids and measurements only; no keys or storage URLs reach here.
   app.dev.onGeneration = (g) => {
-    const rows = !g ? [['engine', app.engine.id], ['provider', 'none (local renderer)']]
-      : g.error ? [['engine', app.engine.id], ['error', g.error], ['status', g.status ?? '—'], ['detail', g.detail ?? '—']]
-      : [['engine', app.engine.id], ['provider', g.provider ?? 'local'], ['model', g.model ?? '—'], ['quality', g.quality ?? '—'],
-        ['family', g.family ?? '—'], ['reference', g.reference ?? '—'], ['ref sent', g.referenceSent == null ? '—' : String(g.referenceSent)],
-        ['library', g.libraryVersion ?? '—'], ['seed', g.seed ?? '—'], ['tier', g.tier ?? '—'], ['time', g.ms ? `${(g.ms / 1000).toFixed(1)} s` : '—']];
-    diag.replaceChildren(h('div', { style: 'opacity:.7' }, 'last generation'), ...rows.map(([k, v]) => h('div', {}, `${k}: ${v}`)));
+    const rows = (pairs) => pairs.filter(([, v]) => v !== undefined).map(([k, v]) => h('div', {}, `${k}: ${v == null ? '—' : typeof v === 'object' ? JSON.stringify(v) : v}`));
+    const section = (title, pairs, open = false) => h('details', open ? { open: '' } : {}, h('summary', {}, title), ...rows(pairs));
+    const u = g?.understanding;
+    const out = [h('div', { style: 'opacity:.7' }, 'last generation')];
+    if (!g) out.push(...rows([['engine', app.engine.id], ['provider', 'none (local renderer)']]));
+    else {
+      if (g.error) out.push(...rows([['error', g.error], ['status', g.status], ['detail', g.detail]]));
+      if (u) {
+        const q = u.singing?.quality, v = u.singing?.vocal, t = u.transcript, l = u.lyrics, s = u.semantics;
+        out.push(section(`decision: ${u.tier}${u.tierSource === 'override' ? ' (forced)' : ''}`, [['tier', u.tier], ['stage', u.decision?.stage], ['reason', u.decision?.reason], ['decided tier', u.decision?.tier]], true));
+        out.push(section('audio', [['duration', u.audio?.durationSec], ['sounding s', u.audio?.soundingSec], ['voiced s', u.audio?.voicedSec], ['voiced ratio', u.audio?.voicedRatio], ['pauses', u.audio?.pauses], ['pitch continuity', u.audio?.pitchContinuity], ['median Hz', u.audio?.medianHz], ['dynamic dB', u.audio?.dynamicRangeDb],
+          ['sung', v?.sung], ['notes', v?.noteCount], ['sustained ratio', v?.sustainedRatio], ['ending', v?.ending]]));
+        out.push(section('lyrics', [['requested', u.wordsRequested], ['skipped', u.wordsSkipped ?? undefined], ['transcript', t?.text], ['asr confidence', t?.asrConfidence], ['words / lexical / vocables', t ? `${t.wordCount} / ${t.lexicalWords} / ${t.nonLexicalWords}` : null], ['hallucination', t?.hallucination],
+          ['asr model', t?.model], ['lexical', l?.lexical], ['coherent', l?.coherent], ['phrase complete', l ? `${l.phraseComplete} (${l.completionConfidence})` : null], ['why', l?.completionReason], ['text model', l?.model],
+          ['gate', u.gate ? `${u.gate.pass ? 'PASS' : 'FAIL'} (confidence ${u.gate.confidence})` : null], ['failed checks', u.gate?.failed?.join(', ')]]));
+        out.push(section('singing', [['score', q?.score], ['confidence', q?.confidence], ['strong', q?.strong], ...Object.entries(q?.components ?? {}).map(([k, c]) => [k, c]), ['unavailable', q?.unavailable?.join('; ')], ['expression', u.expression]]));
+        out.push(section('semantics', [['source', s?.source], ['why', s?.reason], ['concept', s?.concept?.text], ['theme', s?.concept?.theme?.join(', ')], ['imagery', s?.concept?.imagery?.join(', ')], ['figurative', s?.concept?.figurative], ['mood', u.emotion?.value + ' · ' + u.emotion?.source], ['motif', u.motif?.value + ' · ' + u.motif?.source]]));
+      }
+      if (!g.error) out.push(section('generation', [['engine', app.engine.id], ['provider', g.provider], ['model', g.model], ['quality', g.quality], ['tier', g.tier], ['family', g.family], ['subject from', g.subjectSource],
+        ['reference', g.reference], ['ref sent', g.referenceSent], ['library', g.libraryVersion], ['seed', g.seed], ['time', g.ms ? `${(g.ms / 1000).toFixed(1)} s` : null]], true));
+      else out.push(...rows([['engine', app.engine.id]]));
+    }
+    diag.replaceChildren(...out);
     console.info('[sonmira] generation', g);
   };
 }

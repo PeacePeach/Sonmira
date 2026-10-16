@@ -29,7 +29,30 @@ function cleanSpec(s) {
   const energy = ['calm', 'moderate', 'lively'].includes(s.energy?.value) ? s.energy.value : 'calm';
   const out = { completeness: s.completeness, emotion: s.emotion, motif: s.motif, seed: Number(s.seed) >>> 0, energy: { value: energy } };
   if (Object.hasOwn(FAMILIES, s.family)) out.family = s.family;
+  const c = cleanConcept(s.concept);
+  if (c) out.concept = c;
+  else if (s.completeness === 'loose' && s.soundOnly === true) out.soundOnly = true;
+  const x = s.expression;
+  if (x && typeof x === 'object') {
+    out.expression = {
+      range: ['narrow', 'moderate', 'wide'].includes(x.range) ? x.range : null,
+      flow: ['connected', 'broken'].includes(x.flow) ? x.flow : null,
+      dynamics: ['even', 'swelling'].includes(x.dynamics) ? x.dynamics : null,
+      vibrato: x.vibrato === true,
+    };
+  }
   return out;
+}
+
+// The words' concept goes into the prompt, so it is bounded and flattened.
+const flat = (v, n) => String(v ?? '').replace(/[\u0000-\u001f"`]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
+function cleanConcept(c) {
+  if (!c || typeof c !== 'object' || !flat(c.text, 240)) return null;
+  const list = (xs, k, n) => (Array.isArray(xs) ? xs : []).map((x) => flat(x, n)).filter(Boolean).slice(0, k);
+  return {
+    text: flat(c.text, 240), theme: list(c.theme, 3, 60), imagery: list(c.imagery, 5, 60),
+    figurative: (Array.isArray(c.figurative) ? c.figurative : []).slice(0, 4).map((f) => ({ phrase: flat(f?.phrase, 80), meaning: flat(f?.meaning, 120) })).filter((f) => f.phrase && f.meaning),
+  };
 }
 
 export const createHandler = ({ store = referenceStoreFromEnv(), env = process.env, fetchImpl = fetch } = {}) => async function handler(req, res) {
@@ -47,12 +70,17 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
   try {
     const library = store ? createLibrary(await store.loadRegistry()) : undefined;
     const direction = direct({ ...spec, library });
+    // The decided tier is authoritative: never paint a family of another tier.
+    if (FAMILIES[direction.family].tier !== spec.completeness) {
+      res.status(409).json({ ok: false, error: `family ${direction.family} is not a ${spec.completeness} family`, code: 'tier_mismatch' });
+      return;
+    }
     if (!store || !direction.reference) {
       res.status(503).json({ ok: false, error: store ? `no active reference for ${direction.family}` : 'no reference store configured', code: 'no_reference' });
       return;
     }
     const g = await generateFromDirection(direction, { loadReference: store?.loadImage, stream: true, env, fetchImpl });
-    res.status(200).json({ ok: true, provider: g.provider, model: g.model, quality: g.quality, size: g.size, ms: g.ms, usage: g.usage, prompt: direction.prompt, family: direction.family, familyLabel: direction.familyLabel, familyRefs: direction.refs, reference: direction.reference?.id ?? null, referenceSent: Boolean(g.reference), seed: direction.seed, libraryVersion: direction.libraryVersion, swatches: direction.swatches, image: `data:${g.mime};base64,${g.b64}` });
+    res.status(200).json({ ok: true, provider: g.provider, model: g.model, quality: g.quality, size: g.size, ms: g.ms, usage: g.usage, prompt: direction.prompt, family: direction.family, familyLabel: direction.familyLabel, familyRefs: direction.refs, subjectSource: direction.subjectSource, reference: direction.reference?.id ?? null, referenceSent: Boolean(g.reference), seed: direction.seed, libraryVersion: direction.libraryVersion, swatches: direction.swatches, image: `data:${g.mime};base64,${g.b64}` });
   } catch (e) {
     res.status(e.code === 'not_configured' ? 503 : 502).json({ ok: false, error: e.message, code: e.code || 'error' });
   }

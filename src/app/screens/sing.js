@@ -164,12 +164,12 @@ export function mountSing(app) {
     try {
       result = await app.engine.generate({
         analysis: take.analysis, note: noteDraft.trim(), audioBlob: take.audio,
-        overrides: app.dev.completeness ? { completeness: app.dev.completeness } : {},
+        overrides: { ...(app.dev.completeness ? { completeness: app.dev.completeness } : {}), ...(app.dev.analyzeOnly ? { analyzeOnly: true } : {}) },
       });
     } catch (e) {
       // No silent fallback: say what happened and keep the take for a retry.
       console.warn('[sonmira] engine generate failed', e);
-      app.dev.onGeneration?.({ error: e.code || e.message, status: e.status, detail: e.detail });
+      app.dev.onGeneration?.({ error: e.code || e.message, status: e.status, detail: e.detail, understanding: e.understanding });
       if (phase === 'generating') generationError(e);
       return;
     }

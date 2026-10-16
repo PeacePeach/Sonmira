@@ -47,3 +47,62 @@ Sound → interpretation → visual family → **one primary reference** → its
 - **Importing to production:** `node tools/references.mjs add <image> R4` uploads privately, measures the palette (same code as the indexer) and adds the entry; it is selectable within 30 s, with no redeploy. `disable`, `enable`, `remove`, `list`; `sync <refs_root>` uploads the bundled registry's images once. Needs `BLOB_READ_WRITE_TOKEN` in the shell and python3 with Pillow.
 - **Store selection:** Blob when `BLOB_READ_WRITE_TOKEN` is set (or `SONMIRA_REFS_STORE=blob`), else `SONMIRA_REFS_DIR`, else text-only with the bundled registry's palettes.
 
+
+## Sound-to-Art Intelligence V2 (ai engine)
+
+Three separate responsibilities: the **words** decide what the painting
+expresses, the **singing** decides how abstract it is, the **reference**
+decides how it looks. Loose, Gathered and Resolved are modes, not grades.
+
+```
+recording ─┬─ pitch track (10 ms YIN) → singing analysis        browser
+           └─ /api/understand: gpt-4o-transcribe (+logprobs)     server
+                               → gpt-4.1-mini reading (strict JSON schema)
+→ stage 1  lyrical-completion gate      src/engine/interpret/lyrics.js
+→ stage 2  singing quality → tier       (only after the gate passes)
+→ semantics for the tier + gesture      src/engine/understand.js
+→ family → seeded reference → prompt    src/engine/direct/index.js
+→ /api/generate (OpenAI image edits)    rejects a family of another tier
+```
+
+**Stage 1 (strict).** All must hold, else Loose: a transcript that is not a
+known ASR hallucination; ≥ 3 real words (≥ 2 distinct) and ≥ 60 % of words not
+vocables (la, ooh, mm, 啦, 嗯…); ASR confidence ≥ 0.6 (mean token probability);
+the voice is sung (sustained pitched notes, so speech fails); a plausible word
+rate (rules out background speech and lone fragments); the language model
+reads the words as lexical, coherent and a complete phrase with confidence
+≥ 0.7 (≥ 0.85 if the transcriber gave no confidence); and the voice ends
+rather than being cut off. Singing quality is never consulted here, so a
+perfect hum cannot pass. "Complete" means a finished lyrical phrase, never a
+claim that a known song was sung.
+
+**Stage 2.** Resolved only when the singing is confidently strong; otherwise
+Gathered. Measured without a target melody: pitch stability inside notes
+(drift, slow wandering, jitter; regular 4–9 Hz vibrato recognised and not
+penalised), relative intonation (note centres on one semitone grid at the
+singer's own tuning), clean arrival on notes (slides are fine, hunting is
+not), steadiness, onset regularity and continuity (proxies only), and interval
+coherence. Note or rhythm *accuracy* is not measurable and is not claimed.
+Every threshold is in `SINGING_CALIBRATION` / `GATE_CALIBRATION` and is
+provisional: set on synthetic voices, to be calibrated on real recordings.
+
+**Semantics.** The reading gives theme, imagery, figurative meanings
+("drowning in memories" → overwhelmed by the past), mood, motif and one
+concept per tier (Loose: no objects, only movement and weight; Gathered:
+suggested; Resolved: one recognisable subject). Words carry meaning only when
+the transcript is reliable; a Loose take without them expresses the sound
+itself. The reference keeps palette, light and technique; its own subjects
+never enter the painting (`REFERENCE_AUTHORITY`).
+
+**Validate on real voices (no image made):**
+`node --env-file=.env.local tools/understand.mjs take.m4a` prints the tier,
+reasons, transcript, singing measures and concept (`VERBOSE=1` for all). On
+the Preview, `?dev` → "analyze only" runs the whole decision on a real take
+and shows it in the dev panel without calling the image model.
+
+**Added cost and latency (estimates, list prices):** transcription
+$0.006/min (≈ $0.0015 for 15 s) plus one short text call (≈ $0.001), about
+$0.003 per painting; roughly 2–5 s before the image request starts. A wordless
+take skips the text call. Models: `OPENAI_TRANSCRIBE_MODEL`
+(`gpt-4o-mini-transcribe` halves the transcription cost, likely less robust on
+singing) and `OPENAI_TEXT_MODEL`.
