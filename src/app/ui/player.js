@@ -1,7 +1,8 @@
 // The design's playback row: 48 pt outlined play/pause, 2 pt track,
 // elapsed on the left and a label on the right.
 
-import { h, icons } from './dom.js';
+import { h } from './dom.js';
+import { icon } from './icons.js';
 import { clock } from '../format.js';
 
 /**
@@ -11,7 +12,7 @@ export function createPlayer({ blob, durationSec, right = '' }) {
   const fill = h('div', { class: 'fill' });
   const elapsed = h('span', {}, clock(0));
   const rightEl = h('span', {}, right || clock(durationSec));
-  const btn = h('button', { class: 'play-btn', 'aria-label': 'Play recording' }, icons.play());
+  const btn = h('button', { class: 'play-btn', 'aria-label': 'Play recording' }, icon('play'));
   const el = h('div', { class: 'player' }, btn, h('div', { style: 'flex:1;min-width:0' }, h('div', { class: 'track' }, fill), h('div', { class: 'times tabular' }, elapsed, rightEl)));
 
   let audio = null, url = null, iv = null, playing = false;
@@ -25,7 +26,7 @@ export function createPlayer({ blob, durationSec, right = '' }) {
   }
   function setPlaying(p) {
     playing = p;
-    btn.replaceChildren(p ? icons.pause() : icons.play());
+    btn.replaceChildren(icon(p ? 'pause' : 'play'));
     btn.setAttribute('aria-label', p ? 'Pause recording' : 'Play recording');
     clearInterval(iv);
     if (p) iv = setInterval(() => audio && paint(audio.currentTime), 100);

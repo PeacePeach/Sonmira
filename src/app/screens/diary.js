@@ -1,6 +1,7 @@
 // Diary (home): chronological list of paintings, optional calendar filter.
 
-import { h, icons } from '../ui/dom.js';
+import { h } from '../ui/dom.js';
+import { icon } from '../ui/icons.js';
 import { createPainting } from '../ui/painting.js';
 import { illustration } from '../ui/illustration.js';
 import { clock, dayKey, monthDay, weekday, MONTHS } from '../format.js';
@@ -16,8 +17,8 @@ export function mountDiary(app) {
       h('span', { class: 'wordmark serif' }, 'Sonmira'),
       h('div', { style: 'display:flex;align-items:center' },
         toggle,
-        h('button', { class: 'icon-btn', 'aria-label': 'Settings', onClick: () => app.navigate('settings') }, icons.dots()))));
-  const fab = h('button', { class: 'fab', 'aria-label': 'Sing a new entry', onClick: () => app.startNewMemory() }, icons.plus());
+        h('button', { class: 'icon-btn', 'aria-label': 'Settings', onClick: () => app.navigate('settings') }, icon('more')))));
+  const fab = h('button', { class: 'fab', 'aria-label': 'Sing a new entry', onClick: () => app.startNewMemory() }, icon('plus', { size: 'lg', tone: 'inverse' }));
   const el = h('div', { 'data-screen': 'diary' }, scroll, top, h('div', { class: 'fab-fade' }), fab);
   let paintings = [];
 
@@ -46,8 +47,8 @@ export function mountDiary(app) {
       h('div', { class: 'cal-head' },
         h('div', {}, h('span', { class: 'm serif' }, MONTHS[calM]), h('span', { class: 'y serif' }, calY)),
         h('div', { class: 'cal-nav' },
-          h('button', { 'aria-label': 'Previous month', onClick: () => shift(-1) }, icons.prev()),
-          h('button', { 'aria-label': 'Next month', onClick: () => shift(1) }, icons.next()))),
+          h('button', { 'aria-label': 'Previous month', onClick: () => shift(-1) }, icon('back')),
+          h('button', { 'aria-label': 'Next month', onClick: () => shift(1) }, icon('forward')))),
       h('div', { class: 'cal-grid' }, [0, 1, 2, 3, 4, 5, 6].map((i) => h('div', { class: 'cal-wd' }, WD[(i + ws) % 7])), cells));
   }
 
@@ -64,7 +65,7 @@ export function mountDiary(app) {
   function render() {
     const y = scroll.scrollTop;
     paintings.forEach((p) => p.destroy()); paintings = [];
-    toggle.replaceChildren(app.ui.view === 'list' ? icons.calendar() : icons.list());
+    toggle.replaceChildren(icon(app.ui.view === 'list' ? 'calendar' : 'diary'));
     toggle.setAttribute('aria-label', app.ui.view === 'list' ? 'Show calendar' : 'Show list');
 
     const sel = app.ui.view === 'calendar' && app.ui.selDay;
