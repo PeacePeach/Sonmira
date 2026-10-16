@@ -140,7 +140,9 @@ async function run() {
     assert.ok(['loose', 'gathered', 'resolved'].includes(s.completeness) && Number.isInteger(s.seed) && typeof s.motif === 'string', 'spec from the real analysis: ' + JSON.stringify(s));
     assert.ok(understandCalls.length >= 1 && understandCalls.every((c) => c.bytes > 0), 'the recording was sent for transcription');
     assert.equal(s.completeness, 'loose', 'a hum with no words is Loose');
-    assert.equal(s.soundOnly, true, 'and expresses the sound itself');
+    // No sung words, so the note carries the feeling (a Loose painting still depicts nothing).
+    assert.deepEqual(s.concept, { text: 'Rain on the window', theme: [], imagery: [], figurative: [], source: 'note' }, 'the note is the subject');
+    assert.ok(!s.soundOnly, 'not sound-only when there is a note');
   }
   await page.fill('.caption-input', 'Rain on the window, again');
 
