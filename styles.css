@@ -225,6 +225,64 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .nav-actions { display: flex; align-items: center; }
 @media (prefers-reduced-motion: reduce) { .share-panel, .share-scrim { animation: none !important; } }
 
+/* ── paywall (a sheet in the Share sheet's style) ────────────────────────── */
+.paywall { padding-bottom: calc(var(--bottom) - 8px); }
+.pw-title { margin: 0; font-size: 30px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.15; }
+.pw-lede { margin: 10px 0 0; font-size: 14px; color: var(--secondary); line-height: 1.55; text-wrap: pretty; }
+.pw-plans { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
+.pw-plan { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 16px 18px; background: var(--tile); border: 1px solid var(--tile-line); border-radius: 20px; transition: border-color .2s, background .2s; }
+.pw-plan.on { border-color: var(--ink); background: var(--paper); }
+.pw-plan:active { background: #ECE6DB; }
+.pw-plan[disabled] { cursor: default; }
+.pw-mark { width: 18px; height: 18px; border-radius: 9px; border: 1.3px solid var(--chevron); flex-shrink: 0; position: relative; transition: border-color .2s; }
+.pw-plan.on .pw-mark { border-color: var(--ink); }
+.pw-plan.on .pw-mark::after { content: ''; position: absolute; inset: 3.5px; border-radius: 50%; background: var(--ink); }
+.pw-plan-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.pw-plan-name { font-size: 21px; line-height: 1.1; }
+.pw-plan-blurb { font-size: 13px; color: var(--secondary); }
+.pw-price { font-size: 19px; white-space: nowrap; align-self: flex-start; padding-top: 1px; }
+.pw-per { font-size: 15px; color: var(--muted); font-weight: 600; }
+.pw-plan-note { margin: 10px 4px 0; font-size: 12px; color: var(--muted); }
+.pw-cta { padding-top: 22px; }
+.pw-message { margin-top: 12px; font-size: 15px; }
+.pw-message[data-tone=error] { color: var(--body); }
+.pw-fine { margin: 14px 4px 0; font-size: 12px; color: var(--muted); line-height: 1.55; text-align: center; text-wrap: pretty; }
+.pw-why { margin-top: 14px; text-align: center; }
+.pw-why-link { font-size: 17px; font-style: italic; color: var(--secondary); height: 40px; padding: 0 10px; text-decoration: underline; text-decoration-color: var(--underline); text-underline-offset: 4px; }
+.pw-why-body { margin-top: 6px; text-align: left; background: var(--tile); border: 1px solid var(--tile-line); border-radius: 16px; padding: 16px 18px 4px; animation: fadeIn .3s ease-out both; }
+.pw-why-body p { margin: 0 0 12px; font-size: 14px; line-height: 1.6; color: var(--body); text-wrap: pretty; }
+.pw-links { display: flex; justify-content: center; align-items: center; gap: 2px; margin-top: 6px; font-size: 12px; color: var(--chevron); }
+.pw-link { font-size: 12px; color: var(--muted); height: 36px; padding: 0 8px; }
+.pw-link:hover { color: var(--body); }
+.pw-sim-approve { display: inline; height: auto; padding: 4px 0 0; font-family: var(--sans); font-style: normal; font-weight: 450; text-decoration: underline; }
+.pw-dev { margin: 8px auto 0; width: fit-content; font: 10px/1.4 ui-monospace, Menlo, monospace; letter-spacing: .04em; text-transform: uppercase; color: var(--secondary); border: 1px dashed var(--chevron); border-radius: 6px; padding: 3px 8px; text-align: center; }
+.pw-done { padding: 4px 0 0; text-align: center; }
+.pw-done .pw-lede { max-width: 300px; margin-left: auto; margin-right: auto; }
+.pw-done .actions { padding-top: 26px; }
+.pw-done .pw-dev { margin-top: 16px; }
+/* watercolor illustrations (ui/illustration.js): multiply melts the paper into the surface */
+.illo { display: block; height: 136px; width: auto; max-width: 60%; margin: 6px auto 28px; mix-blend-mode: multiply; -webkit-mask-image: radial-gradient(closest-side, #000 86%, transparent 100%); mask-image: radial-gradient(closest-side, #000 86%, transparent 100%); animation: bloomIn 1.6s ease-out both; }
+.illo-s { height: 104px; margin-bottom: 10px; }
+/* the bird is wider than the drops; match their visual size */
+.illo[data-illo=mic-off] { height: 118px; margin-top: 15px; }
+@keyframes bloomIn { from { opacity: 0; transform: scale(.96); filter: blur(3px); } }
+@media (prefers-reduced-motion: reduce) { .illo, .pw-why-body { animation: none !important; } }
+
+/* purchase simulator — looks like a developer tool on purpose */
+.sim-panel { border-top: 2px dashed var(--chevron); }
+.sim-tag { font: 11px/1.4 ui-monospace, Menlo, monospace; letter-spacing: .05em; text-transform: uppercase; color: var(--body); background: repeating-linear-gradient(-45deg, #F2EDE4 0 8px, #ECE6DB 8px 16px); border: 1px dashed var(--secondary); border-radius: 8px; padding: 6px 10px; display: inline-block; }
+.sim-title { font-size: 26px; margin-top: 14px; }
+.sim-lede { margin: 8px 0 18px; font-size: 13px; color: var(--secondary); line-height: 1.55; }
+.sim-group { margin: 0; }
+.sim-group .row { font-size: 17px; height: 52px; }
+
+/* legal as a sheet (from the paywall) */
+.legal-sheet-prose { padding: 14px 0 0; font-size: 15px; line-height: 1.6; color: var(--body); }
+.legal-sheet-prose p { margin: 0 0 14px; }
+
+/* the line above Create painting saying what it uses */
+.uses { text-align: center; font-size: 12px; color: var(--muted); padding-bottom: 10px; }
+
 /* ── toast (quiet, bottom) ───────────────────────────────────────────────── */
 .toast { position: absolute; left: 24px; right: 24px; bottom: calc(var(--bottom) + 84px); z-index: 20; text-align: center; font-size: 13px; color: var(--body); background: var(--tile); border: 1px solid var(--tile-line); border-radius: 14px; padding: 12px 16px; line-height: 1.45; animation: fadeIn .25s ease-out both; }
 

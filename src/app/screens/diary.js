@@ -2,6 +2,7 @@
 
 import { h, icons } from '../ui/dom.js';
 import { createPainting } from '../ui/painting.js';
+import { illustration } from '../ui/illustration.js';
 import { clock, dayKey, monthDay, weekday, MONTHS } from '../format.js';
 
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -16,7 +17,7 @@ export function mountDiary(app) {
       h('div', { style: 'display:flex;align-items:center' },
         toggle,
         h('button', { class: 'icon-btn', 'aria-label': 'Settings', onClick: () => app.navigate('settings') }, icons.dots()))));
-  const fab = h('button', { class: 'fab', 'aria-label': 'Sing a new entry', onClick: () => app.navigate('sing') }, icons.plus());
+  const fab = h('button', { class: 'fab', 'aria-label': 'Sing a new entry', onClick: () => app.startNewMemory() }, icons.plus());
   const el = h('div', { 'data-screen': 'diary' }, scroll, top, h('div', { class: 'fab-fade' }), fab);
   let paintings = [];
 
@@ -84,7 +85,7 @@ export function mountDiary(app) {
       ...groups.map((g) => h('section', {},
         h('div', { class: 'group-head' }, h('span', { class: 'md serif' }, monthDay(g.date)), h('span', { class: 'wd serif' }, weekday(g.date))),
         g.items.map(entryCard))),
-      list.length ? null : h('div', { class: 'empty serif' }, sel ? `Nothing sung on ${monthDay(sel)}.` : 'Nothing here yet. Tap + and sing.'),
+      list.length ? null : h('div', { class: 'empty serif' }, illustration('drops'), sel ? `Nothing sung on ${monthDay(sel)}.` : 'Nothing here yet. Tap + and sing.'),
     ].filter(Boolean));
     scroll.scrollTop = y;
   }

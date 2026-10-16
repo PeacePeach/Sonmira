@@ -3,10 +3,13 @@
 
 import { h, icons } from '../ui/dom.js';
 import { createPainting } from '../ui/painting.js';
+import { illustration } from '../ui/illustration.js';
 import { createPlayer } from '../ui/player.js';
 import { createRecorder, MicError } from '../recorder.js';
 import { clock, dayKey, longDate } from '../format.js';
 import { openShareSheet } from '../share/sheet.js';
+import { openPaywall } from '../paywall/paywall.js';
+import { usesLabel } from '../paywall/copy.js';
 
 const SINGING_LINES = ['Keep going…', 'Let it out.', 'Softly, softly.', 'That’s it.'];
 const FINDING = 'Finding the shape of your song…';
@@ -44,6 +47,9 @@ export function mountSing(app) {
   // take state
   let phase = 'ready', sheet = null, recorder = null, session = null, take = null, result = null, player = null, timers = [], noteDraft = '';
   let hint = '';
+  let usesEl = null;
+  // What Create painting will use, kept current if a purchase lands meanwhile.
+  const offBilling = app.billing.onChange(() => { if (usesEl) usesEl.textContent = usesLabel(app.billing.status()); });
 
   const later = (fn, ms) => timers.push(setTimeout(fn, ms));
   const show = (node) => { player?.destroy(); player = null; shareBtn.hidden = true; phaseHost.replaceChildren(node); };
@@ -122,7 +128,8 @@ export function mountSing(app) {
       painting.setStrokes([]);
       return ready();
     }
-    take = { audio: rec.blob, durationSec: Math.round(rec.durationSec * 10) / 10, analysis };
+    // key: one per take, so a retried generation is never counted twice.
+    take = { key: app.billing.newKey(), audio: rec.blob, durationSec: Math.round(rec.durationSec * 10) / 10, analysis };
     preview();
   }
 
@@ -140,6 +147,7 @@ export function mountSing(app) {
         h('div', { style: 'margin-top:16px' }, p.el),
         input),
       h('div', { class: 'actions' },
+        usesEl = h('div', { class: 'uses', 'data-uses': '' }, usesLabel(app.billing.status())),
         h('button', { class: 'pill', onClick: generate }, 'Create painting'),
         h('button', { class: 'quiet-btn', onClick: singAgain }, 'Sing again'))));
     player = p;
@@ -157,6 +165,12 @@ export function mountSing(app) {
   // ── generating ───────────────────────────────────────────────────────────
   async function generate() {
     if (phase !== 'preview') return;
+    // Set a painting aside; it's only counted once the painting exists.
+    if (!app.billing.reserve(take.key)) {
+      openPaywall(app, { from: 'sing', onContinue: () => { if (phase === 'preview') generate(); } });
+      return;
+    }
+    usesEl = null;
     phase = 'generating';
     const line = h('div', { class: 'line serif' }, FINDING);
     show(h('div', { class: 'drying', 'data-phase': 'generating' }, line));
@@ -185,6 +199,9 @@ export function mountSing(app) {
   function showResult() {
     if (phase !== 'generating') return;
     phase = 'result';
+    // The painting is here: count it. A wash-only fallback isn't a painting.
+    if (result.engineId === 'fallback') app.billing.release(take.key);
+    else app.billing.commit(take.key);
     const it = result.interpretation;
     const right = it.voiceLabel ? `${clock(take.durationSec)} · ${it.voiceLabel}` : clock(take.durationSec);
     const p = createPlayer({ blob: take.audio, durationSec: take.durationSec, right });
@@ -233,7 +250,7 @@ export function mountSing(app) {
     phase = 'error';
     const [title, body] = MIC_COPY[kind] || MIC_COPY.error;
     show(h('div', { class: 'phase centered', 'data-phase': 'error', 'data-kind': kind },
-      h('div', { class: 'error-copy' }, h('h1', { class: 'serif', style: 'font-size:30px' }, title), h('div', { class: 'lede' }, body)),
+      h('div', { class: 'error-copy' }, illustration('mic-off'), h('h1', { class: 'serif', style: 'font-size:30px' }, title), h('div', { class: 'lede' }, body)),
       h('div', { class: 'actions', style: 'width:100%' },
         h('button', { class: 'pill', onClick: () => ready() }, 'Try again'),
         h('button', { class: 'quiet-btn', onClick: close }, 'Back to diary'))));
@@ -256,7 +273,9 @@ export function mountSing(app) {
   return {
     el,
     destroy() {
+      if (phase === 'generating' && take) app.billing.release(take.key);
       phase = 'gone';
+      offBilling();
       sheet?.close();
       document.removeEventListener('visibilitychange', onHide);
       timers.forEach(clearTimeout);
