@@ -26,3 +26,11 @@ The repo is connected to Vercel, which builds a preview for each pushed branch a
 
 - **Procedural renderer (JS, no AI):** runs in the page, free.
 - **OpenAI image model:** the page runs analysis, interpretation and the visual spec, then posts the spec to `/api/generate`. The server builds the prompt from the spec (`src/engine/direct/`) and calls OpenAI with its own key, so the key never reaches the browser. Configure it with `OPENAI_API_KEY` (and optionally `OPENAI_IMAGE_MODEL`, `OPENAI_IMAGE_QUALITY`, `OPENAI_IMAGE_SIZE`) in the Vercel project's Preview environment, or in your shell before `npm run playground`. Each AI painting is billed to that OpenAI account.
+
+## Reference ↔ output comparison
+
+OpenAI paintings show the original reference on the left and the output on the right, with the reference id, style family, tier, emotion, motif, energy, where the subject came from, seed, model and the prompt check. "Reference (OpenAI only)" pins one reference so several styles can be painted with the same note, tier, emotion, motif and seed. In Library & compare, tick runs and press Compare to stack their pairs. Under each pair, "What the painting shows" takes a short description and flags people, objects from that reference, and objects the words do not name (no paid call).
+
+The reference image comes from `/api/reference?id=…`, which reads it on the server from the same private store as `/api/generate`, so no storage URL reaches the page. It is off in Production unless `SONMIRA_REFERENCE_VIEW=1` is set there.
+
+Browser check without paid generation: `SONMIRA_REFS_DIR=… npm run playground -- --no-open &` then `node tests/e2e/playground-compare.mjs`.

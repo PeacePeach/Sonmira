@@ -8,7 +8,7 @@
 // The browser sends the visual spec (layer B); the prompt is built here from
 // it by the provider-independent art direction (layer C).
 
-import { direct, createLibrary, FAMILIES } from '../src/engine/direct/index.js';
+import { direct, createLibrary, FAMILIES, checkPrompt } from '../src/engine/direct/index.js';
 import { generateFromDirection, openaiConfig } from '../src/engine/providers/openai.js';
 import { referenceStoreFromEnv } from '../src/engine/providers/reference-store.js';
 
@@ -29,6 +29,9 @@ function cleanSpec(s) {
   const energy = ['calm', 'moderate', 'lively'].includes(s.energy?.value) ? s.energy.value : 'calm';
   const out = { completeness: s.completeness, emotion: s.emotion, motif: s.motif, seed: Number(s.seed) >>> 0, energy: { value: energy } };
   if (Object.hasOwn(FAMILIES, s.family)) out.family = s.family;
+  // A developer may pin one reference (Playground); direct() uses it only
+  // when it is active and belongs to the family.
+  if (out.family && typeof s.reference === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(s.reference)) out.reference = s.reference;
   const c = cleanConcept(s.concept);
   if (c) out.concept = c;
   else if (s.completeness === 'loose' && s.soundOnly === true) out.soundOnly = true;
@@ -81,7 +84,7 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
       return;
     }
     const g = await generateFromDirection(direction, { loadReference: store?.loadImage, stream: true, env, fetchImpl });
-    res.status(200).json({ ok: true, provider: g.provider, model: g.model, quality: g.quality, size: g.size, ms: g.ms, usage: g.usage, prompt: direction.prompt, family: direction.family, familyLabel: direction.familyLabel, familyRefs: direction.refs, subjectSource: direction.subjectSource, reference: direction.reference?.id ?? null, referenceSent: Boolean(g.reference), seed: direction.seed, libraryVersion: direction.libraryVersion, swatches: direction.swatches, image: `data:${g.mime};base64,${g.b64}` });
+    res.status(200).json({ ok: true, provider: g.provider, model: g.model, quality: g.quality, size: g.size, ms: g.ms, usage: g.usage, prompt: direction.prompt, family: direction.family, familyLabel: direction.familyLabel, familyRefs: direction.refs, subjectSource: direction.subjectSource, subject: direction.subject, reference: direction.reference?.id ?? null, settings: { tier: direction.level, emotion: spec.emotion, motif: spec.motif, energy: spec.energy.value, expression: spec.expression ?? null }, promptCheck: checkPrompt(direction, { library }), referenceSent: Boolean(g.reference), seed: direction.seed, libraryVersion: direction.libraryVersion, swatches: direction.swatches, image: `data:${g.mime};base64,${g.b64}` });
   } catch (e) {
     res.status(e.code === 'not_configured' ? 503 : 502).json({ ok: false, error: e.message, code: e.code || 'error' });
   }

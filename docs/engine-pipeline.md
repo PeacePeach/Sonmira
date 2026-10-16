@@ -115,6 +115,16 @@ reference. The universal watercolor technique and long avoid list
 `tools/prompt-audit.mjs` builds the exact request without sending it and
 flags any shared prescription that would compete with the reference.
 
+**What is depicted.** References decide how a painting is made, never what
+it shows. Family labels and rules name no objects, figures or scenery; the
+reference's light note keeps only its quality. The subject comes from
+reliable lyrics, else the person's note, else (Gathered and Resolved) an
+atmosphere of the motif with nothing placed in it (`ATMOSPHERES`). No tier
+paints people: words about people are carried by place, light and traces.
+`src/engine/direct/leakage.js` checks for leakage against each reference's
+curated `content` (references.js): on every prompt in the tests, and on a
+reviewer's description of a generated image in the Playground comparison.
+
 **Validate on real voices (no image made):**
 `node --env-file=.env.local tools/understand.mjs take.m4a` prints the tier,
 reasons, transcript, singing measures and concept (`VERBOSE=1` for all). On

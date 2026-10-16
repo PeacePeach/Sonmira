@@ -10,6 +10,8 @@
 import { EMOTIONS, MOTIFS, CALIBRATION } from '../src/engine/interpret/index.js';
 import { PIGMENTS } from '../src/engine/art/palettes.js';
 import { FAMILIES } from '../src/engine/direct/families.js';
+import { REFERENCE_LIBRARY } from '../src/engine/direct/references.js';
+import { checkLeakage } from '../src/engine/direct/leakage.js';
 import { saveRun, deleteRun, listRuns } from './store.js';
 
 const MAX_SEC = 30;
@@ -44,6 +46,17 @@ let busy = false;
 for (const e of EMOTIONS) $('ovEmotion').add(new Option(e, e));
 for (const m of MOTIFS) $('ovMotif').add(new Option(m, m));
 for (const [id, f] of Object.entries(FAMILIES)) $('ovFamily').add(new Option(`${f.tier} · ${f.label}`, id));
+// A pinned reference brings its own family (and so its tier's family rules).
+const ACTIVE_REFS = REFERENCE_LIBRARY.filter((e) => e.active && FAMILIES[e.family]).sort((a, b) => (a.id < b.id ? -1 : 1));
+for (const e of ACTIVE_REFS) $('ovReference').add(new Option(`${e.id} · ${FAMILIES[e.family].label}`, e.id));
+$('ovReference').addEventListener('change', () => {
+  const e = ACTIVE_REFS.find((x) => x.id === $('ovReference').value);
+  if (e) { $('ovFamily').value = e.family; if ($('ovTier').value !== FAMILIES[e.family].tier) { $('ovTier').value = FAMILIES[e.family].tier; $('posRow').hidden = true; } }
+});
+$('ovFamily').addEventListener('change', () => {
+  const e = ACTIVE_REFS.find((x) => x.id === $('ovReference').value);
+  if (e && e.family !== $('ovFamily').value) $('ovReference').value = 'auto';
+});
 
 function setStatus(text) { $('status').textContent = text || ''; }
 function setBusy(b) {
@@ -177,6 +190,7 @@ function readOverrides() {
     emotion: $('ovEmotion').value === 'auto' ? null : $('ovEmotion').value,
     motif: $('ovMotif').value === 'auto' ? null : $('ovMotif').value,
     family: $('ovFamily').value === 'auto' ? null : $('ovFamily').value,
+    reference: $('ovReference').value === 'auto' ? null : $('ovReference').value,
     seed,
   };
 }
@@ -223,11 +237,17 @@ async function paintProcedural(a, ov, control) {
 
 // Layers A–C run here (same code as the procedural path); the server builds
 // the prompt from the spec and calls the provider with its own key.
+// The Playground has no lyrics step, so the note (when given) is the subject,
+// exactly as in the app when the words are not reliable; with no note,
+// Gathered and Resolved paint an atmosphere of the motif.
 async function paintAI(a, ov, control, provider) {
   const plan = await call({ op: 'plan', opts: engineOpts(a, ov, control) });
+  const noteText = $('note').value.trim();
+  const concept = noteText ? { text: noteText, theme: [], imagery: [], figurative: [], source: 'note' } : null;
+  const spec = { ...plan.spec, concept, soundOnly: !concept && plan.spec.completeness === 'loose', ...(ov.reference ? { reference: ov.reference } : {}) };
   setStatus(`Generating with ${provider}… this usually takes 20–60 s.`);
   const t0 = performance.now();
-  const resp = await fetch('/api/generate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ provider, spec: plan.spec }) });
+  const resp = await fetch('/api/generate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ provider, spec }) });
   const g = await resp.json().catch(() => ({ ok: false, error: `HTTP ${resp.status}` }));
   if (!g.ok) throw new Error(g.error || `HTTP ${resp.status}`);
   const img = new Image();
@@ -240,7 +260,9 @@ async function paintAI(a, ov, control, provider) {
   const meta = {
     ...plan.summary, focus: '50% 50%', method: `ai:${g.provider}/${g.model}`,
     family: g.family ?? plan.summary.family, familyLabel: g.familyLabel ?? plan.summary.familyLabel, familyRefs: g.familyRefs ?? plan.summary.familyRefs, swatches: g.swatches ?? plan.summary.swatches,
-    provider: g.provider, providerLabel: `OpenAI ${g.model} (${g.quality})`, model: g.model, prompt: g.prompt, usage: g.usage ?? null,
+    provider: g.provider, providerLabel: `OpenAI ${g.model} (${g.quality})`, model: g.model, quality: g.quality, size: g.size, prompt: g.prompt, usage: g.usage ?? null,
+    reference: g.reference ?? null, referenceSent: g.referenceSent ?? null, subjectSource: g.subjectSource ?? null, subject: g.subject ?? null,
+    settings: g.settings ?? null, promptCheck: g.promptCheck ?? null, seed: g.seed ?? plan.summary.seed,
   };
   return { meta, canvas, png, features: a?.features ?? null, ms: { analyze: a?.ms ?? null, paint: performance.now() - t0, provider: g.ms } };
 }
@@ -275,7 +297,7 @@ $('paintBtn').addEventListener('click', () => guarded(async () => {
   const res = await paint(ov, controlOverride(ov));
   const run = makeRun(res, ov);
   await saveRun(run);
-  showArtwork([{ canvas: res.canvas, caption: captionFor(res.meta) }]);
+  showArtwork([{ canvas: res.canvas, caption: captionFor(res.meta), run }]);
   showResults(run);
   setStatus(`Done in ${fmt((res.ms.analyze ?? 0) / 1000, 1)} s analysis + ${fmt(res.ms.paint / 1000, 1)} s painting. Saved to the library.`);
   refreshLibrary();
@@ -310,14 +332,96 @@ function captionFor(m, extra = '') {
 }
 function showArtwork(items, trio = false) {
   const el = $('artwork');
-  el.className = `artwork${trio ? ' trio' : ''}`;
-  el.replaceChildren(...items.map(({ canvas, caption }) => {
+  const paired = items.some((x) => x.run?.result?.reference);
+  el.className = `artwork${paired ? ' paired' : trio ? ' trio' : ''}`;
+  el.replaceChildren(...items.map(({ canvas, caption, run }) => {
+    if (run?.result?.reference) return pairView(run, canvas);
     const f = document.createElement('figure');
     const c = document.createElement('figcaption');
     c.innerHTML = caption;
     f.append(canvas, c);
     return f;
   }));
+}
+
+// ---------- reference ↔ output ----------
+// The reference comes from /api/reference by id (the server reads it from
+// the private store; no storage URL reaches this page). Object URLs are
+// cached per id for the session.
+const refUrls = new Map();
+function referenceUrl(id) {
+  if (!refUrls.has(id)) {
+    refUrls.set(id, fetch(`/api/reference?id=${encodeURIComponent(id)}`)
+      .then((r) => (r.ok && r.headers.get('content-type')?.startsWith('image/') ? r.blob() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((b) => URL.createObjectURL(b))
+      .catch((e) => { refUrls.delete(id); throw e; }));
+  }
+  return refUrls.get(id);
+}
+
+const SUBJECT_FROM = { lyrics: 'the lyrics', note: 'the note', sound: 'the sound only', atmosphere: 'an atmosphere of the motif (no words, no note)', family: 'the family' };
+function settingsList(r) {
+  const m = r.result, st = m.settings ?? {}, x = st.expression;
+  const pc = m.promptCheck;
+  const check = !pc ? '—' : pc.verdict === 'ok' ? 'clean' : `${pc.verdict}: ${[...pc.people, ...pc.leaks.map((l) => l.word), ...pc.unrequested.map((l) => l.word)].map(esc).join(', ')}`;
+  return `<dl class="kv">
+    <dt>Reference</dt><dd><b>${esc(m.reference)}</b>${m.referenceSent === false ? ' <span class="warn">not sent</span>' : ''}</dd>
+    <dt>Style family</dt><dd>${esc(m.familyLabel)} <span class="hint">${esc(m.family)}</span></dd>
+    <dt>Tier</dt><dd>${esc(st.tier ?? m.tier)}</dd>
+    <dt>Emotion · motif</dt><dd>${esc(st.emotion ?? m.emotion)} · ${esc(st.motif ?? m.motif)}</dd>
+    <dt>Energy</dt><dd>${esc(st.energy ?? m.energy ?? '—')}${x ? ` · ${esc([x.range, x.flow, x.dynamics, x.vibrato ? 'vibrato' : null].filter(Boolean).join(' / '))}` : ''}</dd>
+    <dt>Subject from</dt><dd>${esc(SUBJECT_FROM[m.subjectSource] ?? m.subjectSource ?? '—')}${m.subject ? `<div class="hint">${esc(m.subject)}</div>` : ''}</dd>
+    <dt>Seed</dt><dd>${m.seed}</dd>
+    <dt>Model</dt><dd>${esc(m.model ?? '—')} · ${esc(m.quality ?? '—')} · ${esc(m.size ?? '—')}</dd>
+    <dt>Prompt check</dt><dd>${check}</dd>
+    <dt>Made</dt><dd>${new Date(r.createdAt).toLocaleString()}</dd>
+  </dl>`;
+}
+function pairView(r, canvas = null) {
+  const el = document.createElement('div');
+  el.className = 'pair';
+  const ref = document.createElement('figure');
+  const refImg = document.createElement('img');
+  refImg.alt = `Reference ${r.result.reference}`;
+  ref.append(refImg, Object.assign(document.createElement('figcaption'), { textContent: `Reference · ${r.result.reference}` }));
+  referenceUrl(r.result.reference).then((u) => { refImg.src = u; }).catch((e) => { ref.classList.add('missing'); ref.querySelector('figcaption').textContent = `Reference ${r.result.reference} unavailable (${e.message})`; });
+  const out = document.createElement('figure');
+  let art = canvas;
+  if (!art) { art = document.createElement('img'); const u = URL.createObjectURL(r.png); urls.push(u); art.src = u; }
+  out.append(art, Object.assign(document.createElement('figcaption'), { textContent: `Generated · ${r.result.tier}` }));
+  const meta = document.createElement('div');
+  meta.className = 'pairmeta';
+  meta.innerHTML = settingsList(r);
+  meta.append(leakageReview(r));
+  el.append(ref, out, meta);
+  return el;
+}
+
+// Image-level leakage check, with no paid call: a reviewer writes what the
+// painting shows; it is compared with the words (note or lyrics) and with
+// what this reference depicts (leakage.js). Saved with the run.
+const VERDICT = { ok: 'no leakage found', review: 'objects the words do not name', leak: 'leakage' };
+function leakageReview(r) {
+  const box = document.createElement('div');
+  box.className = 'review';
+  box.innerHTML = `<label>What the painting shows <input type="text" placeholder="e.g. moon, silver path on water, two rowboats with ropes"></label><div class="verdict"></div>`;
+  const input = box.querySelector('input'), out = box.querySelector('.verdict');
+  const show = (text) => {
+    if (!text.trim()) { out.textContent = ''; out.className = 'verdict'; return null; }
+    const res = checkLeakage({ depicted: text, note: r.note, reference: r.result.reference, family: r.result.family });
+    const items = [...res.people.map((p) => `person: ${p}`), ...res.leaks.map((l) => `from ${res.from}: ${l.word}`), ...res.unrequested.map((l) => `not in the words: ${l.word}`)];
+    out.className = `verdict ${res.verdict}`;
+    out.textContent = `${VERDICT[res.verdict]}${items.length ? ` · ${items.join(', ')}` : ''}`;
+    return res;
+  };
+  input.value = r.review?.depicted ?? '';
+  show(input.value);
+  input.addEventListener('change', async () => {
+    const res = show(input.value);
+    r.review = input.value.trim() ? { depicted: input.value.trim(), verdict: res.verdict, people: res.people, leaks: res.leaks, unrequested: res.unrequested, at: Date.now() } : null;
+    await saveRun(r).catch(() => {});
+  });
+  return box;
 }
 
 // ---------- results ----------
@@ -409,6 +513,7 @@ function runCard(r, { compact = false } = {}) {
   el.innerHTML = `
     <img src="${url}" alt="">
     <div class="t">${esc(m.tier)} · ${esc(m.emotion)} · ${esc(m.motif)}</div>
+    ${m.reference ? `<div class="m">reference <b>${esc(m.reference)}</b> · ${esc(m.familyLabel)}</div>` : ''}
     <div class="m prov">${esc(m.providerLabel || 'Procedural renderer (JS, no AI)')}</div>
     <div class="m">${new Date(r.createdAt).toLocaleString()}${r.label ? ` · ${esc(r.label)}` : ''}</div>
     <div class="m">${r.clip ? `${esc(r.clip.name)} (${r.clip.source})` : 'no audio'}</div>
@@ -437,7 +542,7 @@ function runCard(r, { compact = false } = {}) {
     el.querySelector('input').addEventListener('change', (e) => {
       e.target.checked ? selected.add(r.id) : selected.delete(r.id);
       el.classList.toggle('sel', e.target.checked);
-      $('compareBtn').disabled = selected.size < 2;
+      $('compareBtn').disabled = !canCompare();
     });
     el.querySelector('.row').addEventListener('click', async (e) => {
       const a = e.target.dataset?.a;
@@ -452,19 +557,28 @@ function runCard(r, { compact = false } = {}) {
 }
 
 let runsCache = [];
+// One run with a reference is already a comparison (reference ↔ output).
+const canCompare = () => selected.size >= 2 || runsCache.some((r) => selected.has(r.id) && r.result.reference);
 async function refreshLibrary() {
   urls.forEach(URL.revokeObjectURL); urls = [];
   runsCache = await listRuns().catch(() => []);
   $('libCount').textContent = runsCache.length ? `(${runsCache.length})` : '';
   $('runs').replaceChildren(...runsCache.map((r) => runCard(r)));
   for (const id of [...selected]) if (!runsCache.some((r) => r.id === id)) selected.delete(id);
-  $('compareBtn').disabled = selected.size < 2;
+  $('compareBtn').disabled = !canCompare();
   if (!$('compare').hidden) renderCompare();
 }
+// Runs painted from a reference compare as rows of reference ↔ output with
+// their settings; other runs keep the compact card.
 function renderCompare() {
   const picked = runsCache.filter((r) => selected.has(r.id)).sort((a, b) => a.createdAt - b.createdAt);
-  $('compare').replaceChildren(...picked.map((r) => runCard(r, { compact: true })));
-  $('compare').hidden = picked.length < 2;
+  const paired = picked.filter((r) => r.result.reference), plain = picked.filter((r) => !r.result.reference);
+  const grid = document.createElement('div');
+  grid.className = 'compare-cards';
+  grid.replaceChildren(...plain.map((r) => runCard(r, { compact: true })));
+  $('compare').replaceChildren(...paired.map((r) => pairView(r)), ...(plain.length ? [grid] : []));
+  $('compare').classList.toggle('paired', paired.length > 0);
+  $('compare').hidden = picked.length < 1 || (picked.length < 2 && !paired.length);
 }
 $('compareBtn').addEventListener('click', () => { renderCompare(); $('compare').scrollIntoView({ behavior: 'smooth' }); });
 $('clearSel').addEventListener('click', () => { selected.clear(); $('compare').hidden = true; refreshLibrary(); });
@@ -481,13 +595,14 @@ async function loadRun(r) {
   $('ovEmotion').value = ov.emotion || 'auto';
   $('ovMotif').value = ov.motif || 'auto';
   $('ovFamily').value = ov.family || 'auto';
+  $('ovReference').value = ov.reference || 'auto';
   $('seed').value = String(r.result.seed);
   const prov = r.result.provider || 'procedural';
   if (!$('provider').querySelector(`option[value=${prov}]`)?.disabled) $('provider').value = prov;
   if (r.audio) await setClip(r.audio, r.clip?.name || 'saved take', r.clip?.source || 'upload');
   else clearClip();
   const img = new Image(); img.src = URL.createObjectURL(r.png);
-  showArtwork([{ canvas: img, caption: captionFor(r.result) }]);
+  showArtwork([{ canvas: img, caption: captionFor(r.result), run: r }]);
   showResults(r);
   setStatus('Loaded from the library with its seed. Press Analyze & paint to repaint it.');
 }

@@ -42,6 +42,7 @@
     <div class="card">
       <h2>2 · Note (optional)</h2>
       <textarea id="note" rows="3" placeholder="A line about the song or the moment. Emotion and motif come only from these words."></textarea>
+      <p class="hint">For OpenAI paintings the note is also the subject (there is no lyrics step here). With no note, Gathered and Resolved paint an atmosphere of the motif. No people are painted at any tier.</p>
     </div>
 
     <div class="card dev">
@@ -80,6 +81,12 @@
           <option value="auto">Auto (drawn from this tier's references)</option>
         </select>
       </label>
+      <label>Reference (OpenAI only)
+        <select id="ovReference">
+          <option value="auto">Auto (drawn from the family)</option>
+        </select>
+      </label>
+      <p class="hint">Pin one reference to compare styles under the same note, tier, emotion, motif and seed.</p>
       <label>Seed
         <span class="seedrow">
           <input id="seed" type="text" inputmode="numeric" placeholder="auto (from the audio)">
@@ -123,7 +130,7 @@
 
 <main id="library" class="view" hidden>
   <div class="libbar">
-    <span id="libHint" class="hint">Every painting is saved here in this browser. Tick runs to compare them side by side.</span>
+    <span id="libHint" class="hint">Every painting is saved here in this browser. Tick runs and press Compare: AI paintings show their original reference on the left, the output on the right, and the settings.</span>
     <span class="spacer"></span>
     <button id="compareBtn" disabled>Compare selected</button>
     <button id="clearSel" class="ghost">Clear selection</button>

@@ -99,3 +99,25 @@ textarea { resize: vertical; }
 
 .prompt { white-space: pre-wrap; font-size: 11px; max-height: 240px; overflow: auto; background: #f4efe4; padding: 6px; border-radius: 6px; }
 .run .prov { font-size: 11px; }
+
+/* Reference ↔ output: original reference on the left, generated painting on
+   the right, settings beside them; stacks on narrow screens. */
+.pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(220px, .9fr); gap: 12px; align-items: start; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.pair figure { margin: 0; }
+.pair img, .pair canvas { width: 100%; height: auto; display: block; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,.08); background: #eee8dc; min-height: 120px; object-fit: contain; }
+.pair figcaption { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.pair figure.missing img { display: none; }
+.pairmeta .kv { margin: 0; font-size: 12px; }
+.artwork.paired { grid-template-columns: 1fr; }
+.compare.paired { grid-auto-flow: row; grid-template-columns: 1fr; gap: 12px; overflow-x: visible; }
+.artwork .pair { grid-template-columns: 1fr 1fr; padding: 0; border: 0; }
+.artwork .pair .pairmeta { grid-column: 1 / -1; }
+.compare-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+@media (max-width: 900px) { .pair { grid-template-columns: 1fr 1fr; } .pairmeta { grid-column: 1 / -1; } }
+@media (max-width: 520px) { .pair { grid-template-columns: 1fr; } }
+.review { margin-top: 10px; font-size: 12px; }
+.review label { display: grid; gap: 4px; color: var(--muted); }
+.review .verdict { margin-top: 4px; }
+.review .verdict.ok { color: #4f7a55; }
+.review .verdict.review { color: var(--warn); }
+.review .verdict.leak { color: #a3473b; font-weight: 600; }

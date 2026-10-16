@@ -60,14 +60,18 @@ export function affirmed(text) {
 const conceptText = (concept, note) => [concept?.text, ...(concept?.theme ?? []), ...(concept?.imagery ?? []),
   ...(concept?.figurative ?? []).flatMap((f) => [f.phrase, f.meaning]), note].filter(Boolean).join(' . ');
 
-// What the reference depicts: its own curated `content`, else (a reference
-// not curated yet) everything its family's references depict.
+// What the reference depicts: its curated `content` (from the given
+// library, else the bundled registry, since a Blob registry may not carry
+// it), else, for a reference not curated yet, everything its family's
+// references depict.
+const contentOf = (e, library) => e?.content ?? library.get(e?.id)?.content ?? LIBRARY.get(e?.id)?.content ?? null;
 export function inventoryOf({ reference, family, library = LIBRARY }) {
-  const ref = typeof reference === 'string' ? library.get(reference) : reference;
-  if (ref?.content) return { terms: [...ref.content], from: ref.id };
+  const ref = typeof reference === 'string' ? (library.get(reference) ?? LIBRARY.get(reference) ?? { id: reference }) : reference;
+  const own = contentOf(ref, library);
+  if (own) return { terms: [...own], from: ref.id };
   const fam = family ?? ref?.family;
-  const pool = fam ? library.pool(fam) : [];
-  return { terms: [...new Set(pool.flatMap((e) => e.content ?? []))], from: fam ?? null };
+  const pool = fam ? [...library.pool(fam), ...LIBRARY.pool(fam)] : [];
+  return { terms: [...new Set(pool.flatMap((e) => contentOf(e, library) ?? []))], from: fam ?? null };
 }
 
 export function checkLeakage({ depicted, concept = null, note = '', reference = null, family = null, library = LIBRARY } = {}) {
