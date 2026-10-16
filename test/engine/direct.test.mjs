@@ -71,3 +71,8 @@ test('no words → abstract motif, no figures and no invented story', () => {
     }
   }
 });
+
+test('no words at gathered and resolved forbids recognisable things', () => {
+  for (const level of ['gathered', 'resolved']) assert.match(direct({ ...spec(level), motif: 'abstract' }).prompt, /Nothing recognisable/);
+  assert.doesNotMatch(direct(spec('resolved')).prompt, /Nothing recognisable/);
+});

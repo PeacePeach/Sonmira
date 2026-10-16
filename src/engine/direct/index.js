@@ -41,7 +41,7 @@ export const AVOID = [
   'saturated or vibrant colors', 'neon or fluorescent hues', 'orange', 'hot pink', 'electric blue',
   'many different colors', 'decorative multicolor', 'harsh contrast', 'pure black', 'ink outlines',
   'cartoon or anime style', 'sentimental greeting-card or children\'s-book illustration',
-  'generic polished stock illustration', 'photorealism', 'glossy digital rendering', 'decorative patterns',
+  'generic polished stock illustration', 'picturesque postcard or calendar scenes', 'busy, fully detailed backgrounds', 'edge-to-edge painting', 'photorealism', 'glossy digital rendering', 'decorative patterns',
   'text, letters, signature or watermark', 'a frame, border or mat', 'a photo of a painting on a table',
 ];
 
@@ -159,7 +159,7 @@ export const LEVELS = {
   resolved: {
     label: 'finished watercolor painting',
     form: 'A mature, fully considered composition: clear foreground, middle ground and background, one strong focal point that carries the finest drawing and the crispest edges, and a deliberate path for the eye through the picture. Lost-and-found edges and considered negative space.',
-    finish: 'Refined and collectible, like a gallery piece by a master of the medium: the subject treated with poetry and economy, a sophisticated but soft value structure, and complete, confident brushwork. Painterly and alive, never a generic polished illustration.',
+    finish: 'Refined and collectible, like a gallery piece by a master of the medium: the subject treated with poetry and economy, a sophisticated but soft value structure, and complete, confident brushwork. Economy over description: suggest rather than describe, only a handful of details and all of them at the focal point, the background reduced to one or two washes, and the painting vignetting into bare paper on at least two sides so the sheet is not painted edge to edge. Painterly and alive, never a generic polished illustration.',
   },
 };
 
@@ -211,11 +211,15 @@ export function direct(spec) {
     ? (familyId === 'quietInterior' ? subj : null)
     : subj ?? F.subjects[motif]?.resolved ?? null;
 
+  // No words: depth and structure only, nothing recognisable at any level.
+  const noWords = motif === 'abstract' && level !== 'loose'
+    ? ' Nothing recognisable: no mountains, trees, water, buildings, objects or figures; depth and light are made only by washes, planes and edges.'
+    : '';
   const article = /^[aeiou]/i.test(L.label) ? 'An' : 'A';
   const sections = {
     subject: subject ? `${article} ${L.label} of ${subject}.` : `${article} ${L.label}.`,
     family: `Visual voice — ${F.label}: ${F.language}. In this piece, ${variant}.`,
-    form: L.form,
+    form: L.form + noWords,
     composition: `Vertical 4:5 format; ${placement}. Balance of line and wash: ${balance}.`,
     finish: L.finish,
     palette: `A limited palette of only ${pigments.length} pigments: ${pigments.join(', ')}, on warm ivory paper. Darks are the same pigments layered, never black.`,
