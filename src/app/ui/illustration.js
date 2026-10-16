@@ -2,8 +2,8 @@
 // waiting, a new beginning). One painted series on the same paper and
 // pigments; multiply lets the paper melt into whatever is behind it.
 //
-//   empty-diary  empty-day  mic-off  gen-failed  offline
-//   pending  more-paintings  daily-begins  today-made
+//   drops    the shared one: empty diary, paintings added, Daily Ritual begins
+//   mic-off  microphone off, missing or busy
 
 import { h } from './dom.js';
 

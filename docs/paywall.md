@@ -142,22 +142,14 @@ device's local date until the service checks it.
 
 ## Watercolor illustrations
 
-`assets/illustrations/` holds one painted series (same cotton paper and
-pigments) for quiet moments, shown with `illustration(name)` from
+`assets/illustrations/`, shown with `illustration(name)` from
 `src/app/ui/illustration.js`:
 
 | Name | Where |
 | --- | --- |
-| `empty-diary` | Diary with no entries |
-| `empty-day` | Calendar day with nothing sung |
+| `drops` | Empty diary, paintings added, purchases restored, Daily Ritual begins |
 | `mic-off` | Microphone off, missing or busy |
-| `gen-failed` | The painting didn't come through |
-| `more-paintings` | Little Moments added, purchases restored |
-| `daily-begins` | Daily Ritual begins |
-| `today-made` | Subscriber has made today's painting |
-| `pending` | Waiting for approval (not placed yet) |
-| `offline` | No connection (not placed yet) |
 
-They were generated with OpenAI's image model in the style of a reference
-watercolor, then flattened so the paper is white and multiplies cleanly onto
-any surface.
+The failed-painting and today's-painting-made states have no illustration.
+Both were generated with OpenAI's image model and flattened so the paper is
+white and multiplies cleanly onto any surface.

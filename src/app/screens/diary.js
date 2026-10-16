@@ -85,7 +85,7 @@ export function mountDiary(app) {
       ...groups.map((g) => h('section', {},
         h('div', { class: 'group-head' }, h('span', { class: 'md serif' }, monthDay(g.date)), h('span', { class: 'wd serif' }, weekday(g.date))),
         g.items.map(entryCard))),
-      list.length ? null : h('div', { class: 'empty serif' }, illustration(sel ? 'empty-day' : 'empty-diary'), sel ? `Nothing sung on ${monthDay(sel)}.` : 'Nothing here yet. Tap + and sing.'),
+      list.length ? null : h('div', { class: 'empty serif' }, illustration('drops'), sel ? `Nothing sung on ${monthDay(sel)}.` : 'Nothing here yet. Tap + and sing.'),
     ].filter(Boolean));
     scroll.scrollTop = y;
   }

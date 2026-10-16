@@ -264,7 +264,6 @@ export function mountSing(app) {
     painting.setArtwork(null);
     show(h('div', { class: 'phase centered', 'data-phase': 'gen-error' },
       h('div', { class: 'error-copy' },
-        illustration('gen-failed', 's'),
         h('h1', { class: 'serif', style: 'font-size:30px' }, 'The painting didn’t come through.'),
         h('div', { class: 'lede' }, 'Nothing was used. Your song is still here, so you can try again.')),
       h('div', { class: 'actions', style: 'width:100%' },

@@ -70,7 +70,6 @@ export function openPaywall(app, { from = 'diary', onContinue } = {}) {
       : 'Your first three paintings are on us. Choose how you’d like to keep creating.';
 
   const choose = h('div', { class: 'pw-choose' },
-    extraToday ? illustration('today-made', 's') : null,
     h('h2', { class: 'serif pw-title' }, extraToday ? 'Today’s painting is made.' : 'More moments to keep.'),
     h('p', { class: 'pw-lede' }, lede),
     h('div', { class: 'pw-plans', role: 'radiogroup', 'aria-label': 'Ways to keep creating' }, planEls.map((x) => x.el)),
@@ -171,14 +170,13 @@ export function openPaywall(app, { from = 'diary', onContinue } = {}) {
         ? 'One painting each day, starting today. It renews monthly until you cancel.'
         : `${product.credits} paintings added. They’re yours whenever you like.`,
       simulated,
-      illo: sub ? 'daily-begins' : 'more-paintings',
     });
   }
 
-  function showDone({ title, lede: text, simulated, illo = 'more-paintings' }) {
+  function showDone({ title, lede: text, simulated }) {
     const go = h('button', { class: 'pill', onClick: () => { layer.close(); onContinue?.(); } }, from === 'sing' ? 'Create painting' : 'Sing a moment');
     layer.body.replaceChildren(h('div', { class: 'pw-done', 'data-paywall-done': '' },
-      illustration(illo),
+      illustration('drops'),
       h('h2', { class: 'serif pw-title' }, title),
       h('p', { class: 'pw-lede' }, text),
       simulated ? h('div', { class: 'pw-dev' }, 'Simulated purchase · nothing was charged') : null,
