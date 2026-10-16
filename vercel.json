@@ -1,16 +1,33 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "",
+  "installCommand": "",
   "redirects": [
-    { "source": "/playground", "destination": "/playground/", "permanent": false }
+    {
+      "source": "/playground",
+      "destination": "/playground/",
+      "permanent": false
+    }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" },
-        { "key": "Cache-Control", "value": "no-cache" }
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
       ]
     }
   ],
-  "git": { "deploymentEnabled": { "main": false } }
+  "git": {
+    "deploymentEnabled": {
+      "main": false
+    }
+  }
 }
