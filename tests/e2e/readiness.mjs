@@ -50,7 +50,8 @@ async function fresh(base) {
   await page.waitForSelector('[data-screen=diary]');
   page.errors = errors;
   page.shot = async (name) => { if (SHOTS) await page.screenshot({ path: `${SHOTS}/${String(++shotN).padStart(2, '0')}-${name}.png` }); };
-  page.install = async () => (await page.evaluate(() => localStorage.getItem('sonmira.install')))?.slice(0, 8);
+  // The device's one id: the account id (main.js deviceIdentity).
+  page.install = async () => (await page.evaluate(() => { try { return JSON.parse(localStorage.getItem('sonmira.account')).id; } catch { return localStorage.getItem('sonmira.install'); } }))?.slice(0, 8);
   return { ctx, page };
 }
 
@@ -389,6 +390,38 @@ await step('daily spend cap: once reached, painting is refused for everyone and 
   await two.ctx.close();
 });
 B.stop();
+
+// The server counts paintings (SONMIRA_BILLING=on, as in Production): the
+// device's own wallet is only a copy, so resetting it gets nothing more.
+const C = await startServer(5193, { SONMIRA_FAKE_DELAY_MS: '300', SONMIRA_BILLING: 'on', SONMIRA_DAILY_CAP_USD: '50' });
+await step('quota: three free paintings are counted by the server; a reset wallet gets no fourth', async () => {
+  const { ctx, page } = await fresh(C.base);
+  for (let i = 0; i < 3; i++) {
+    await record(page);
+    await page.click('text=Create painting');
+    if (i === 0) await invite(page);
+    await page.waitForSelector('[data-phase=result]', { timeout: 30000 });
+    await page.click('text=Keep it');
+    await page.waitForSelector('[data-screen=diary] .entry');
+  }
+  const me = await page.install();
+  const charged = (await guardLog(C.base)).filter((e) => e.endpoint === 'generate' && e.install === me && e.outcome === 'ok').map((e) => e.charged);
+  assert.deepEqual(charged, ['free', 'free', 'free']);
+  // Someone clears the app's wallet: it shows three free paintings again.
+  await page.evaluate(() => { localStorage.removeItem('sonmira.wallet'); localStorage.removeItem('sonmira.sim.ledger'); });
+  await page.reload();
+  await page.waitForSelector('[data-screen=diary]');
+  await record(page);
+  await page.click('text=Create painting');
+  await page.waitForSelector('[data-phase=error][data-kind=generation]', { timeout: 30000 });
+  await page.shot('no-paintings');
+  assert.equal(await page.getAttribute('[data-kind=generation]', 'data-code'), 'no_paintings');
+  assert.match(await page.textContent('[data-kind=generation] .lede'), /Your song is kept/);
+  assert.equal((await drafts(page))[0].hasAudio, true);
+  assert.equal(paidCalls(await guardLog(C.base), 'generate', me), 3);
+  await ctx.close();
+});
+C.stop();
 
 await browser.close();
 const failed = results.filter((r) => !r.ok);

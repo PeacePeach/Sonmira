@@ -18,7 +18,7 @@ const png = readFileSync(fileURLToPath(new URL('../../assets/art/impression-1.pn
 const browser = await chromium.launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${wav}`] });
 const ctx = await browser.newContext({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 // The API is mocked below, so any install token will do (no invitation sheet).
-await ctx.addInitScript(() => localStorage.setItem('sonmira.access', 'e2e-mocked-api'));
+await ctx.addInitScript(() => { /* the API is mocked: a stand-in token for this device's id (protect/client.js) */ let a = null; try { a = JSON.parse(localStorage.getItem('sonmira.account')); } catch {} if (!a?.id) { a = { id: 'e2e-device-00000001', token: null, user: null, since: null }; localStorage.setItem('sonmira.account', JSON.stringify(a)); } localStorage.setItem('sonmira.access', `v1.${btoa(JSON.stringify({ i: a.id }))}.mock`); });
 // Each generation answers with the next reference, seed and time.
 const RUNS = [{ reference: 'resolved_04', seed: 111, ms: 4200 }, { reference: 'gathered_07', seed: 222, ms: 9900 }];
 let n = 0;

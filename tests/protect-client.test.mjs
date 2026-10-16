@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createApiClient, withGenerationKey, guardMessage } from '../src/app/protect/client.js';
-import { protect, createSessionHandler, memoryKV } from '../server/protect/index.js';
+import { protect, createSessionHandler, createAuthorize, memoryKV } from '../server/protect/index.js';
 
 const ENV = { SONMIRA_TOKEN_SECRET: 'client-test-secret-0123456789abcdef', SONMIRA_INVITE_CODES: 'MOON-RIVER-01' };
 const ORIGIN = 'https://sonmira.test/';
@@ -16,7 +16,7 @@ function memoryStorage() {
 }
 
 // Routes fetch() to Vercel-style handlers, like the deployment would.
-function server({ delay = 0, fail = () => false } = {}) {
+function server({ delay = 0, fail = () => false, verifyAccount } = {}) {
   const kv = memoryKV();
   const calls = { generate: 0, understand: 0, other: 0 };
   const paid = (name) => async (_req, res) => {
@@ -26,10 +26,20 @@ function server({ delay = 0, fail = () => false } = {}) {
     res.status(200).json(name === 'generate' ? { ok: true, image: `img-${calls.generate}` } : { ok: true, transcript: { text: 'la' }, lyrics: null });
   };
   const deps = { env: ENV, kv, log: () => {} };
+  const authorize = createAuthorize(deps);
+  // Billing and sign-in stand-ins: they answer only to the named id's token.
+  const owned = (pick) => async (req, res) => {
+    const id = pick(req);
+    if (!(await authorize(req, id))) return res.status(401).json({ ok: false, code: 'unauthorized' });
+    res.status(200).json({ ok: true, id });
+  };
   const routes = {
     '/api/generate': protect('generate', paid('generate'), deps),
     '/api/understand': protect('understand', paid('understand'), deps),
-    '/api/session': createSessionHandler(deps),
+    '/api/session': createSessionHandler({ ...deps, verifyAccount }),
+    '/api/billing/status': owned((req) => new URL(req.url, ORIGIN).searchParams.get('account')),
+    '/api/billing/transactions': owned((req) => req.body.account),
+    '/api/account/apple': owned((req) => req.body.accountId),
   };
   const seen = [];
   const fetchImpl = async (input, init = {}) => {
@@ -40,7 +50,7 @@ function server({ delay = 0, fail = () => false } = {}) {
     seen.push({ path: url.pathname, headers });
     let status = 200, body = null;
     const res = { setHeader() {}, status(n) { status = n; return res; }, json(o) { body = o; return res; }, end() { return res; } };
-    await route({ method: init.method || 'GET', headers: { ...headers, 'x-forwarded-for': '1.1.1.1' }, body: init.body ? JSON.parse(init.body) : {} }, res);
+    await route({ method: init.method || 'GET', url: url.href, headers: { ...headers, 'x-forwarded-for': '1.1.1.1' }, body: init.body ? JSON.parse(init.body) : {} }, res);
     return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
   };
   return { fetchImpl, calls, seen };
@@ -146,4 +156,42 @@ test('without a take key every request still gets its own key', async () => {
   await post(client, '/api/generate');
   await post(client, '/api/generate');
   assert.equal(s.calls.generate, 2);
+});
+
+test('a changed id never uses the old token; a signed-in account gets its own without a code', async () => {
+  const s = server({ verifyAccount: async (t) => (t === 'acct-session' ? { accountId: 'account-aaaaaaaaaaaaaaaa' } : null) });
+  let id = 'guest-aaaaaaaaaaaaaaaaaa', session = null, asked = 0;
+  const client = createApiClient({ fetchImpl: s.fetchImpl, storage: memoryStorage(), origin: ORIGIN, sleep: noSleep, installId: async () => id, accountToken: () => session, askInvite: async () => { asked += 1; return 'MOON-RIVER-01'; } });
+  assert.equal((await post(client, '/api/generate', { spec: {} })).status, 200);
+  assert.equal(asked, 1);
+  // The account already holds a seat (it joined with a code on its first phone).
+  const first = createApiClient({ fetchImpl: s.fetchImpl, storage: memoryStorage(), origin: ORIGIN, installId: async () => 'account-aaaaaaaaaaaaaaaa', askInvite: async () => 'MOON-RIVER-01' });
+  await post(first, '/api/generate', { spec: {} });
+  // Signing in on this phone switches the id: the guest's token is not sent for it.
+  id = 'account-aaaaaaaaaaaaaaaa'; session = 'acct-session';
+  assert.equal((await post(client, '/api/generate', { spec: {} })).status, 200);
+  assert.equal(asked, 1); // no second code
+  assert.equal(s.seen.filter((x) => x.path === '/api/session').length, 3);
+});
+
+test('billing and sign-in requests carry the token for the id they name; only a purchase may ask for a code', async () => {
+  const s = server();
+  const id = 'install-billing-aaaaaaaa';
+  let asked = 0;
+  const client = createApiClient({ fetchImpl: s.fetchImpl, storage: memoryStorage(), origin: ORIGIN, installId: async () => id, askInvite: async () => { asked += 1; return 'MOON-RIVER-01'; } });
+  // No token yet: the status check doesn't interrupt anyone with a code prompt.
+  assert.equal((await client.fetch(`${ORIGIN}api/billing/status?account=${id}`)).status, 401);
+  assert.equal((await post(client, '/api/account/apple', { accountId: id })).status, 401);
+  assert.equal(asked, 0);
+  // A purchase does ask, and then everything is authorized for this id only.
+  assert.equal((await post(client, '/api/billing/transactions', { account: id })).status, 200);
+  assert.equal(asked, 1);
+  assert.equal((await client.fetch(`${ORIGIN}api/billing/status?account=${id}`)).status, 200);
+  assert.equal((await post(client, '/api/account/apple', { accountId: id })).status, 200);
+  assert.equal((await client.fetch(`${ORIGIN}api/billing/status?account=someone-else-aaaaaaaa`)).status, 401);
+  assert.equal(s.seen.find((x) => x.path === '/api/billing/status' && x.headers.authorization)?.headers.authorization.startsWith('Bearer v1.'), true);
+});
+
+test('no_paintings has calm copy', () => {
+  assert.match(guardMessage('no_paintings'), /song is kept/);
 });

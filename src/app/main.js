@@ -20,6 +20,7 @@ import { installApiFetch } from './native/fetch.js';
 import { mountAccount } from './screens/account.js';
 import { mountAccountDelete } from './screens/account-delete.js';
 import { createAccountForDevice } from './account/setup.js';
+import { localStorageBox } from './account/index.js';
 
 const SCREENS = { diary: mountDiary, sing: mountSing, detail: mountDetail, settings: mountSettings, legal: mountLegal, account: mountAccount, accountDelete: mountAccountDelete };
 const ENTER = { diary: 'enter-fade', sing: 'enter-modal', detail: 'enter-push', settings: 'enter-push', legal: 'enter-push', account: 'enter-push', accountDelete: 'enter-push' };
@@ -99,8 +100,19 @@ async function boot() {
   const [engine, storage] = await Promise.all([getEngine(), initStorage()]);
   app.engine = engine;
   app.storage = storage;
+  // Paid, billing and sign-in requests carry the install token (server/protect),
+  // for the device's one id: the account id (deviceIdentity below).
+  let identified;
+  const identity = new Promise((r) => { identified = r; });
+  app.api = installApiClient({
+    askInvite: (o) => askInviteCode(app, o),
+    installId: async () => (await identity).id,
+    accountToken: () => localStorageBox.read()?.token ?? null,
+  });
   app.billing = createBilling({ ask: (req) => askSimulator(app, req) });
-  app.account = createAccountForDevice(app);
+  app.account = createAccountForDevice(app, await deviceIdentity(app.billing));
+  identified(app.account);
+  followAccount(app);
   // A purchase that finishes while no paywall is open (an Ask to Buy approval).
   app.billing.onChange((ev) => {
     if (ev.type !== 'transaction' || !ev.product || app.paywallOpen) return;
@@ -108,8 +120,6 @@ async function boot() {
   });
   try { app.entries = await listEntries(); }
   catch (e) { console.warn(e); app.storage = { persistent: false, loadFailed: true }; }
-  // Paid requests carry the install token and the take's key (server/protect).
-  app.api = installApiClient({ askInvite: (o) => askInviteCode(app, o) });
   // Paintings not kept yet, outside the diary.
   app.drafts = createDrafts();
   await app.drafts.init();
@@ -119,6 +129,34 @@ async function boot() {
   // Apple or the server may have ended the session while the app was closed.
   app.account.check().then((r) => { if (r === 'signedOut') app.toast('You’re no longer signed in with Apple. Your diary is still here.'); });
   if (app.dev.enabled) (await import('./dev.js')).mountDevPanel(app);
+}
+
+// One id per device for the guard, the paintings ledger and the account. In
+// the iOS app it is the Keychain id (StoreKit's appAccountToken, kept across
+// reinstalls by iCloud Keychain), and new guest ids are UUIDs like it; in a
+// browser it starts as the guard's existing install id.
+async function deviceIdentity(billing) {
+  const keychain = await billing.accountId().catch(() => null);
+  const seed = keychain ?? safeGet('sonmira.install');
+  return {
+    box: { read: () => localStorageBox.read() ?? (seed ? { id: seed, token: null, user: null, since: null } : null), write: (v) => localStorageBox.write(v) },
+    newId: keychain ? () => globalThis.crypto.randomUUID() : undefined,
+  };
+}
+const safeGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+
+// Sign-in (a returning account), sign-out and deletion change the id: the
+// Keychain and the ledger follow it (the API client already does).
+function followAccount(app) {
+  const follow = async () => {
+    const id = app.account.id;
+    try {
+      const keychain = await app.billing.accountId();
+      if (keychain && keychain !== id) await app.billing.setAccountId(id);
+    } catch (e) { console.warn('[sonmira] account id not followed', e); }
+  };
+  app.account.onChange(follow);
+  follow();
 }
 
 async function seedPreview() {

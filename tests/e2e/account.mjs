@@ -1,7 +1,8 @@
 // End-to-end check of the account screens with the development Sign in with
 // Apple simulator, in Chromium at iPhone size.
 //
-//   node server.js &  then  node tests/e2e/account.mjs      (SHOTS=dir saves screenshots)
+//   SONMIRA_PROTECT=off SONMIRA_FAKE_PROVIDER=1 SONMIRA_FAKE_DELAY_MS=1000 PORT=5173 node tests/e2e/guarded-server.mjs &
+//   then  node tests/e2e/account.mjs      (SHOTS=dir saves screenshots)
 
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';
@@ -38,6 +39,8 @@ async function run() {
     args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${wav}`, '--autoplay-policy=no-user-gesture-required'],
   });
   const ctx = await browser.newContext({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+  // Past the beta invitation: a stand-in token for this device's id (protect/client.js).
+  await ctx.addInitScript(() => { let a = null; try { a = JSON.parse(localStorage.getItem('sonmira.account')); } catch {} if (!a?.id) { a = { id: 'e2e-device-00000001', token: null, user: null, since: null }; localStorage.setItem('sonmira.account', JSON.stringify(a)); } localStorage.setItem('sonmira.access', `v1.${btoa(JSON.stringify({ i: a.id }))}.mock`); });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));

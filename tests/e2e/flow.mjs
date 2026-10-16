@@ -50,7 +50,7 @@ async function run() {
   });
   const ctx = await browser.newContext({ viewport, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
   // The API is mocked below, so any install token will do (no invitation sheet).
-  await ctx.addInitScript(() => localStorage.setItem('sonmira.access', 'e2e-mocked-api'));
+  await ctx.addInitScript(() => { /* the API is mocked: a stand-in token for this device's id (protect/client.js) */ let a = null; try { a = JSON.parse(localStorage.getItem('sonmira.account')); } catch {} if (!a?.id) { a = { id: 'e2e-device-00000001', token: null, user: null, since: null }; localStorage.setItem('sonmira.account', JSON.stringify(a)); } localStorage.setItem('sonmira.access', `v1.${btoa(JSON.stringify({ i: a.id }))}.mock`); });
   // Stand-in for the system share sheet: records what would be shared.
   await ctx.addInitScript(() => {
     window.__shared = [];

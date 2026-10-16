@@ -1,7 +1,7 @@
 // End-to-end check of the paywall with the development purchase simulator,
 // in Chromium at iPhone size with the fake microphone from flow.mjs.
 //
-//   SONMIRA_PROTECT=off SONMIRA_FAKE_PROVIDER=1 PORT=5173 node tests/e2e/guarded-server.mjs &
+//   SONMIRA_PROTECT=off SONMIRA_FAKE_PROVIDER=1 SONMIRA_FAKE_DELAY_MS=1000 PORT=5173 node tests/e2e/guarded-server.mjs &
 //   then  node tests/e2e/paywall.mjs      (SHOTS=dir saves screenshots)
 
 import { chromium } from 'playwright';
@@ -46,7 +46,7 @@ async function run() {
   });
   const ctx = await browser.newContext({ viewport, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
   // Past the beta invitation (run against tests/e2e/guarded-server.mjs with SONMIRA_PROTECT=off).
-  await ctx.addInitScript(() => localStorage.setItem('sonmira.access', 'e2e-mocked-api'));
+  await ctx.addInitScript(() => { /* the API is mocked: a stand-in token for this device's id (protect/client.js) */ let a = null; try { a = JSON.parse(localStorage.getItem('sonmira.account')); } catch {} if (!a?.id) { a = { id: 'e2e-device-00000001', token: null, user: null, since: null }; localStorage.setItem('sonmira.account', JSON.stringify(a)); } localStorage.setItem('sonmira.access', `v1.${btoa(JSON.stringify({ i: a.id }))}.mock`); });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -248,7 +248,7 @@ async function run() {
 
   // the paywall at Create painting keeps the take and goes on after buying
   const c2 = await browser.newContext({ viewport, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
-  await c2.addInitScript(() => localStorage.setItem('sonmira.access', 'e2e-mocked-api'));
+  await c2.addInitScript(() => { /* the API is mocked: a stand-in token for this device's id (protect/client.js) */ let a = null; try { a = JSON.parse(localStorage.getItem('sonmira.account')); } catch {} if (!a?.id) { a = { id: 'e2e-device-00000001', token: null, user: null, since: null }; localStorage.setItem('sonmira.account', JSON.stringify(a)); } localStorage.setItem('sonmira.access', `v1.${btoa(JSON.stringify({ i: a.id }))}.mock`); });
   const p2 = await c2.newPage();
   p2.on('pageerror', (e) => errors.push(e.message));
   await p2.goto(BASE);
