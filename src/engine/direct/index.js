@@ -5,8 +5,8 @@
 //
 // 1. The control tier comes from the spec (layer B).
 // 2. A style family is drawn, by seed, from the families derived from that
-//    tier's references (families.js). Weight = number of source references,
-//    doubled when the motif matches what those references show.
+//    tier's references (families.js), every eligible family equally likely;
+//    then one reference image is drawn from that family (library.js).
 // 3. The motif picks new content suited to the family's treatment; the
 //    emotion shifts light and colour within the family's own palette.
 // 4. The family's rules, the tier's form rules and the global Sonmira
@@ -15,7 +15,7 @@
 // Every style statement traces to references through `refs`.
 
 import { rng, hashSeed } from '../render/rng.js';
-import { FAMILIES, SUBJECTS, AFFINITY, familiesOfTier } from './families.js';
+import { FAMILIES, SUBJECTS, familiesOfTier } from './families.js';
 import { LIBRARY, referencePalette, REFERENCE_AUTHORITY } from './library.js';
 
 export { FAMILIES, REFERENCES, LIBRARY_VERSION } from './families.js';
@@ -123,13 +123,18 @@ function pickWeighted(list, r) {
   return list[list.length - 1][0];
 }
 
-// Families allowed for a tier and motif, with weights. A family is left out
-// when it has no subject for the motif (with no words, the families whose
-// references centre on people).
-export function familiesFor(level, motif, library = LIBRARY) {
-  return familiesOfTier(level)
-    .filter((id) => FAMILIES[id].tier === 'loose' || SUBJECTS[id]?.[motif] != null)
-    .map((id) => [id, Math.max(1, library.pool(id).length) * ((AFFINITY[id] || []).includes(motif) ? 2 : 1)]);
+// Families allowed for a tier, each equally likely: the style is chosen
+// first among families, then an image within the family (library.select),
+// so a family with more references is not chosen more often. A family is
+// left out only when it cannot be painted: it has no active reference, or
+// there are no words and it has no subject of its own for the motif (the
+// families whose references centre on people). With words the subject comes
+// from the lyrics, so every family of the tier is eligible.
+export function familiesFor(level, motif, library = LIBRARY, { concept = false } = {}) {
+  const all = familiesOfTier(level);
+  const paintable = all.filter((id) => FAMILIES[id].tier === 'loose' || concept || SUBJECTS[id]?.[motif] != null);
+  const stocked = paintable.filter((id) => library.pool(id).length > 0);
+  return (stocked.length ? stocked : paintable.length ? paintable : all).map((id) => [id, 1]);
 }
 
 export function direct(spec) {
@@ -137,7 +142,7 @@ export function direct(spec) {
   const motif = spec.motif || 'abstract';
   const r = rng(hashSeed(spec.seed >>> 0, 'direct'));
   const library = spec.library || LIBRARY;
-  const drawn = pickWeighted(familiesFor(level, motif, library), r);
+  const drawn = pickWeighted(familiesFor(level, motif, library, { concept: Boolean(spec.concept?.text) }), r);
   // A developer override may pick any family; it brings its own tier rules.
   const familyId = FAMILIES[spec.family] ? spec.family : drawn;
   const F = FAMILIES[familyId];

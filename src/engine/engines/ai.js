@@ -19,6 +19,17 @@ import { planPainting } from '../plan.js';
 import { understandTake } from '../understand.js';
 import { tintWash, groundWash } from '../render/index.js';
 
+// A fresh seed for every generation, so each painting makes its own
+// independent choice of style family and reference (and the choices the
+// seed drives inside the direction). The same take created again gets a new
+// draw; a fixed seed is used only when one is given explicitly
+// (overrides.seed, e.g. a deliberate regeneration).
+export function randomSeed() {
+  const c = globalThis.crypto;
+  if (c?.getRandomValues) return c.getRandomValues(new Uint32Array(1))[0];
+  return Math.floor(Math.random() * 2 ** 32) >>> 0;
+}
+
 export const ENGINE_ID = 'ai-openai-v2';
 const ENDPOINT = '/api/generate';
 const UNDERSTAND = '/api/understand';
@@ -123,6 +134,7 @@ export function createAIEngine({ fetchImpl = (...a) => globalThis.fetch(...a), d
         emotionOverride: sem.mood ?? undefined,
         motifOverride: sem.motif ?? undefined,
         allowedMotifs: MOTIFS,
+        seed: Number.isInteger(overrides?.seed) ? overrides.seed >>> 0 : randomSeed(),
       });
       const { spec, interpretation: it } = plan;
       const body = { spec: {

@@ -161,6 +161,7 @@ export const SUBJECTS = {
 };
 
 // Motif affinity: which motifs each family's references actually show.
+// Descriptive only (tools); it does not weight which family is chosen.
 export const AFFINITY = {
   'G1-atmospheric-study': ['water', 'sky', 'landscape'],
   'G2-splash-wash': ['landscape', 'garden'],
