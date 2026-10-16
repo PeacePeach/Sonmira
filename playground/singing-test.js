@@ -143,19 +143,23 @@ async function startRecording(slot) {
     card.querySelector('.meter > div').style.width = `${Math.min(100, Math.sqrt(sum / buf.length) * 400)}%`;
     if (s >= MAX_SEC) stopRecording(); else raf = requestAnimationFrame(tick);
   };
-  mr.start(250);
+  // One blob at stop, no timeslice: Safari's fragmented MP4 chunks can decode
+  // as only their first fragment.
+  mr.start();
+  rec.t0 = t0;
   tick();
   syncRecButtons();
 }
 async function stopRecording() {
   if (!rec) return;
   const r = rec; rec = null;
+  const recordedSec = (performance.now() - r.t0) / 1000;
   const blob = await r.stop();
   syncRecButtons();
   const card = $(`take-${r.slot}`);
   card.querySelector('.meter > div').style.width = '0';
   const t = state.get(r.slot);
-  Object.assign(t, { blob, mime: blob.type, words: null, recordedAt: new Date().toISOString(), judged: '' });
+  Object.assign(t, { blob, mime: blob.type, bytes: blob.size, recordedSec: Math.min(MAX_SEC, recordedSec), words: null, recordedAt: new Date().toISOString(), judged: '' });
   await saveTake(t);
   await analyse(r.slot, { fetchWords: true });
 }
@@ -202,6 +206,15 @@ async function analyse(slot, { fetchWords = false } = {}) {
   }
   renderTake(slot);
   renderSummary();
+}
+
+// A take the analysis barely heard is a recording problem, not a tier result.
+function soundProblem(t, v) {
+  const a = v.u.audio ?? {}, rec = t.recordedSec, dec = v.durationSec;
+  const where = `${t.mime || 'unknown type'}, ${Math.round((t.bytes ?? t.blob?.size ?? 0) / 1024)} KB`;
+  if (rec && dec < rec - 1) return `this browser decoded only ${fmt(dec, 1)} s of the ${fmt(rec, 1)} s recorded (${where}). Please tell Claude which browser and device you used.`;
+  if ((a.soundingSec ?? 0) < 1) return `only ${fmt(a.soundingSec ?? 0, 1)} s of sound reached the analysis in ${fmt(dec, 1)} s (${where}), so the words were not sent for transcription. Play the take back: if it is silent or very faint, the browser is using another microphone or the input level is very low.`;
+  return null;
 }
 
 // Why this tier, in plain words, from the checks that decided it.
@@ -304,11 +317,13 @@ function renderTake(slot) {
   if (v.error) { out.innerHTML = `<p class="err">${esc(v.error)}</p>`; return; }
   if (!v.u) { out.innerHTML = t.blob ? '<p class="hint">Not analysed yet.</p>' : `<p class="hint">Not recorded yet. Suggested expectation: ${TIER_LABEL[meta.expect]}.</p>`; return; }
   const u = v.u, why = explain(u), tr = u.transcript, d = disagreement(t, u);
+  const sound = soundProblem(t, v);
   const words = !u.wordsRequested ? `<em>${esc(u.wordsSkipped || 'not transcribed')}</em>`
     : tr?.text ? `“${esc(tr.text)}” <span class="hint">(${tr.lexicalWords} words, confidence ${fmt(tr.asrConfidence)}${tr.hallucination ? ', known transcription hallucination' : ''})</span>` : '<em>no words heard</em>';
   const ly = u.lyrics;
   out.innerHTML = `
     <div class="verdict">${pill(u.tier)} <span class="hint">stage ${u.decision.stage} · ${u.decision.stage === 1 ? 'words gate' : 'singing control'}</span></div>
+    ${sound ? `<p class="disagree"><b>Recording problem:</b> ${esc(sound)}</p>` : ''}
     <p class="why"><b>${esc(why.head)}</b></p>
     ${why.lines.length ? `<ul class="whylist">${why.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : ''}
     ${d ? `<p class="disagree">${d.dir === 'lower' ? 'Lower' : 'Higher'} than your ${t.judged ? 'judgement' : 'expectation'} (${TIER_LABEL[t.judged || t.expected]}). Driven by: ${d.drivers.map((x) => esc(CHECK_TEXT[x] || x)).join(', ')}.</p>` : ''}
@@ -363,7 +378,7 @@ function resultsJson() {
     return {
       slot, title, expected: t.expected, judged: t.judged || null, comment: t.comment || null,
       engine: u.tier, stage: u.decision.stage, reason: u.decision.reason,
-      audio: u.audio, mime: t.mime,
+      audio: u.audio, mime: t.mime, bytes: t.bytes ?? null, recordedSec: t.recordedSec ?? null, decodedSec: view.get(slot).durationSec,
       words: u.transcript ? { text: u.transcript.text, lexicalWords: u.transcript.lexicalWords, asrConfidence: u.transcript.asrConfidence, hallucination: u.transcript.hallucination } : (u.wordsSkipped || null),
       reading: u.lyrics ? { structure: u.lyrics.structure, phraseComplete: u.lyrics.phraseComplete, completionConfidence: u.lyrics.completionConfidence, unfinished: u.lyrics.unfinished, linked: u.lyrics.linked, lexical: u.lyrics.lexical, coherent: u.lyrics.coherent } : null,
       gate: (u.gate?.checks ?? []).map((c) => [c.id, c.ok ? 1 : 0, c.value]),
