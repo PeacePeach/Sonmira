@@ -124,7 +124,6 @@ assert.equal(copied.kind, 'sonmira-singing-test');
 const c7 = copied.takes.find((t) => t.slot === 7);
 assert.equal(c7.engine, engine7); assert.equal(c7.judged, other);
 assert.ok(c7.performance.windows.length >= 1 && c7.strong.length > 5 && c7.gate.length > 5);
-assert.ok(c7.vibratoFix?.tier && c7.components.intonation.centres?.smoothDev != null, 'candidate vibrato fix in the results');
 console.log('copied', JSON.stringify(copied).length, 'chars; take 7 strong checks:', c7.strong.map(([id, ok]) => `${id}${ok ? '✓' : '✗'}`).join(' '));
 
 // Phone width: no horizontal page scroll.

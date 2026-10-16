@@ -29,9 +29,6 @@ export const SINGING_VERSION = 3;
 
 export const SINGING_CALIBRATION = {
   smoothSec: 0.15,          // removes vibrato (4–8 Hz) to see the note's slow line
-  // Where a note's pitch centre is read: 'raw' = median of the raw pitch;
-  // 'smooth' = median of the smoothed line, with the vibrato removed.
-  noteCentre: 'raw',
   movingCentsPerSec: 350,   // faster than this on the smoothed line = between notes
   // The slope is measured across this span. It must cover about one vibrato
   // cycle: over a shorter span the vibrato the smoother leaves behind (about
@@ -167,10 +164,7 @@ export function findNotes(track, cal = SINGING_CALIBRATION) {
       }
     }
   });
-  notes.forEach((n) => {
-    n.centerRaw = median(n.raw); n.centerSmooth = median(n.smooth);
-    n.center = cal.noteCentre === 'smooth' ? n.centerSmooth : n.centerRaw;
-  });
+  notes.forEach((n) => { n.center = median(n.raw); });
   return { notes, runs, voicedSec: fr.filter((f) => f.cents != null).length * hop };
 }
 
@@ -250,16 +244,8 @@ export function singingAnalysis(track, features = null, cal = SINGING_CALIBRATIO
   const inNotes = notes.filter((n) => n.sec >= 0.15);
   if (inNotes.length >= cal.intonation.minNotes) {
     const { deviation, offset } = intonationDeviation(inNotes);
-    // Evidence for the note-centre choice: the deviation read both ways, and
-    // (raw centres) on the notes with and without vibrato.
-    const vib = new Set(notes.filter((n) => noteStability(n, hop, cal)?.vibrato));
-    const devOf = (ns, key) => (ns.length >= 2 ? r3(intonationDeviation(ns.map((n) => ({ sec: n.sec, center: n[key] }))).deviation) : null);
     C.intonation = { measures: 'relative tuning consistency: notes on one semitone grid at the singer\'s own tuning, not the song\'s notes',
-      score: r3(goodBad(deviation, cal.intonation.devGood, cal.intonation.devRandom)), deviationCents: r3(deviation), tuningOffsetCents: offset, notes: inNotes.length,
-      centres: { used: cal.noteCentre ?? 'raw', rawDev: devOf(inNotes, 'centerRaw'), smoothDev: devOf(inNotes, 'centerSmooth'),
-        vibratoNotes: inNotes.filter((n) => vib.has(n)).length,
-        rawDevVibratoNotes: devOf(inNotes.filter((n) => vib.has(n)), 'centerRaw'), rawDevOtherNotes: devOf(inNotes.filter((n) => !vib.has(n)), 'centerRaw'),
-        smoothDevVibratoNotes: devOf(inNotes.filter((n) => vib.has(n)), 'centerSmooth'), smoothDevOtherNotes: devOf(inNotes.filter((n) => !vib.has(n)), 'centerSmooth') } };
+      score: r3(goodBad(deviation, cal.intonation.devGood, cal.intonation.devRandom)), deviationCents: r3(deviation), tuningOffsetCents: offset, notes: inNotes.length };
   } else unavailable.push(`intonation: fewer than ${cal.intonation.minNotes} notes`);
 
   // 3. Transitions: does the voice arrive cleanly, or hunt around the target?

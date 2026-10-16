@@ -11,8 +11,7 @@
 
 import { understandTake } from '../src/engine/understand.js';
 import { pitchTrack } from '../src/engine/analysis/pitchtrack.js';
-import { SINGING_CALIBRATION, singingAnalysis } from '../src/engine/analysis/singing.js';
-import { analyzeSamples } from '../src/engine/analysis/features.js';
+import { SINGING_CALIBRATION } from '../src/engine/analysis/singing.js';
 import { GATE_CALIBRATION } from '../src/engine/interpret/lyrics.js';
 import { wordsAudio } from '../src/engine/engines/ai.js';
 
@@ -211,21 +210,12 @@ async function analyse(slot) {
     await saveTake(t);
     const noWords = !t.words && !t.wordsSkipped;
     if (noWords) u = singingOnly(u, wordsError ? `transcription failed: ${wordsError}` : 'this server has no transcription key');
-    const track = pitchTrack(audio.samples, audio.sampleRate);
-    view.set(slot, { u, track, durationSec: audio.durationSec, fix: vibratoFix(u, track, audio) });
+    view.set(slot, { u, track: pitchTrack(audio.samples, audio.sampleRate), durationSec: audio.durationSec });
   } catch (err) {
     view.set(slot, { error: `This take couldn’t be analysed (${err.message || err}).` });
   }
   renderTake(slot);
   renderSummary();
-}
-
-// Candidate fix under review (not the app's decision): note centres read from
-// the vibrato-free smoothed line. The words gate doesn't depend on note
-// centres, so a Loose take stays Loose; otherwise Strong decides.
-function vibratoFix(u, track, audio) {
-  const q = singingAnalysis(track, analyzeSamples(audio.samples, audio.sampleRate), { ...SINGING_CALIBRATION, noteCentre: 'smooth' }).quality;
-  return { tier: u.tier === 'loose' ? 'loose' : q.strong ? 'resolved' : 'gathered', quality: q };
 }
 
 // Without the words (no transcription on this server, or it failed), the
@@ -356,7 +346,6 @@ function renderTake(slot) {
   const ly = u.lyrics;
   out.innerHTML = `
     <div class="verdict">${pill(u.tier)} <span class="hint">${u.wordsChecked === false ? 'singing only, words not checked' : `stage ${u.decision.stage} · ${u.decision.stage === 1 ? 'words gate' : 'singing control'}`}</span></div>
-    ${v.fix ? fixLine(u, v.fix) : ''}
     ${sound ? `<p class="disagree"><b>Recording problem:</b> ${esc(sound)}</p>` : ''}
     <p class="why"><b>${esc(why.head)}</b></p>
     ${why.lines.length ? `<ul class="whylist">${why.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : ''}
@@ -369,12 +358,6 @@ function renderTake(slot) {
   drawTimeline(out.querySelector('.timeline'), v);
 }
 
-function fixLine(u, fix) {
-  const now = u.singing?.quality?.components ?? {}, then = fix.quality.components ?? {};
-  const drift = (q) => q?.strongChecks?.find((c) => c.id === 'key_drift')?.value;
-  return `<p class="hint">Candidate vibrato fix: ${pill(fix.tier)} · tuning ${fmt(now.intonation?.score)} → ${fmt(then.intonation?.score)} (spread ${fmt(now.intonation?.deviationCents, 1)}¢ → ${fmt(then.intonation?.deviationCents, 1)}¢) · key drift ${drift(u.singing?.quality) ?? '—'}¢ → ${drift(fix.quality) ?? '—'}¢</p>`;
-}
-
 function renderSummary() {
   const busy = TAKES.filter(({ slot }) => view.get(slot)?.busy).length, failed = TAKES.filter(({ slot }) => view.get(slot)?.error).length;
   if ($('stCopy')) { $('stCopy').disabled = busy > 0; $('stCopy').textContent = busy ? `Analysing… ${busy} left` : 'Copy results for Claude'; }
@@ -383,11 +366,11 @@ function renderSummary() {
     const t = state.get(slot), u = view.get(slot)?.u;
     const ref = t.judged || t.expected;
     const agree = !u ? '' : !ref ? '' : ref === u.tier ? '<span class="ok">agrees</span>' : '<span class="no">differs</span>';
-    return `<tr><td>${slot}</td><td>${esc(title)}</td><td>${pill(t.expected)}</td><td>${u ? pill(u.tier) : view.get(slot)?.error ? '<span class="no">error</span>' : t.blob ? '…' : '<span class="hint">not recorded</span>'}</td><td>${t.judged ? pill(t.judged) : '<span class="hint">—</span>'}</td><td>${agree}</td><td>${view.get(slot)?.fix ? pill(view.get(slot).fix.tier) : ''}</td></tr>`;
+    return `<tr><td>${slot}</td><td>${esc(title)}</td><td>${pill(t.expected)}</td><td>${u ? pill(u.tier) : view.get(slot)?.error ? '<span class="no">error</span>' : t.blob ? '…' : '<span class="hint">not recorded</span>'}</td><td>${t.judged ? pill(t.judged) : '<span class="hint">—</span>'}</td><td>${agree}</td></tr>`;
   }).join('');
   const done = TAKES.filter(({ slot }) => view.get(slot)?.u);
   const agreeN = done.filter(({ slot }) => { const t = state.get(slot); return (t.judged || t.expected) === view.get(slot).u.tier; }).length;
-  $('stSummary').innerHTML = `<div class="scroll"><table class="sumtable"><tr><th>#</th><th>Take</th><th>You expected</th><th>Engine</th><th>Your judgement</th><th></th><th>Vibrato fix</th></tr>${rows}</table></div>
+  $('stSummary').innerHTML = `<div class="scroll"><table class="sumtable"><tr><th>#</th><th>Take</th><th>You expected</th><th>Engine</th><th>Your judgement</th><th></th></tr>${rows}</table></div>
     <p class="hint">${done.length} of 9 recorded · engine agrees with your label on ${agreeN} of ${done.length}. Your judgement after listening counts over your expectation when you give one.</p>`;
   renderCalibration();
 }
@@ -431,13 +414,12 @@ function resultsJson() {
       quality: q ? { score: q.score, confidence: q.confidence, evidence: q.evidence, consistency: q.consistency } : null,
       components: {
         stability: C.stability && { score: C.stability.score, wobble: C.stability.wobbleCents, drift: C.stability.driftCentsPerSec, jitter: C.stability.jitterCents, vibrato: C.stability.vibratoShare },
-        intonation: C.intonation && { score: C.intonation.score, dev: C.intonation.deviationCents, centres: C.intonation.centres },
+        intonation: C.intonation && { score: C.intonation.score, dev: C.intonation.deviationCents },
         transitions: C.transitions && { score: C.transitions.score, n: C.transitions.count, overshoot: C.transitions.meanOvershootCents },
         control: C.control && { score: C.control.score }, rhythm: C.rhythm && { score: C.rhythm.score }, coherence: C.coherence && { score: C.coherence.score },
       },
       performance: { controlledShare: P.controlledShare, labels: P.labels, windowP25: P.windowP25, weakWindowShare: P.weakWindowShare, drift: P.tuning?.driftCents, windows: (P.windows ?? []).map((w) => [w.t0, w.t1, w.controlled]) },
       expression: u.expression,
-      vibratoFix: v.fix && { tier: v.fix.tier, strong: v.fix.quality.strongChecks.map((c) => [c.id, c.ok ? 1 : 0, c.value]), score: v.fix.quality.score, intonation: v.fix.quality.components.intonation && { score: v.fix.quality.components.intonation.score, dev: v.fix.quality.components.intonation.deviationCents } },
     };
   });
   return JSON.stringify({ kind: 'sonmira-singing-test', version: 1, at: new Date().toISOString(), browser: navigator.userAgent, calibration: { singing: SINGING_CALIBRATION.strong, performance: SINGING_CALIBRATION.strongPerformance, sung: SINGING_CALIBRATION.sung, gate: GATE_CALIBRATION }, takes });
