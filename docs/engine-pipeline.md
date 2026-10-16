@@ -1,33 +1,37 @@
 # Voice-to-watercolor engine (Track B)
 
-`src/engine/engines/real.js` implements the shared contract (`src/engine/contract.js`) as three independent stages. Try it in the app with `?engine=real`.
+`src/engine/generate.js` is the single generation API. `src/engine/engines/real.js` wraps it in the app contract (`src/engine/contract.js`). Open the app with `?engine=real` to use it.
 
-| Stage | Folder | In → out |
+```
+generatePainting({ audioFile?, samples?, sampleRate?, features?, noteText?,
+                   vocalControlOverride?, emotionOverride?, motifOverride?,
+                   seed?, width?, height? })
+→ { image: {width, height, rgba}, controlScore, controlConfidence, tier,
+    stylePosition, emotion, motif, seed, focus, pigments, interpretation, method }
+```
+
+| Stage | Folder | What it does |
 | --- | --- | --- |
-| Analysis | `analysis/` | 2048-sample snapshots every 100 ms → `features` (signal measurements) |
-| Interpretation | `interpret/` | features + note → completeness, emotion, motif, copy |
-| Rendering | `render/` | interpretation → artwork from the watercolor set + tinted wash |
+| Analysis | `analysis/` | 100 ms frames → level, pauses, YIN pitch, continuity, phrases, onsets, dynamics, clarity. Reads WAV in Node and any browser-decodable audio. |
+| Interpretation | `interpret/` | control score + confidence → tier and style position; note → emotion and motif |
+| Painting | `paint/` | procedural watercolour renderer: paper, transparent glazes, edges, granulation, motifs |
+| Art data | `art/` | reference annotations, per-tier statistics, unified palette |
+| Live wash | `render/` | the soft marks shown while recording |
 
-## Analysis: what is measured
-Per frame: RMS level, and pitch via a YIN detector (80–1100 Hz). Per take:
-- `level` mean / peak / p90 of sounding frames
-- `activity` seconds sounding and seconds with a clear pitch
-- `pauses` gaps of 300 ms or more between sounds
-- `pitch` median, range and spread in semitones, and `continuity` (share of neighbouring frames whose pitch moves by at most a semitone)
-- `hue` mean voice hue (low pitch → blue, high → warm, as in the design)
+## What is real and what is heuristic
+- **Measured from the audio:** RMS level, pauses (≥ 300 ms of quiet), pitch per frame (YIN, 80–1100 Hz) with its clarity, pitch continuity, phrase count and length, onset count, and dynamic range.
+- **Robust to expressive singing:** vibrato (a step reversed on the next frame) and slides (steps continuing the same way) count as connected. Leaps between held notes are fine, because continuity looks at frame-to-frame motion, not at the size of intervals.
+- **Proxies only:** `onsets.regularityProxy` says how even the onsets are. Without a beat reference it cannot say whether the rhythm is right. Nothing measures pitch accuracy, because there is no reference melody.
+- **Heuristic (calibration in `interpret/completeness.js`):** control = sustain^0.35 × continuity^0.6 × flow^0.2. Thresholds are 0.5 for gathered and 0.78 for resolved. Low confidence (little pitched sound, unclear pitch, a lot of noise) pulls the score toward a neutral prior, and there is no score at all without audio. These are artistic choices, not validated against listeners.
+- **Emotion** comes only from the words in the note (or a transcript later). With no words the default is neutral. The voice is never used to guess feelings.
+- **Motif** comes from note keywords (water, sky, garden, landscape, interior, abstract). With no words it is abstract. When several motifs tie, the first one mentioned leads.
 
-These describe the signal. They are not singing accuracy, rhythm or quality scores, since there is no melody or rhythm reference to compare against, and the app should not present them that way.
+## Painting
+- **Style:** `paint/style.js` maps a style position (0 loose, 0.5 gathered, 1 resolved) to continuous parameters. The anchors are the per-tier means measured from the user's 22 labelled references (`art/style_clusters.json`). As control rises, legibility, value contrast and structure increase, and bleed, edge wander, drift, fragmentation, free washes, scribbles and drips decrease.
+- **Motifs:** `paint/motifs.js` builds an original composition per motif from simple geometry and the seed. Its elements have roles (ground, structure, focal, detail, accent), and the style decides how each role appears, so the same composition dissolves or resolves.
+- **Colour:** the unified muted collection in `art/palettes.js`, with 2–4 pigments per painting. Darks are the same pigments glazed more densely.
+- **No reference pixels:** the renderer reads no image files, and a test enforces this.
 
-## Interpretation
-- **Completeness**: `sustain^0.35 × continuity^0.45 × flow^0.2`, where sustain is pitched seconds (4 s or more counts as full), continuity is the pitch continuity above, and flow drops with pauses per sounding second. A score of 0.78 or more gives resolved, 0.5 or more gives gathered, and anything lower gives loose. Under 1 s of pitched sound, or a silent take, is always loose.
-- **Emotion**: keywords in the note (English and Chinese, `interpret/lexicon.js`). With no matching words the voice gives a gentle guess (loud and wide → intense, high and present → bright, low and quiet → melancholic, otherwise tender). With no voice at all it falls back to tender.
-- **Motif**: keywords in the note. Without them, a loose painting stays abstract and other paintings take a place from the voice register (low → water, middle → sky, high → landscape).
-- `interpret()` takes an optional `transcript` alongside the note, ready for speech-to-text later.
-
-## Rendering
-`render/catalog.js` tags each of the 19 supplied paintings with tier, emotions, motifs and the voice hue it answers to. `select.js` picks within the tier by motif (+3), emotion (+2 primary, +1.4 secondary) and hue closeness (up to +1.5), with a small seeded jitter so the same take always gets the same painting. The live wash follows the design prototype and is tinted 30% toward the emotion's hue when the take finishes. Images are expected at `assets/art/<id>.png`.
-
-A real image generator can replace `selectArtwork()` and return `{ kind: 'image', blob }`; nothing else changes.
-
-## Tests
-`node --test test/engine/*.test.mjs` uses synthetic voices (`test/engine/synth.js`): a connected phrase, a phrase broken by gaps, leaping pitch, silence and noise, at 16 and 48 kHz. `ENGINE_ID=real npm test` runs the app's contract tests against this engine.
+## Tests and QA
+- `npm test` runs the contract tests and the engine tests (synthetic voices plus `tests/e2e/hum.wav`).
+- `node tools/qa-grid.mjs` writes the comparison grids. Review criteria are in `qa/CRITERIA.md`.

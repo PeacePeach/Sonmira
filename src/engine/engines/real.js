@@ -1,16 +1,18 @@
-// Real engine (Track B): analysis → interpretation → rendering, behind the
-// shared contract in ../contract.js. Each stage is its own module and can be
-// replaced on its own:
-//   analysis/   signal measurements (level, pauses, pitch continuity)
-//   interpret/  completeness, emotion, motif and the descriptive copy
-//   render/     artwork choice and the watercolor wash
+// Real engine (Track B): analysis → interpretation → procedural painting,
+// behind the shared contract in ../contract.js. Each stage is its own module:
+//   analysis/   signal measurements (level, pauses, pitch continuity, …)
+//   interpret/  control score, completeness, emotion, motif and copy
+//   paint/      original watercolour renderer (no reference images used)
+//   render/     the live wash shown while recording
+// generate.js joins them into one API that also runs in Node.
 
-import { CONTRACT_VERSION, COMPLETENESS } from '../contract.js';
+import { CONTRACT_VERSION, COMPLETENESS, MOTIFS } from '../contract.js';
 import { FrameAnalyzer, analyzeSamples, FEATURES_VERSION } from '../analysis/index.js';
-import { interpret } from '../interpret/index.js';
-import { render, createWashBuilder } from '../render/index.js';
+import { createWashBuilder, tintWash, groundWash } from '../render/index.js';
+import { generatePainting } from '../generate.js';
+import { toBlob } from '../paint/png.js';
 
-export const ENGINE_ID = 'real-v1';
+export const ENGINE_ID = 'real-v2';
 const TOO_SHORT_SEC = 1.5;
 
 function flagsFor(features) {
@@ -52,7 +54,7 @@ async function featuresFor(analysis, audioBlob) {
   }
 }
 
-export function createRealEngine() {
+export function createRealEngine({ width = 720, height = 900 } = {}) {
   return {
     id: ENGINE_ID,
     createLiveSession,
@@ -60,12 +62,16 @@ export function createRealEngine() {
       const features = await featuresFor(analysis, audioBlob);
       const silent = analysis?.flags?.silent ?? !features;
       const forced = COMPLETENESS.includes(overrides?.completeness) ? overrides.completeness : null;
-      const it = interpret({
+      const g = await generatePainting({
         features: silent ? null : features,
-        note,
-        overrides: { completeness: forced ?? (silent ? 'loose' : undefined) },
+        noteText: note,
+        vocalControlOverride: forced ?? (silent ? 'loose' : undefined),
+        allowedMotifs: MOTIFS,
+        width, height,
       });
-      const { artwork, wash } = render({ interpretation: it, features, wash: analysis?.wash ?? [], note });
+      const it = g.interpretation;
+      const blob = await toBlob(g.image, 'image/jpeg', 0.9);
+      const wash = (analysis?.wash ?? []).length > 1 ? tintWash(analysis.wash, it.emotion) : groundWash(it.emotion, g.seed);
       const src = (s) => (s === 'override' ? 'default' : s);
       return {
         engineId: ENGINE_ID,
@@ -73,9 +79,11 @@ export function createRealEngine() {
         completeness: it.completeness,
         emotion: { label: it.emotion, source: src(it.sources.emotion) },
         motif: { label: it.motif, source: src(it.sources.motif) },
-        artwork,
+        artwork: { kind: 'image', blob, focus: g.focus },
         wash,
         interpretation: { voiceLabel: it.voiceLabel, summary: it.summary, dryingLine: it.dryingLine },
+        // Extra fields (ignored by the app): how the painting was made.
+        generation: { method: g.method, seed: g.seed, stylePosition: g.stylePosition, controlScore: g.controlScore, controlConfidence: g.controlConfidence, pigments: g.pigments },
       };
     },
   };

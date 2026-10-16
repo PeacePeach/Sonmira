@@ -7,11 +7,13 @@
 
 import { rms, levelFromRms, detectPitch, hueFromPitch, semitones } from './frame.js';
 
-export const FEATURES_VERSION = 1;
+export const FEATURES_VERSION = 2;
 const HOP_SEC = 0.1;            // one frame every 100 ms, matching the live UI tick
 const MIN_PAUSE_FRAMES = 3;     // a pause is ≥ 300 ms of quiet between sounds
 const MIN_CLARITY = 0.6;        // pitch confidence needed to count a frame as voiced
 const SMOOTH_STEP_ST = 1.0;     // frame-to-frame pitch change counted as continuous
+const VIBRATO_STEP_ST = 2.5;    // larger wobble that reverses next frame is vibrato
+const GLIDE_STEP_ST = 3.0;      // larger steps still count when part of one continuous slide
 const NEUTRAL_HUE = 240;
 
 function windowSizeFor(sampleRate) {
@@ -116,20 +118,51 @@ export function summarize(frames) {
   const voicedFrames = frames.filter((_, i) => voiced[i]);
 
   // Pitch continuity: share of neighbouring voiced frames whose pitch moves
-  // by at most a semitone. Describes how connected the line is, not whether
-  // the notes are "right".
+  // smoothly. Describes how connected the line is, not whether the notes are
+  // "right" (there is no reference melody). Expressive singing is treated as
+  // connected: a step that the next frame reverses (vibrato) or that keeps
+  // going the same way (a slide / portamento) does not count as a break.
+  const stAt = (i) => semitones(frames[i].hz);
+  const med = frames.map((f, i) => (voiced[i] ? stAt(i) : null));
   let pairs = 0, smooth = 0;
   for (let i = 1; i < frames.length; i++) {
-    if (voiced[i] && voiced[i - 1]) {
-      pairs++;
-      if (Math.abs(semitones(frames[i].hz) - semitones(frames[i - 1].hz)) <= SMOOTH_STEP_ST) smooth++;
-    }
+    if (!(voiced[i] && voiced[i - 1])) continue;
+    pairs++;
+    const step = med[i] - med[i - 1];
+    const prev = i >= 2 && voiced[i - 2] ? med[i - 1] - med[i - 2] : 0;
+    const next = i + 1 < frames.length && voiced[i + 1] ? med[i + 1] - med[i] : 0;
+    const vibrato = Math.abs(step) <= VIBRATO_STEP_ST && Math.sign(next) === -Math.sign(step) && Math.abs(next) >= Math.abs(step) * 0.5;
+    const glide = Math.abs(step) <= GLIDE_STEP_ST && Math.sign(step) === Math.sign(prev) && Math.abs(prev) > 0.3 && Math.abs(prev) <= GLIDE_STEP_ST;
+    if (Math.abs(step) <= SMOOTH_STEP_ST || vibrato || glide) smooth++;
   }
   const st = voicedFrames.map((f) => semitones(f.hz));
   const hasPitch = voicedFrames.length >= 3;
 
   const levels = activeFrames.map((f) => f.level);
   const voicedHues = voicedFrames.map((f) => hueFromPitch(f.hz));
+
+  // Phrases: sounding stretches between pauses.
+  const phrases = [];
+  for (let i = 0; i < frames.length; i++) {
+    if (active[i] && (i === 0 || !active[i - 1])) phrases.push({ start: i, len: 0 });
+    if (active[i]) phrases[phrases.length - 1].len++;
+  }
+  // Onsets: phrase starts plus held note changes (≥ 1.5 st, held ≥ 2 frames).
+  // Their timing regularity is only a proxy: without a beat reference it says
+  // how even the onsets are, not whether the rhythm is correct.
+  const onsets = phrases.map((p) => p.start);
+  for (let i = 2; i < frames.length - 1; i++) {
+    if (med[i] == null || med[i - 1] == null || med[i + 1] == null) continue;
+    const before = med[i - 2] ?? med[i - 1];
+    const changed = Math.abs(med[i] - before) >= 1.5, held = Math.abs(med[i + 1] - med[i]) < 0.7;
+    if (changed && held && !onsets.some((o) => Math.abs(o - i) < 3)) onsets.push(i);
+  }
+  onsets.sort((a, b) => a - b);
+  const ioi = onsets.slice(1).map((o, i) => (o - onsets[i]) * HOP_SEC);
+  const ioiCv = ioi.length >= 3 ? std(ioi) / Math.max(1e-6, mean(ioi)) : null;
+  const clarities = voicedFrames.map((f) => f.clarity);
+  const rmsActive = activeFrames.map((f) => f.rms).filter((x) => x > 0);
+  const dynRangeDb = rmsActive.length ? 20 * Math.log10(quantile(rmsActive, 0.9) / Math.max(1e-5, quantile(rmsActive, 0.1))) : 0;
 
   return {
     version: FEATURES_VERSION,
@@ -161,5 +194,9 @@ export function summarize(frames) {
         }
       : null,
     hue: { mean: round(voicedHues.length ? mean(voicedHues) : NEUTRAL_HUE, 1) },
+    phrases: { count: phrases.length, meanSec: round(phrases.length ? mean(phrases.map((p) => p.len * HOP_SEC)) : 0, 2) },
+    onsets: { count: onsets.length, regularityProxy: ioiCv == null ? null : round(Math.max(0, 1 - ioiCv)) },
+    energy: { dynamicRangeDb: round(dynRangeDb, 1), levelStd: round(std(levels)) },
+    clarity: { mean: round(clarities.length ? mean(clarities) : 0) },
   };
 }

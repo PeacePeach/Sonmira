@@ -1,0 +1,1788 @@
+{
+ "source": "Sonmira_Art_Engine_Handoff_v2 (user-labelled tiers)",
+ "count": 22,
+ "count_by_level": {
+  "loose": 3,
+  "gathered": 5,
+  "resolved": 14
+ },
+ "references": [
+  {
+   "id": "resolved_01",
+   "level": "resolved",
+   "user_category": "唱的好",
+   "sha256": "39106fbc5f4d8ce8ef603ea7537a06113277aff0c72ebdd9e7b43e837060ab20",
+   "size": [
+    1080,
+    1350
+   ],
+   "analysis_roi": [
+    [
+     0,
+     0,
+     1,
+     0.95
+    ]
+   ],
+   "measured": {
+    "value_mean": 0.7341,
+    "value_contrast": 0.5163,
+    "saturation": 0.2707,
+    "whitespace": 0.5401,
+    "edge_density": 0.0706,
+    "fine_texture": 0.0946,
+    "structure": 0.4387,
+    "palette": [
+     {
+      "hex": "#487cae",
+      "weight": 0.377
+     },
+     {
+      "hex": "#e3edf0",
+      "weight": 0.253
+     },
+     {
+      "hex": "#edf5f7",
+      "weight": 0.209
+     },
+     {
+      "hex": "#d5e2e9",
+      "weight": 0.098
+     },
+     {
+      "hex": "#769cbf",
+      "weight": 0.035
+     },
+     {
+      "hex": "#a5bfd4",
+      "weight": 0.029
+     }
+    ]
+   },
+   "title_observed": "skier on snow slope with conifers",
+   "hue_family": "cobalt blue and white, small red accent",
+   "form_clarity": 0.95,
+   "composition": "diagonal slope, long parallel shadows, winding track leading to tiny figure",
+   "focal_area": "skier lower right",
+   "wash_transparency": "flat, graphic gouache-like",
+   "paper_grain": "strong printed grain",
+   "edge_bleed": "none, crisp",
+   "line_density": "low",
+   "drip_density": "none",
+   "motifs": [
+    "landscape"
+   ],
+   "notes": "Graphic, two-value design; whitespace is the snow. Grain texture inside flat shapes.",
+   "flags": [
+    "artist watermark bottom-left excluded"
+   ],
+   "confidence": 0.9,
+   "scores": {
+    "edge_bleed": 0,
+    "linework": 0.2,
+    "drips": 0,
+    "spatter": 0
+   }
+  },
+  {
+   "id": "resolved_02",
+   "level": "resolved",
+   "user_category": "唱的好",
+   "sha256": "f3fbb1cc5dee49bc4db53dc9ac932aa9e3c7a763103b90785d1bbf19e6184514",
+   "size": [
+    928,
+    1232
+   ],
+   "analysis_roi": [
+    [
+     0,
+     0,
+     1,
+     1
+    ]
+   ],
+   "measured": {
+    "value_mean": 0.7932,
+    "value_contrast": 0.5355,
+    "saturation": 0.2136,
+    "whitespace": 0.3916,
+    "edge_density": 0.0498,
+    "fine_texture": 0.0548,
+    "structure": 0.6281,
+    "palette": [
+     {
+      "hex": "#fafbfa",
+      "weight": 0.233
+     },
+     {
+      "hex": "#c9dbd0",
+      "weight": 0.186
+     },
+     {
+      "hex": "#9dc7ca",
+      "weight": 0.181
+     },
+     {
+      "hex": "#71aeb9",
+      "weight": 0.156
+     },
+     {
+      "hex": "#e5ece6",
+      "weight": 0.128
+     },
+     {
+      "hex": "#33879d",
+      "weight": 0.116
+     }
+    ]
+   },
+   "title_observed": "surfer inside a curling wave with a shark",
+   "hue_family": "teal, aqua, sand-peach",
+   "form_clarity": 0.85,
+   "composition": "spiral wave occupying the sheet, figure at the eye",
+   "focal_area": "surfer centre",
+   "wash_transparency": "high, splashy layered washes",
+   "paper_grain": "light",
+   "edge_bleed": "mixed: splashy outer edges, controlled figure",
+   "line_density": "low",
+   "drip_density": "spatter medium",
+   "motifs": [
+    "water"
+   ],
+   "notes": "Loose brushwork organised by a strong spiral; detail concentrated at the focal point.",
+   "flags": [
+    "likely digital/AI-assisted"
+   ],
+   "confidence": 0.8,
+   "scores": {
+    "edge_bleed": 0.45,
+    "linework": 0.15,
+    "drips": 0,
+    "spatter": 0.45
+   }
+  },
+  {
+   "id": "resolved_03",
+   "level": "resolved",
+   "user_category": "唱的好",
+   "sha256": "eb2aba39977a409578b14590189ea4a6c35d966559b4b2659db2d5126e8ca5d7",
+   "size": [
+    768,
+    1266
+   ],
+   "analysis_roi": [
+    [
+     0,
+     0,
+     1,
+     1
+    ]
+   ],
+   "measured": {
+    "value_mean": 0.6628,
+    "value_contrast": 0.6023,
+    "saturation": 0.4621,
+    "whitespace": 0.0697,
+    "edge_density": 0.0432,
+    "fine_texture": 0.0627,
+    "structure": 0.5795,
+    "palette": [
+     {
+      "hex": "#c2e1f4",
+      "weight": 0.302
+     },
+     {
+      "hex": "#4e93dd",
+      "weight": 0.292
+     },
+     {
+      "hex": "#1b63c5",
+      "weight": 0.189
+     },
+     {
+      "hex": "#98c3e8",
+      "weight": 0.127
+     },
+     {
+      "hex": "#f5f7f7",
+      "weight": 0.054
+     },
+     {
+      "hex": "#d7cfcd",
+      "weight": 0.036
+     }
+    ]
+   },
+   "title_observed": "white cat peeking from behind a torn edge",
+   "hue_family": "ultramarine / cerulean",
+   "form_clarity": 0.9,
+   "composition": "vertical split, subject at right edge",
+   "focal_area": "cat face",
+   "wash_transparency": "high, blooming blue fields",
+   "paper_grain": "medium",
+   "edge_bleed": "blooms in background; crisp subject",
+   "line_density": "low (whiskers)",
+   "drip_density": "none",
+   "motifs": [
+    "abstract",
+    "interior"
+   ],
+   "notes": "Background is pure wet-in-wet blooms; resolution comes from one clearly reserved white subject.",
+   "flags": [],
+   "confidence": 0.85,
+   "scores": {
+    "edge_bleed": 0.5,
+    "linework": 0.1,
+    "drips": 0,
+    "spatter": 0
+   }
+  },
+  {
+   "id": "resolved_04",
+   "level": "resolved",
+   "user_category": "唱的好",
+   "sha256": "d83299743d938d84bd5f00dbe71cf82142bc6efc1cf83e798161da2f5ef64b2c",
+   "size": [
+    1042,
+    1024
+   ],
+   "analysis_roi": [
+    [
+     0,
+     0,
+     1,
+     1
+    ]
+   ],
+   "measured": {
+    "value_mean": 0.4918,
+    "value_contrast": 0.4834,
+    "saturation": 0.4029,
+    "whitespace": 0.0124,
+    "edge_density": 0.0443,
+    "fine_texture": 0.0522,
+    "structure": 0.4675,
+    "palette": [
+     {
+      "hex": "#3d5d71",
+      "weight": 0.238
+     },
+     {
+      "hex": "#5d93a4",
+      "weight": 0.215
+     },
+     {
+      "hex": "#78aebe",
+      "weight": 0.206
+     },
+     {
+      "hex": "#4a7487",
+      "weight": 0.182
+     },
+     {
+      "hex": "#354854",
+      "weight": 0.085
+     },
+     {
+      "hex": "#bcd1d7",
+      "weight": 0.075
+     }
+    ]
+   },
+   "title_observed": "rainy car window at dusk",
+   "hue_family": "blue-green slate with magenta/yellow light",
+   "form_clarity": 0.8,
+   "composition": "frame-within-frame: car body diagonal, window with drops",
+   "focal_area": "red lights through the drops",
+   "wash_transparency": "medium, layered",
+   "paper_grain": "visible",
+   "edge_bleed": "soft background, crisp drops",
+   "line_density": "low",
+   "drip_density": "rain drops as small reserved shapes",
+   "motifs": [
+    "interior",
+    "water"
+   ],
+   "notes": "Mood through muted value range; detail by many small droplet highlights.",
+   "flags": [
+    "signature"
+   ],
+   "confidence": 0.85,
+   "scores": {
+    "edge_bleed": 0.35,
+    "linework": 0.15,
+    "drips": 0.2,
+    "spatter": 0.2
+   }
+  },
+  {
+   "id": "resolved_05",
+   "level": "resolved",
+   "user_category": "唱的好",
+   "sha256": "02ded733b504ab9c86df8e43db5429255f1772dc819cab6d10d50a330424d29e",
+   "size": [
+    958,
+    1328
+   ],
+   "analysis_roi": [
+    [
+     0,
+     0,
+     1,
+     0.62
+    ]
+   ],
+   "measured": {
+    "value_mean": 0.7017,
+    "value_contrast": 0.5942,
+    "saturation": 0.2311,
+    "whitespace": 0.1919,
+    "edge_density": 0.068,
+    "fine_texture": 0.074,
+    "structure": 0.5857,
+    "palette": [
+     {
+      "hex": "#f6f7e3",
+      "weight": 0.246
+     },
+     {
+      "hex": "#7e9c70",
+      "weight": 0.243
+     },
+     {
+      "hex": "#a5bc90",
+      "weight": 0.199
+     },
+     {
+      "hex": "#5a7252",
+      "weight": 0.166
+     },
+     {
+      "hex": "#d4d9b3",
+      "weight": 0.114
+     },
+     {
+      "hex": "#c18867",
+      "weight": 0.032
+     }
+    ]
+   },
+   "title_observed": "temple gate, waterfall and figure",
+   "hue_family": "sap/olive green, sand, vermilion",
+   "form_clarity": 0.95,
+   "composition": "vertical: gate at top, falls in middle, figure at pool bottom",
+   "focal_area": "crouching figure",
+   "wash_transparency": "medium, careful glazing",
+   "paper_grain": "light",
+   "edge_bleed": "controlled, crisp",
+   "line_density": "medium (architecture)",
+   "drip_density": "none",
+   "motifs": [
+    "garden",
+    "landscape",
+    "water"
+   ],
+   "notes": "Dappled light reserved as whitespace across rocks; highly resolved illustration.",
+   "flags": [
+    "book cover: Korean/English title text excluded by ROI (top 62% analysed)"
+   ],
+   "confidence": 0.75,
+   "scores": {
+    "edge_bleed": 0.15,
+    "linework": 0.45,
+    "drips": 0,
+    "spatter": 0
+   }
+  },
+  {
+   "id": "resolved_06",
+   "level": "resolved",
+   "user_category": "唱的好",
+   "sha256": "278d62bcfcd6cca8c35afd51bc73da19ffe3105ba99677261f2c0fe48a0ed785",
+   "size": [
+    954,
+    1384
+   ],
+   "analysis_roi": [
+    [
+     0,
+     0,
+     1,
+     1
+    ]
+   ],
+   "measured": {
+    "value_mean": 0.7856,
+    "value_contrast": 0.2825,
+    "saturation": 0.1203,
+    "whitespace": 0.2326,
+    "edge_density": 0.0337,
+    "fine_texture": 0.0305,
+    "structure": 0.6659,
+    "palette": [
+     {
+      "hex": "#a6b0d4",
+      "weight": 0.268
+     },
+     {
+      "hex": "#bfc5dd",
+      "weight": 0.266
+     },
+     {
+      "hex": "#d7d8e3",
+      "weight": 0.22
+     },
+     {
+      "hex": "#edebe9",
+      "weight": 0.151
+     },
+     {
+      "hex": "#c6b9b7",
+      "weight": 0.078
+     },
+     {
+      "hex": "#857a86",
+      "weight": 0.016
+     }
+    ]
+   },
+   "title_observed": "figures on a misty beach",
+   "hue_family": "lavender, periwinkle, sand",
+   "form_clarity": 0.8,
+   "composition": "diagonal shoreline right, wide reflective flat, tiny figures",
+   "focal_area": "standing figure left",
+   "wash_transparency": "very high, smooth graded washes",
+   "paper_grain": "fine",
+   "edge_bleed": "soft sky, crisp shoreline",
+   "line_density": "very low",
+   "drip_density": "none",
+   "motifs": [
+    "water",
+    "sky"
+   ],
+   "notes": "Mostly air and reflection; legibility comes from a clear horizon, shoreline and small dark figures.",
+   "flags": [],
+   "confidence": 0.9,
+   "scores": {
+    "edge_bleed": 0.3,
+    "linework": 0.05,
+    "drips": 0,
+    "spatter": 0
+   }
+  },
+  {
+   "id": "resolved_07",
+   "level": "resolved",
+   "user_category": "唱的好",
+   "sha256": "2501d505ac357ecf4b4d3ee9ba512b1d513ee79c6a8e8bbddd4358864c243c22",
+   "size": [
+    946,
+    1342
+   ],
+   "analysis_roi": [
+    [
+     0,
+     0.04,
+     1,
+     0.88
+    ]
+   ],
+   "measured": {
+    "value_mean": 0.8291,
+    "value_contrast": 0.2493,
+    "saturation": 0.1589,
+    "whitespace": 0.2607,
+    "edge_density": 0.0292,
+    "fine_texture": 0.0358,
+    "structure": 0.4093,
+    "palette": [
+     {
+      "hex": "#c4d4d3",
+      "weight": 0.263
+     },
+     {
+      "hex": "#b2dbe7",
+      "weight": 0.226
+     },
+     {
+      "hex": "#d9e6e4",
+      "weight": 0.203
+     },
+     {
+      "hex": "#eee5d1",
+      "weight": 0.164
+     },
+     {
+      "hex": "#92bdcf",
+      "weight": 0.105
+     },
+     {
+      "hex": "#c07e6d",
+      "weight": 0.039
+     }
+    ]
+   },
+   "title_observed": "couple walking at the waterline",
+   "hue_family": "sky blue, cream, coral red",
+   "form_clarity": 0.85,
+   "composition": "big cloudy sky, low horizon, figures lower centre with reflections",
+   "focal_area": "two figures",
+   "wash_transparency": "high",
+   "paper_grain": "fine",
+   "edge_bleed": "soft clouds, crisp figures",
+   "line_density": "low",
+   "drip_density": "none",
+   "motifs": [
+    "water",
+    "sky"
+   ],
+   "notes": "Wet-sand reflections double the figures; strong whitespace.",
+   "flags": [
+    "watermark/caption text excluded by ROI"
+   ],
+   "confidence": 0.85,
+   "scores": {
+    "edge_bleed": 0.3,
+    "linework": 0.1,
+    "drips": 0,
+    "spatter": 0
+   }
+  },
+  {
+   "id": "resolved_08",
+   "level": "resolved",
+   "user_category": "唱的好",
+   "sha256": "a2844d1d4039fd1d2f38470656e46ade55d706f7ed320e12a33dcc1fdcaf4722",
+   "size": [
+    1073,
+    1246
+   ],
+   "analysis_roi": [
+    [
+     0,
+     0,
+     1,
+     1
+    ]
+   ],
+   "measured": {
+    "value_mean": 0.519,
+    "value_contrast": 0.6657,
+    "saturation": 0.4591,
+    "whitespace": 0.0159,
+    "edge_density": 0.066,
+    "fine_texture": 0.0719,
+    "structure": 0.4959,
+    "palette": [
+     {
+      "hex": "#a4a086",
+      "weight": 0.269
+     },
+     {
+      "hex": "#646b5f",
+      "weight": 0.168
+     },
+     {
+      "hex": "#cbcdc6",
+      "weight": 0.163
+     },
+     {
+      "hex": "#13394f",
+      "weight": 0.153
+     },
+     {
+      "hex": "#14afbc",
+      "weight": 0.134
+     },
+     {
+      "hex": "#117689",
+      "weight": 0.113
+     }
+    ]
+   },
+   "title_observed": "aerial boats over turquoise shallows",
+   "hue_family": "turquoise, olive-ochre, umber, accents orange/blue",
+   "form_clarity": 0.75,
+   "composition": "diagonal shoreline, boats clustered in a diagonal",
+   "focal_area": "boat cluster",
+   "wash_transparency": "medium, wet-in-wet with spatter",
+   "paper_grain": "strong granulation",
+   "edge_bleed": "very wet background, crisp boats",
+   "line_density": "medium: mooring lines",
+   "drip_density": "spatter high",
+   "motifs": [
+    "water"
+   ],
+   "notes": "Loose ground made legible by a few precisely painted objects.",
+   "flags": [
+    "signature"
+   ],
+   "confidence": 0.85,
+   "scores": {
+    "edge_bleed": 0.6,
+    "linework": 0.4,
+    "drips": 0,
+    "spatter": 0.7
+   }
+  },
+  {
+   "id": "resolved_09",
+   "level": "resolved",
+   "user_category": "唱的好",
+   "sha256": "243485ae010481a0e5e446a2eefe443bb3b794da327dfa07a21c1dbdfd712f9f",
+   "size": [
+    1080,
+    1326
+   ],
+   "analysis_roi": [
+    [
+     0,
+     0,
+     1,
+     1
+    ]
+   ],
+   "measured": {
+    "value_mean": 0.5899,
+    "value_contrast": 0.5027,
+    "saturation": 0.2371,
+    "whitespace": 0.0058,
+    "edge_density": 0.0495,
+    "fine_texture": 0.0515,
+    "structure": 0.4407,
+    "palette": [
+     {
+      "hex": "#9b998e",
+      "weight": 0.236
+     },
+     {
+      "hex": "#65706b",
+      "weight": 0.217
+     },
+     {
+      "hex": "#95b5bf",
+      "weight": 0.181
+     },
+     {
+      "hex": "#6ea2b1",
+      "weight": 0.173
+     },
+     {
+      "hex": "#c1ced0",
+      "weight": 0.154
+     },
+     {
+      "hex": "#1a151b",
+      "weight": 0.039
+     }
+    ]
+   },
+   "title_observed": "tidal flats with bathers and sparkle",
+   "hue_family": "cerulean, sand-pink, dark green headland",
+   "form_clarity": 0.8,
+   "composition": "high horizon with dark headland, curving tide channels",
+   "focal_area": "small figures mid-ground",
+   "wash_transparency": "medium",
+   "paper_grain": "light",
+   "edge_bleed": "mixed; spatter for sparkle",
+   "line_density": "low",
+   "drip_density": "white spatter high",
+   "motifs": [
+    "water",
+    "landscape"
+   ],
+   "notes": "Sparkle reserved as white spatter; curved bands lead the eye.",
+   "flags": [
+    "signature"
+   ],
+   "confidence": 0.85,
+   "scores": {
+    "edge_bleed": 0.35,
+    "linework": 0.1,
+    "drips": 0,
+    "spatter": 0.7
+   }
+  },
+  {
+   "id": "resolved_10",
+   "level": "resolved",
+   "user_category": "唱的好",
+   "sha256": "0f87afd899c23182931f5a3a2358a58d924fa812b78c519b552e8fb4bf07073b",
+   "size": [
+    918,
+    952
+   ],
+   "analysis_roi": [
+    [
+     0,
+     0,
+     1,
+     0.93
+    ]
+   ],
+   "measured": {
+    "value_mean": 0.6957,
+    "value_contrast": 0.5864,
+    "saturation": 0.2724,
+    "whitespace": 0.0738,
+    "edge_density": 0.0722,
+    "fine_texture": 0.0784,
+    "structure": 0.4436,
+    "palette": [
+     {
+      "hex": "#9aa7da",
+      "weight": 0.26
+     },
+     {
+      "hex": "#b5c5e6",
+      "weight": 0.253
+     },
+     {
+      "hex": "#c9ddef",
+      "weight": 0.169
+     },
+     {
+      "hex": "#96879e",
+      "weight": 0.138
+     },
+     {
+      "hex": "#984a3a",
+      "weight": 0.104
+     },
+     {
+      "hex": "#e0f2f5",
+      "weight": 0.076
+     }
+    ]
+   },
+   "title_observed": "winter street, bare trees, lit café",
+   "hue_family": "violet, periwinkle, orange-red",
+   "form_clarity": 0.75,
+   "composition": "vertical street view, warm lit block bottom left, bare tree lines",
+   "focal_area": "lit café",
+   "wash_transparency": "high wet-in-wet sky",
+   "paper_grain": "visible",
+   "edge_bleed": "soft architecture, crisp branch lines",
+   "line_density": "high: branch lines",
+   "drip_density": "low",
+   "motifs": [
+    "landscape",
+    "interior"
+   ],
+   "notes": "Complementary warm/cool contrast; linework (branches) carries the structure.",
+   "flags": [
+    "screenshot with platform watermark bottom-right excluded"
+   ],
+   "confidence": 0.8,
+   "scores": {
+    "edge_bleed": 0.45,
+    "linework": 0.75,
+    "drips": 0.1,
+    "spatter": 0.1
+   }
+  },
+  {
+   "id": "resolved_11",
+   "level": "resolved",
+   "user_category": "唱的好",
+   "sha256": "8d1129b12e13d589239dcae3371193af7c625baf50735aaf0372052bf08317f3",
+   "size": [
+    928,
+    1232
+   ],
+   "analysis_roi": [
+    [
+     0,
+     0,
+     1,
+     1
+    ]
+   ],
+   "measured": {
+    "value_mean": 0.7025,
+    "value_contrast": 0.5419,
+    "saturation": 0.1545,
+    "whitespace": 0.0474,
+    "edge_density": 0.0167,
+    "fine_texture": 0.0373,
+    "structure": 0.6122,
+    "palette": [
+     {
+      "hex": "#cdd9d3",
+      "weight": 0.4
+     },
+     {
+      "hex": "#82a593",
+      "weight": 0.175
+     },
+     {
+      "hex": "#a1baad",
+      "weight": 0.137
+     },
+     {
+      "hex": "#bbccc4",
+      "weight": 0.132
+     },
+     {
+      "hex": "#547e72",
+      "weight": 0.088
+     },
+     {
+      "hex": "#244c43",
+      "weight": 0.068
+     }
+    ]
+   },
+   "title_observed": "figure in a flowing gown dissolving into mist",
+   "hue_family": "grey-green, viridian",
+   "form_clarity": 0.7,
+   "composition": "single centred silhouette, large empty field",
+   "focal_area": "head and shoulders",
+   "wash_transparency": "very high, soft gradients",
+   "paper_grain": "smooth",
+   "edge_bleed": "crisp top contour, dissolving bottom",
+   "line_density": "very low",
+   "drip_density": "none",
+   "motifs": [
+    "abstract",
+    "sky"
+   ],
+   "notes": "Resolution gradient inside one image: crisp at the focal point, dissolving away from it.",
+   "flags": [
+    "AI-generated (source caption)"
+   ],
+   "confidence": 0.75,
+   "scores": {
+    "edge_bleed": 0.4,
+    "linework": 0.05,
+    "drips": 0,
+    "spatter": 0
+   }
+  },
+  {
+   "id": "resolved_12",
+   "level": "resolved",
+   "user_category": "唱的好",
+   "sha256": "a1e9032ee37200d50f906817e166bcfae8075360ae1eb43977b8051a280d4a12",
+   "size": [
+    1022,
+    1318
+   ],
+   "analysis_roi": [
+    [
+     0,
+     0,
+     1,
+     1
+    ]
+   ],
+   "measured": {
+    "value_mean": 0.4669,
+    "value_contrast": 0.6772,
+    "saturation": 0.6571,
+    "whitespace": 0.0254,
+    "edge_density": 0.0705,
+    "fine_texture": 0.0872,
+    "structure": 0.5823,
+    "palette": [
+     {
+      "hex": "#0d5f88",
+      "weight": 0.212
+     },
+     {
+      "hex": "#093656",
+      "weight": 0.194
+     },
+     {
+      "hex": "#c1cdc9",
+      "weight": 0.19
+     },
+     {
+      "hex": "#118ab3",
+      "weight": 0.179
+     },
+     {
+      "hex": "#88978f",
+      "weight": 0.13
+     },
+     {
+      "hex": "#31b1cf",
+      "weight": 0.095
+     }
+    ]
+   },
+   "title_observed": "aerial pier and moored boats",
+   "hue_family": "cobalt, turquoise, sand, orange/coral accents",
+   "form_clarity": 0.9,
+   "composition": "vertical pier top right, boats radiating",
+   "focal_area": "boat cluster",
+   "wash_transparency": "medium-high",
+   "paper_grain": "granulation and spatter",
+   "edge_bleed": "wet ground, crisp objects",
+   "line_density": "medium: mooring lines",
+   "drip_density": "spatter medium",
+   "motifs": [
+    "water"
+   ],
+   "notes": "Saturated ground with precisely drawn hulls; complementary orange accents.",
+   "flags": [
+    "signature"
+   ],
+   "confidence": 0.9,
+   "scores": {
+    "edge_bleed": 0.4,
+    "linework": 0.45,
+    "drips": 0,
+    "spatter": 0.4
+   }
+  },
+  {
+   "id": "resolved_13",
+   "level": "resolved",
+   "user_category": "唱的好",
+   "sha256": "1db102fef4755aa8a9947c3231207d88e0c2a9d74c527e3915f1505c2c03c685",
+   "size": [
+    952,
+    1320
+   ],
+   "analysis_roi": [
+    [
+     0,
+     0,
+     1,
+     1
+    ]
+   ],
+   "measured": {
+    "value_mean": 0.7295,
+    "value_contrast": 0.5483,
+    "saturation": 0.2365,
+    "whitespace": 0.1975,
+    "edge_density": 0.0455,
+    "fine_texture": 0.0554,
+    "structure": 0.6786,
+    "palette": [
+     {
+      "hex": "#c1ac8a",
+      "weight": 0.225
+     },
+     {
+      "hex": "#e1e6ca",
+      "weight": 0.204
+     },
+     {
+      "hex": "#af8d6e",
+      "weight": 0.199
+     },
+     {
+      "hex": "#f6f7e5",
+      "weight": 0.135
+     },
+     {
+      "hex": "#d5c6a2",
+      "weight": 0.133
+     },
+     {
+      "hex": "#806753",
+      "weight": 0.104
+     }
+    ]
+   },
+   "title_observed": "city towers with figures under falling snow",
+   "hue_family": "warm cream, sand, pale mint",
+   "form_clarity": 0.9,
+   "composition": "towers rise behind, three figures foreground, lamp post",
+   "focal_area": "figures",
+   "wash_transparency": "medium",
+   "paper_grain": "visible",
+   "edge_bleed": "soft glow around lights",
+   "line_density": "medium: windows",
+   "drip_density": "snow dots",
+   "motifs": [
+    "landscape"
+   ],
+   "notes": "Atmospheric perspective: towers fade into light; snow as scattered reserved dots.",
+   "flags": [
+    "diagonal platform watermark over image"
+   ],
+   "confidence": 0.75,
+   "scores": {
+    "edge_bleed": 0.3,
+    "linework": 0.4,
+    "drips": 0,
+    "spatter": 0.4
+   }
+  },
+  {
+   "id": "resolved_14",
+   "level": "resolved",
+   "user_category": "唱的好",
+   "sha256": "88fef3307436d9906db091d2ce7ece9cfc9a93e1c67351a6d2ad3a3a5802dc30",
+   "size": [
+    1080,
+    1364
+   ],
+   "analysis_roi": [
+    [
+     0,
+     0,
+     1,
+     1
+    ]
+   ],
+   "measured": {
+    "value_mean": 0.6519,
+    "value_contrast": 0.6084,
+    "saturation": 0.3404,
+    "whitespace": 0.2005,
+    "edge_density": 0.0737,
+    "fine_texture": 0.1042,
+    "structure": 0.2934,
+    "palette": [
+     {
+      "hex": "#7ea5d0",
+      "weight": 0.343
+     },
+     {
+      "hex": "#5786b8",
+      "weight": 0.235
+     },
+     {
+      "hex": "#e6effa",
+      "weight": 0.215
+     },
+     {
+      "hex": "#9dbcdf",
+      "weight": 0.145
+     },
+     {
+      "hex": "#36221e",
+      "weight": 0.041
+     },
+     {
+      "hex": "#595a61",
+      "weight": 0.022
+     }
+    ]
+   },
+   "title_observed": "snowy conifer forest above a village",
+   "hue_family": "cobalt, periwinkle, white, small red/brown",
+   "form_clarity": 0.95,
+   "composition": "dense repeated conifer cones top, village cluster bottom",
+   "focal_area": "village roofs",
+   "wash_transparency": "flat, graphic",
+   "paper_grain": "strong printed grain",
+   "edge_bleed": "none",
+   "line_density": "low",
+   "drip_density": "none",
+   "motifs": [
+    "landscape"
+   ],
+   "notes": "Pattern of simple repeated shapes; clarity through repetition and value contrast.",
+   "flags": [],
+   "confidence": 0.9,
+   "scores": {
+    "edge_bleed": 0,
+    "linework": 0.15,
+    "drips": 0,
+    "spatter": 0
+   }
+  },
+  {
+   "id": "loose_01",
+   "level": "loose",
+   "user_category": "唱的差",
+   "sha256": "f496ffc2b935235d250c032bd3a2b6ae01e9c5615fdf8bef032e2da181310682",
+   "size": [
+    1080,
+    1440
+   ],
+   "analysis_roi": [
+    [
+     0.06,
+     0.06,
+     0.26,
+     0.29
+    ],
+    [
+     0.4,
+     0.06,
+     0.6,
+     0.29
+    ],
+    [
+     0.74,
+     0.06,
+     0.94,
+     0.29
+    ],
+    [
+     0.06,
+     0.39,
+     0.26,
+     0.62
+    ],
+    [
+     0.4,
+     0.39,
+     0.6,
+     0.62
+    ],
+    [
+     0.74,
+     0.39,
+     0.94,
+     0.62
+    ],
+    [
+     0.06,
+     0.73,
+     0.26,
+     0.95
+    ],
+    [
+     0.4,
+     0.73,
+     0.6,
+     0.95
+    ],
+    [
+     0.74,
+     0.73,
+     0.94,
+     0.95
+    ]
+   ],
+   "measured": {
+    "value_mean": 0.7512,
+    "value_contrast": 0.43,
+    "saturation": 0.2613,
+    "whitespace": 0.2279,
+    "edge_density": 0.0908,
+    "fine_texture": 0.0788,
+    "structure": 0.2773,
+    "palette": [
+     {
+      "hex": "#f4f9fa",
+      "weight": 0.351
+     },
+     {
+      "hex": "#def0f7",
+      "weight": 0.274
+     },
+     {
+      "hex": "#92c9db",
+      "weight": 0.271
+     },
+     {
+      "hex": "#ebf6f8",
+      "weight": 0.256
+     },
+     {
+      "hex": "#98a6c9",
+      "weight": 0.237
+     },
+     {
+      "hex": "#f5f8fa",
+      "weight": 0.235
+     }
+    ]
+   },
+   "title_observed": "nine small abstract cards",
+   "hue_family": "cool blue-cyan with ochre/red line accents",
+   "form_clarity": 0.1,
+   "composition": "all-over, no focal hierarchy; each card a field of marks",
+   "focal_area": "none",
+   "wash_transparency": "medium, layered and scrubbed",
+   "paper_grain": "visible, rough",
+   "edge_bleed": "high, wet-in-wet blooms and backruns",
+   "line_density": "high: scribbled pencil/crayon loops, dashes, arcs over washes",
+   "drip_density": "low",
+   "motifs": [
+    "abstract",
+    "water"
+   ],
+   "notes": "Gestural scribbles (loops, hatching, dotted dashes) laid over loose blue washes; rain-like vertical dashes in some cards.",
+   "flags": [
+    "composite: 3x3 grid of separate artworks on white",
+    "metrics averaged over the nine panels"
+   ],
+   "confidence": 0.8,
+   "scores": {
+    "edge_bleed": 0.8,
+    "linework": 0.8,
+    "drips": 0.1,
+    "spatter": 0.1
+   }
+  },
+  {
+   "id": "loose_02",
+   "level": "loose",
+   "user_category": "唱的差",
+   "sha256": "e39d019233ebefd4fcd31458c7b4f00fd11d2ca301a1f177697787d635a55baf",
+   "size": [
+    1080,
+    1620
+   ],
+   "analysis_roi": [
+    [
+     0,
+     0,
+     1,
+     1
+    ]
+   ],
+   "measured": {
+    "value_mean": 0.7405,
+    "value_contrast": 0.3292,
+    "saturation": 0.4143,
+    "whitespace": 0.0455,
+    "edge_density": 0.0456,
+    "fine_texture": 0.0404,
+    "structure": 0.2568,
+    "palette": [
+     {
+      "hex": "#9cd5dc",
+      "weight": 0.271
+     },
+     {
+      "hex": "#c0e0e5",
+      "weight": 0.214
+     },
+     {
+      "hex": "#7ecbd4",
+      "weight": 0.197
+     },
+     {
+      "hex": "#5ec2cf",
+      "weight": 0.128
+     },
+     {
+      "hex": "#3cb7cc",
+      "weight": 0.102
+     },
+     {
+      "hex": "#19a0c1",
+      "weight": 0.087
+     }
+    ]
+   },
+   "title_observed": "turquoise wash field",
+   "hue_family": "cerulean / turquoise with spring-green",
+   "form_clarity": 0.05,
+   "composition": "all-over field, darker toward edges, pale centre",
+   "focal_area": "none",
+   "wash_transparency": "high, many soft overlapping washes",
+   "paper_grain": "strong granulation speckle",
+   "edge_bleed": "very high, cauliflower blooms",
+   "line_density": "none",
+   "drip_density": "none",
+   "motifs": [
+    "abstract",
+    "water"
+   ],
+   "notes": "Pure pigment play: blooms, salt-like speckle, diagonal soft streaks. Reads as water/ice without any form.",
+   "flags": [],
+   "confidence": 0.9,
+   "scores": {
+    "edge_bleed": 1,
+    "linework": 0,
+    "drips": 0,
+    "spatter": 0.2
+   }
+  },
+  {
+   "id": "loose_03",
+   "level": "loose",
+   "user_category": "唱的差",
+   "sha256": "24831a42a4b8dd74e0b4347b3e09ab9dbc2e9a78628da97b0bf9e933a4440837",
+   "size": [
+    1080,
+    1080
+   ],
+   "analysis_roi": [
+    [
+     0.11,
+     0.11,
+     0.89,
+     0.89
+    ]
+   ],
+   "measured": {
+    "value_mean": 0.7851,
+    "value_contrast": 0.2971,
+    "saturation": 0.1627,
+    "whitespace": 0.2854,
+    "edge_density": 0.0328,
+    "fine_texture": 0.046,
+    "structure": 0.3929,
+    "palette": [
+     {
+      "hex": "#dfdfd0",
+      "weight": 0.388
+     },
+     {
+      "hex": "#b9bfae",
+      "weight": 0.19
+     },
+     {
+      "hex": "#d6cfb5",
+      "weight": 0.19
+     },
+     {
+      "hex": "#9dae8f",
+      "weight": 0.09
+     },
+     {
+      "hex": "#919c5a",
+      "weight": 0.072
+     },
+     {
+      "hex": "#c5ba67",
+      "weight": 0.071
+     }
+    ]
+   },
+   "title_observed": "dripping forest",
+   "hue_family": "sap green, lemon, lilac-grey, peach",
+   "form_clarity": 0.35,
+   "composition": "vertical rhythm of runs from a top band of foliage blobs",
+   "focal_area": "upper band",
+   "wash_transparency": "very high, thin glazes",
+   "paper_grain": "smooth",
+   "edge_bleed": "high at the top band; runs have hard drip edges",
+   "line_density": "none",
+   "drip_density": "very high: long vertical drips standing in for trunks",
+   "motifs": [
+    "garden",
+    "landscape"
+   ],
+   "notes": "Trees suggested only by gravity drips; leaves are dabs. Paper left open between runs. Grey background around the sheet excluded.",
+   "flags": [
+    "photo of a sheet on grey background; ROI crops to the sheet"
+   ],
+   "confidence": 0.85,
+   "scores": {
+    "edge_bleed": 0.7,
+    "linework": 0,
+    "drips": 1,
+    "spatter": 0.1
+   }
+  },
+  {
+   "id": "gathered_01",
+   "level": "gathered",
+   "user_category": "唱的中等",
+   "sha256": "aa45b92391fa9cfe2663d42fbd541ccc12fde9f105f1f90de407475f8b9ad177",
+   "size": [
+    1080,
+    1440
+   ],
+   "analysis_roi": [
+    [
+     0.03,
+     0.03,
+     0.99,
+     0.32
+    ],
+    [
+     0.03,
+     0.35,
+     0.99,
+     0.65
+    ],
+    [
+     0.03,
+     0.68,
+     0.99,
+     0.98
+    ]
+   ],
+   "measured": {
+    "value_mean": 0.7952,
+    "value_contrast": 0.1859,
+    "saturation": 0.1383,
+    "whitespace": 0.1596,
+    "edge_density": 0.0197,
+    "fine_texture": 0.0294,
+    "structure": 0.3815,
+    "palette": [
+     {
+      "hex": "#ded6c9",
+      "weight": 0.429
+     },
+     {
+      "hex": "#dcdbca",
+      "weight": 0.406
+     },
+     {
+      "hex": "#daccb1",
+      "weight": 0.36
+     },
+     {
+      "hex": "#d9b899",
+      "weight": 0.229
+     },
+     {
+      "hex": "#d3c8b6",
+      "weight": 0.223
+     },
+     {
+      "hex": "#c9cfc4",
+      "weight": 0.221
+     }
+    ]
+   },
+   "title_observed": "lagoon city in haze (three views)",
+   "hue_family": "pale aqua, cream, vermilion/peach accents",
+   "form_clarity": 0.55,
+   "composition": "low horizon, architecture as a thin band with a few verticals, large open sky and water",
+   "focal_area": "towers on the horizon band",
+   "wash_transparency": "very high, near-white glazes",
+   "paper_grain": "light",
+   "edge_bleed": "soft, forms dissolve into haze; some pencil underdrawing",
+   "line_density": "low: a few fine pencil lines for masts and windows",
+   "drip_density": "none",
+   "motifs": [
+    "water",
+    "landscape"
+   ],
+   "notes": "Emerging forms: buildings stated by a few warm notes and their reflections; most of the sheet is air and water.",
+   "flags": [
+    "composite: three paintings stacked with white gutters",
+    "metrics averaged over the three panels"
+   ],
+   "confidence": 0.85,
+   "scores": {
+    "edge_bleed": 0.6,
+    "linework": 0.2,
+    "drips": 0,
+    "spatter": 0
+   }
+  },
+  {
+   "id": "gathered_02",
+   "level": "gathered",
+   "user_category": "唱的中等",
+   "sha256": "a98c0613ef7497730d06fae00365a1d98bc81042d116f7fa7539f8bbe74e9326",
+   "size": [
+    1179,
+    786
+   ],
+   "analysis_roi": [
+    [
+     0,
+     0,
+     1,
+     1
+    ]
+   ],
+   "measured": {
+    "value_mean": 0.8627,
+    "value_contrast": 0.4065,
+    "saturation": 0.04,
+    "whitespace": 0.6216,
+    "edge_density": 0.0552,
+    "fine_texture": 0.0706,
+    "structure": 0.3576,
+    "palette": [
+     {
+      "hex": "#f1f2f1",
+      "weight": 0.239
+     },
+     {
+      "hex": "#fbfbfb",
+      "weight": 0.206
+     },
+     {
+      "hex": "#e4e4e2",
+      "weight": 0.178
+     },
+     {
+      "hex": "#cfd0ca",
+      "weight": 0.17
+     },
+     {
+      "hex": "#b5b6a7",
+      "weight": 0.139
+     },
+     {
+      "hex": "#858874",
+      "weight": 0.068
+     }
+    ]
+   },
+   "title_observed": "grey washes over grassy marks",
+   "hue_family": "neutral grey, cerulean, olive green",
+   "form_clarity": 0.3,
+   "composition": "heavy bottom band of olive dry-brush marks, floating grey shapes above, big white field",
+   "focal_area": "centre-left floating grey shapes",
+   "wash_transparency": "medium, hard-edged pooled washes",
+   "paper_grain": "visible granulation in greys",
+   "edge_bleed": "pooled hard edges with dark rims; spatter dots",
+   "line_density": "medium: calligraphic dry-brush strokes",
+   "drip_density": "low",
+   "motifs": [
+    "landscape",
+    "abstract",
+    "sky"
+   ],
+   "notes": "Semi-abstract landscape: suggests ground, grasses and clouds without depicting them. Dark edge rims from pooling are characteristic.",
+   "flags": [
+    "signature lower right"
+   ],
+   "confidence": 0.8,
+   "scores": {
+    "edge_bleed": 0.6,
+    "linework": 0.5,
+    "drips": 0.2,
+    "spatter": 0.5
+   }
+  },
+  {
+   "id": "gathered_03",
+   "level": "gathered",
+   "user_category": "唱的中等",
+   "sha256": "f1fb0282315b23c35853a4e4baeed28eacfeda343130dd011c70d9ba5cb68f36",
+   "size": [
+    1080,
+    1862
+   ],
+   "analysis_roi": [
+    [
+     0,
+     0,
+     1,
+     1
+    ]
+   ],
+   "measured": {
+    "value_mean": 0.5175,
+    "value_contrast": 0.593,
+    "saturation": 0.3009,
+    "whitespace": 0.0,
+    "edge_density": 0.0354,
+    "fine_texture": 0.0404,
+    "structure": 0.7183,
+    "palette": [
+     {
+      "hex": "#a2b08e",
+      "weight": 0.179
+     },
+     {
+      "hex": "#b8c3b8",
+      "weight": 0.179
+     },
+     {
+      "hex": "#313b25",
+      "weight": 0.178
+     },
+     {
+      "hex": "#58613f",
+      "weight": 0.174
+     },
+     {
+      "hex": "#8a9b64",
+      "weight": 0.167
+     },
+     {
+      "hex": "#7c913d",
+      "weight": 0.123
+     }
+    ]
+   },
+   "title_observed": "sunlit forest path",
+   "hue_family": "yellow-green, sap green, blue-grey",
+   "form_clarity": 0.5,
+   "composition": "diagonal light shaft from top-left, dark mass right, path into depth",
+   "focal_area": "bright clearing centre",
+   "wash_transparency": "high wet-in-wet glow",
+   "paper_grain": "smooth",
+   "edge_bleed": "very soft wet-in-wet, with sharp spatter and lifted leaf shapes",
+   "line_density": "medium: thin twig lines",
+   "drip_density": "low; spatter medium",
+   "motifs": [
+    "garden",
+    "landscape"
+   ],
+   "notes": "Atmospheric depth through soft gradients, structure emerging only at the edges (twigs, path).",
+   "flags": [
+    "small signature mark lower left"
+   ],
+   "confidence": 0.85,
+   "scores": {
+    "edge_bleed": 0.85,
+    "linework": 0.4,
+    "drips": 0.1,
+    "spatter": 0.5
+   }
+  },
+  {
+   "id": "gathered_04",
+   "level": "gathered",
+   "user_category": "唱的中等",
+   "sha256": "25d1021c9ed1b3c12592e5e507131f0929b504d5e5aed130ef3dcf481ef33183",
+   "size": [
+    839,
+    1118
+   ],
+   "analysis_roi": [
+    [
+     0,
+     0,
+     1,
+     1
+    ]
+   ],
+   "measured": {
+    "value_mean": 0.4979,
+    "value_contrast": 0.6728,
+    "saturation": 0.4408,
+    "whitespace": 0.0094,
+    "edge_density": 0.0758,
+    "fine_texture": 0.0683,
+    "structure": 0.5465,
+    "palette": [
+     {
+      "hex": "#7f5b3a",
+      "weight": 0.222
+     },
+     {
+      "hex": "#a07c5b",
+      "weight": 0.219
+     },
+     {
+      "hex": "#523724",
+      "weight": 0.215
+     },
+     {
+      "hex": "#c09b75",
+      "weight": 0.158
+     },
+     {
+      "hex": "#e2c095",
+      "weight": 0.112
+     },
+     {
+      "hex": "#f5dfc6",
+      "weight": 0.073
+     }
+    ]
+   },
+   "title_observed": "sepia arcade / café interior",
+   "hue_family": "burnt umber, sienna, ochre, blue-violet",
+   "form_clarity": 0.55,
+   "composition": "one-point perspective into depth, vertical drips, light at end",
+   "focal_area": "lit tables lower right",
+   "wash_transparency": "low-medium, layered darks",
+   "paper_grain": "dry-brush texture",
+   "edge_bleed": "mixed: dry-brush scumbles and vertical runs",
+   "line_density": "medium: string lights, rigging lines",
+   "drip_density": "high vertical runs",
+   "motifs": [
+    "interior",
+    "landscape"
+   ],
+   "notes": "Strong value structure and drips; forms implied by light and dark blocks rather than drawn.",
+   "flags": [],
+   "confidence": 0.8,
+   "scores": {
+    "edge_bleed": 0.5,
+    "linework": 0.45,
+    "drips": 0.75,
+    "spatter": 0.3
+   }
+  },
+  {
+   "id": "gathered_05",
+   "level": "gathered",
+   "user_category": "唱的中等",
+   "sha256": "81c6a5fdcb9a1c4a799cb66bb633aec2103a33319734b6f23c75b803881283ee",
+   "size": [
+    1080,
+    1440
+   ],
+   "analysis_roi": [
+    [
+     0.03,
+     0.03,
+     0.99,
+     0.32
+    ],
+    [
+     0.03,
+     0.35,
+     0.99,
+     0.65
+    ],
+    [
+     0.03,
+     0.68,
+     0.99,
+     0.98
+    ]
+   ],
+   "measured": {
+    "value_mean": 0.7401,
+    "value_contrast": 0.1487,
+    "saturation": 0.1564,
+    "whitespace": 0.0145,
+    "edge_density": 0.0205,
+    "fine_texture": 0.0241,
+    "structure": 0.3882,
+    "palette": [
+     {
+      "hex": "#9cb0c4",
+      "weight": 0.454
+     },
+     {
+      "hex": "#dcc3a4",
+      "weight": 0.396
+     },
+     {
+      "hex": "#c2cacb",
+      "weight": 0.362
+     },
+     {
+      "hex": "#b7c1c5",
+      "weight": 0.323
+     },
+     {
+      "hex": "#d8c5b3",
+      "weight": 0.213
+     },
+     {
+      "hex": "#d2c8be",
+      "weight": 0.208
+     }
+    ]
+   },
+   "title_observed": "breaking surf and sky studies (three views)",
+   "hue_family": "cerulean, cobalt, sand yellow, peach",
+   "form_clarity": 0.4,
+   "composition": "horizontal bands: sky, wave crest / cloud streak, beach",
+   "focal_area": "the white crest or a single blue streak",
+   "wash_transparency": "medium, some opaque white",
+   "paper_grain": "light",
+   "edge_bleed": "soft feathered strokes",
+   "line_density": "low",
+   "drip_density": "none",
+   "motifs": [
+    "water",
+    "sky"
+   ],
+   "notes": "Few horizontal gestures suggest wave and sky; the third panel is almost colour field with one blue streak.",
+   "flags": [
+    "composite: three studies stacked",
+    "metrics averaged over the three panels"
+   ],
+   "confidence": 0.8,
+   "scores": {
+    "edge_bleed": 0.55,
+    "linework": 0.15,
+    "drips": 0,
+    "spatter": 0.1
+   }
+  }
+ ]
+}

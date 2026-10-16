@@ -7,7 +7,7 @@ import { createMockEngine } from '../../src/engine/engines/mock.js';
 import { validateEngine, validateAnalysis, validatePainting } from '../../src/engine/contract.js';
 import { scenes, SR, voice } from './synth.js';
 
-const engine = validateEngine(createRealEngine());
+const engine = validateEngine(createRealEngine({ width: 240, height: 300 }));
 
 function snapshots(samples, sr = SR, n = 2048) {
   const hop = Math.round(sr * 0.1), out = [];
@@ -22,12 +22,13 @@ async function take(samples, note = '', overrides, sr = SR) {
   return { analysis, painting: validatePainting(await engine.generate({ analysis, note, audioBlob: null, overrides })) };
 }
 
-test('steady phrase becomes a resolved scene', async () => {
+test('steady phrase becomes a resolved, newly painted image', async () => {
   const { analysis, painting } = await take(scenes.steadyPhrase());
-  assert.equal(painting.engineId, 'real-v1');
+  assert.equal(painting.engineId, 'real-v2');
   assert.equal(analysis.flags.silent, false);
   assert.equal(painting.completeness, 'resolved');
-  assert.match(painting.artwork.src, /^assets\/art\/scene-/);
+  assert.equal(painting.artwork.kind, 'image');
+  assert.ok(painting.artwork.blob.size > 10000);
   assert.match(painting.interpretation.voiceLabel, /steady$/);
 });
 
@@ -36,10 +37,10 @@ test('works at 48 kHz too', async () => {
   assert.equal(painting.completeness, 'resolved');
 });
 
-test('fragmented takes stay loose and abstract', async () => {
+test('fragmented takes stay loose', async () => {
   const { painting } = await take(scenes.leaping());
   assert.equal(painting.completeness, 'loose');
-  assert.match(painting.artwork.src, /abstract-/);
+  assert.equal(painting.artwork.kind, 'image');
 });
 
 test('silence is flagged and still painted', async () => {
