@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<base href="../">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sonmira — engine gallery (dev)</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,600&family=Hanken+Grotesk:wght@400..600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { background: var(--paper); padding: 24px; }
+  h1 { font-family: var(--serif); font-weight: 600; font-size: 34px; margin: 0 0 4px; }
+  h2 { font-family: var(--serif); font-weight: 600; font-size: 26px; margin: 34px 0 4px; text-transform: capitalize; }
+  .sub { color: var(--secondary); font-size: 13px; margin-bottom: 8px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 22px; margin-top: 14px; }
+  .meta { font-size: 12px; color: var(--body); margin-top: 8px; line-height: 1.5; }
+  .meta b { font-weight: 600; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><filter id="wc" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency="0.016" numOctaves="4" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="46" xChannelSelector="R" yChannelSelector="G"/></filter><filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="3"/><feColorMatrix values="0 0 0 0 0.42  0 0 0 0 0.37  0 0 0 0 0.3  0.55 0 0 0 -0.18"/></filter></svg>
+<h1>Engine gallery</h1>
+<div class="sub" id="eng"></div>
+<div id="out"></div>
+<script type="module">
+  // Developer tool: runs the selected engine (?engine=mock|real) on synthetic
+  // voices and notes, forcing each completeness level, and shows the output.
+  import { getEngine } from './src/engine/engines/index.js';
+  import { COMPLETENESS } from './src/engine/contract.js';
+  import { createPainting } from './src/app/ui/painting.js';
+  import { h } from './src/app/ui/dom.js';
+
+  const engine = await getEngine();
+  document.getElementById('eng').textContent = `engine: ${engine.id} · switch with ?engine=mock or ?engine=real`;
+  const SR = 22050;
+  const voices = [['low, soft', 150, 0.05], ['middle', 247, 0.1], ['high, bright', 440, 0.18]];
+  const notes = ['', 'Rain on the window', 'Clouds at dawn', 'Roses in the garden', 'Walking up the hill', 'So happy today'];
+
+  function frames(hz, amp, secs) {
+    const out = []; let ph = 0; const hop = SR / 10;
+    for (let f = 0; f < secs * 10; f++) {
+      const b = new Float32Array(2048);
+      for (let i = 0; i < 2048; i++) { const t = (f * hop + i) / SR; const fr = hz * (1 + 0.006 * Math.sin(t * 31)); ph += 2 * Math.PI * fr / SR; b[i] = amp * (Math.sin(ph) + 0.35 * Math.sin(2 * ph)); }
+      out.push(b);
+    }
+    return out;
+  }
+
+  const out = document.getElementById('out');
+  for (const c of COMPLETENESS) {
+    const grid = h('div', { class: 'grid' });
+    out.append(h('h2', {}, c), grid);
+    let k = 0;
+    for (const note of notes) {
+      const [vname, hz, amp] = voices[k++ % voices.length];
+      const s = engine.createLiveSession({ sampleRate: SR, maxSeconds: 15 });
+      frames(hz, amp, 6).forEach((f) => s.push(f));
+      const analysis = s.finish();
+      const p = await engine.generate({ analysis, note, audioBlob: null, overrides: { completeness: c } });
+      const card = createPainting({ ratio: '32', strokes: p.wash, artwork: p.artwork });
+      grid.append(h('div', {}, card.el, h('div', { class: 'meta' },
+        h('b', {}, note || '(no note)'), ` · voice ${vname}`, h('br'),
+        `emotion ${p.emotion.label} (${p.emotion.source}) · motif ${p.motif.label} (${p.motif.source})`, h('br'),
+        `${p.interpretation.voiceLabel} — “${p.interpretation.summary}”`, h('br'),
+        (p.artwork?.src || (p.artwork ? 'generated image' : 'wash only')))));
+    }
+  }
+</script>
+</body>
+</html>

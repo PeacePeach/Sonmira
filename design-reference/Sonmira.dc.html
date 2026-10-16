@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Hanken+Grotesk:wght@400..600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#E8E5DF;}
+a{color:#1F1D1A;}a:hover{color:#6B655C;}
+input::placeholder{color:#B5AFA5;}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 0;box-sizing:border-box;font-weight:450;font-family:'Hanken Grotesk',-apple-system,system-ui,sans-serif;">
+<svg width="0" height="0" style="position:absolute;">
+  <filter id="wc" x="-20%" y="-20%" width="140%" height="140%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.016" numOctaves="4" seed="7" result="n"></feTurbulence>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="{{ wcScale }}" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap>
+  </filter>
+  <filter id="grain">
+    <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="3"></feTurbulence>
+    <feColorMatrix values="0 0 0 0 0.42  0 0 0 0 0.37  0 0 0 0 0.3  0.55 0 0 0 -0.18"></feColorMatrix>
+  </filter>
+</svg>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+<div data-screen-label="Sonmira" style="position:relative;width:402px;height:874px;overflow:hidden;background:#F8F5EF;color:#1F1D1A;">
+
+<sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+  <div data-screen-label="Diary" style="position:absolute;inset:0;">
+    <div style="position:absolute;inset:0;overflow-y:auto;padding:110px 0 140px;box-sizing:border-box;">
+      <sc-if value="{{ isCalendar }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:8px 24px 18px;border-bottom:1px solid #ECE7DE;">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 4px;">
+            <div style="display:flex;align-items:baseline;gap:10px;">
+              <span style="font-family:'Cormorant Garamond',serif;font-weight:600;letter-spacing:-0.015em;font-size:30px;">{{ calMonthName }}</span>
+              <span style="font-family:'Cormorant Garamond',serif;font-weight:600;letter-spacing:-0.015em;font-size:17px;color:#A39D93;">{{ calYear }}</span>
+            </div>
+            <div style="display:flex;gap:4px;">
+              <div onClick="{{ prevMonth }}" style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:20px;" style-hover="background:#EFEBE3;">
+                <svg width="9" height="16" viewBox="0 0 9 16"><path d="M8 1L1 8l7 7" stroke="#1F1D1A" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </div>
+              <div onClick="{{ nextMonth }}" style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:20px;" style-hover="background:#EFEBE3;">
+                <svg width="9" height="16" viewBox="0 0 9 16"><path d="M1 1l7 7-7 7" stroke="#1F1D1A" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);margin-top:14px;">
+            <sc-for list="{{ weekdays }}" as="w" hint-placeholder-count="7">
+              <div style="text-align:center;font-size:12px;color:#A39D93;padding-bottom:8px;letter-spacing:0.02em;">{{ w }}</div>
+            </sc-for>
+            <sc-for list="{{ calCells }}" as="c" hint-placeholder-count="35">
+              <div onClick="{{ c.onClick }}" style="height:46px;display:flex;align-items:center;justify-content:center;cursor:{{ c.cursor }};">
+                <div style="width:40px;height:40px;border-radius:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:{{ c.bg }};color:{{ c.color }};font-size:15px;">
+                  <span>{{ c.label }}</span>
+                  <div style="width:4px;height:4px;border-radius:2px;background:{{ c.dot }};"></div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+      <sc-for list="{{ groups }}" as="g" hint-placeholder-count="2">
+        <div>
+          <div style="padding:30px 28px 14px;display:flex;align-items:baseline;gap:10px;">
+            <span style="font-family:'Cormorant Garamond',serif;font-weight:600;letter-spacing:-0.015em;font-size:30px;letter-spacing:-0.01em;">{{ g.md }}</span>
+            <span style="font-family:'Cormorant Garamond',serif;font-weight:600;letter-spacing:0;font-style:italic;font-size:18px;color:#A39D93;">{{ g.year }}</span>
+          </div>
+          <sc-for list="{{ g.items }}" as="e" hint-placeholder-count="1">
+            <div onClick="{{ e.open }}" style="padding:0 24px 30px;cursor:pointer;">
+              <div style="position:relative;width:100%;aspect-ratio:3/2;border-radius:4px;overflow:hidden;background:#F3EDE1;box-shadow:0 1px 2px rgba(60,45,30,0.08),0 10px 24px -14px rgba(60,45,30,0.25);">
+                <div style="position:absolute;inset:-6%;filter:url(#wc);">
+                  <sc-for list="{{ e.blobs }}" as="b" hint-placeholder-count="0"><div style="{{ b }}"></div></sc-for>
+                </div>
+                <sc-if value="{{ e.isShore }}" hint-placeholder-val="{{ false }}"><img src="assets/scene-shore.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 62%;"></sc-if>
+                <sc-if value="{{ e.isCity }}" hint-placeholder-val="{{ false }}"><img src="assets/scene-city.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 70%;"></sc-if>
+                <sc-if value="{{ e.isBay }}" hint-placeholder-val="{{ false }}"><img src="assets/scene-bay.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 55%;"></sc-if>
+                <sc-if value="{{ e.isBayLight }}" hint-placeholder-val="{{ false }}"><img src="assets/scene-bay-light.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;"></sc-if>
+                <sc-if value="{{ e.isA1 }}" hint-placeholder-val="{{ false }}"><img src="assets/abstract-1.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;"></sc-if>
+                <sc-if value="{{ e.isA2 }}" hint-placeholder-val="{{ false }}"><img src="assets/abstract-2.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;"></sc-if>
+                <sc-if value="{{ e.isA3 }}" hint-placeholder-val="{{ false }}"><img src="assets/abstract-3.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;"></sc-if>
+                <sc-if value="{{ e.isA4 }}" hint-placeholder-val="{{ false }}"><img src="assets/abstract-4.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;"></sc-if>
+                <sc-if value="{{ e.isA5 }}" hint-placeholder-val="{{ false }}"><img src="assets/abstract-5.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;"></sc-if>
+                <sc-if value="{{ e.isA6 }}" hint-placeholder-val="{{ false }}"><img src="assets/abstract-6.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;"></sc-if>
+                <sc-if value="{{ e.isA7 }}" hint-placeholder-val="{{ false }}"><img src="assets/abstract-7.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;"></sc-if>
+                <sc-if value="{{ e.isA8 }}" hint-placeholder-val="{{ false }}"><img src="assets/abstract-8.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;"></sc-if>
+                <sc-if value="{{ e.isA9 }}" hint-placeholder-val="{{ false }}"><img src="assets/abstract-9.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;"></sc-if>
+                <sc-if value="{{ e.isM1 }}" hint-placeholder-val="{{ false }}"><img src="assets/impression-1.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;"></sc-if>
+                <sc-if value="{{ e.isM2 }}" hint-placeholder-val="{{ false }}"><img src="assets/impression-2.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;"></sc-if>
+                <sc-if value="{{ e.isM3 }}" hint-placeholder-val="{{ false }}"><img src="assets/impression-3.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;"></sc-if>
+                <sc-if value="{{ e.isM4 }}" hint-placeholder-val="{{ false }}"><img src="assets/impression-4.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;"></sc-if>
+                <sc-if value="{{ e.isM5 }}" hint-placeholder-val="{{ false }}"><img src="assets/impression-5.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;"></sc-if>
+                <sc-if value="{{ e.isM6 }}" hint-placeholder-val="{{ false }}"><img src="assets/impression-6.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;"></sc-if>
+                <svg style="position:absolute;inset:0;width:100%;height:100%;mix-blend-mode:multiply;"><rect width="100%" height="100%" filter="url(#grain)"></rect></svg>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:14px 4px 0;">
+                <span style="font-size:15px;color:#5E5850;text-wrap:pretty;">{{ e.caption }}</span>
+                <span style="font-size:12px;color:#A39D93;font-variant-numeric:tabular-nums;flex-shrink:0;">{{ e.durLabel }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+      <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:48px 28px;text-align:center;font-family:'Cormorant Garamond',serif;font-weight:600;letter-spacing:-0.015em;font-style:italic;font-size:18px;color:#A39D93;">{{ emptyText }}</div>
+      </sc-if>
+    </div>
+    <div style="position:absolute;top:0;left:0;right:0;padding-top:54px;background:#F8F5EF;border-bottom:1px solid #ECE7DE;">
+      <div style="position:relative;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;">
+        <div style="width:44px;height:44px;"></div>
+        <span style="position:absolute;left:50%;transform:translateX(-50%);pointer-events:none;font-family:'Cormorant Garamond',serif;font-weight:600;letter-spacing:-0.015em;font-style:italic;font-size:24px;">Sonmira</span>
+        <div style="display:flex;align-items:center;">
+          <div onClick="{{ toggleView }}" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:22px;" style-hover="background:#EFEBE3;">
+            <sc-if value="{{ isList }}" hint-placeholder-val="{{ true }}">
+              <svg width="20" height="20" viewBox="0 0 20 20"><rect x="1.5" y="2.5" width="17" height="15.5" rx="2.5" stroke="#1F1D1A" stroke-width="1.3" fill="none"></rect><path d="M1.5 7h17" stroke="#1F1D1A" stroke-width="1.3"></path></svg>
+            </sc-if>
+            <sc-if value="{{ isCalendar }}" hint-placeholder-val="{{ false }}">
+              <svg width="20" height="20" viewBox="0 0 20 20"><rect x="1.5" y="2" width="17" height="6.5" rx="2" stroke="#1F1D1A" stroke-width="1.3" fill="none"></rect><rect x="1.5" y="11.5" width="17" height="6.5" rx="2" stroke="#1F1D1A" stroke-width="1.3" fill="none"></rect></svg>
+            </sc-if>
+          </div>
+          <div onClick="{{ openSettings }}" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:22px;" style-hover="background:#EFEBE3;">
+            <svg width="20" height="4" viewBox="0 0 20 4"><circle cx="2" cy="2" r="1.6" fill="#1F1D1A"></circle><circle cx="10" cy="2" r="1.6" fill="#1F1D1A"></circle><circle cx="18" cy="2" r="1.6" fill="#1F1D1A"></circle></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="position:absolute;left:0;right:0;bottom:0;height:130px;background:linear-gradient(to bottom, rgba(248,245,239,0), #F8F5EF 55%);pointer-events:none;"></div>
+    <div onClick="{{ openRecord }}" style="position:absolute;left:50%;bottom:40px;transform:translateX(-50%);width:64px;height:64px;border-radius:32px;background:#1F1D1A;box-shadow:0 8px 22px rgba(30,25,20,0.28);display:flex;align-items:center;justify-content:center;cursor:pointer;" style-active="transform:translateX(-50%) scale(0.95);">
+      <svg width="22" height="22" viewBox="0 0 22 22"><path d="M11 2v18M2 11h18" stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round"></path></svg>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isRecord }}" hint-placeholder-val="{{ false }}">
+  <div data-screen-label="Sing" style="position:absolute;inset:0;display:flex;flex-direction:column;padding:54px 0 40px;box-sizing:border-box;">
+    <div style="height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;">
+      <div onClick="{{ closeRecord }}" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:22px;" style-hover="background:#EFEBE3;">
+        <svg width="16" height="16" viewBox="0 0 16 16"><path d="M2 2l12 12M14 2L2 14" stroke="#1F1D1A" stroke-width="1.4" stroke-linecap="round"></path></svg>
+      </div>
+      <span style="font-size:13px;color:#A39D93;letter-spacing:0.04em;">{{ todayLabel }}</span>
+      <div style="width:44px;height:44px;"></div>
+    </div>
+    <div style="padding:28px 24px 0;">
+      <div style="position:relative;width:100%;aspect-ratio:3/2;border-radius:4px;overflow:hidden;background:#F3EDE1;box-shadow:0 1px 2px rgba(60,45,30,0.08),0 10px 24px -14px rgba(60,45,30,0.25);">
+        <div style="position:absolute;inset:-6%;filter:url(#wc);">
+          <sc-for list="{{ recBlobs }}" as="b" hint-placeholder-count="0"><div style="{{ b }}"></div></sc-for>
+        </div>
+        <img src="assets/scene-shore.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 62%;opacity:{{ recShoreOp }};transition:opacity 1.6s ease-in-out;">
+        <img src="assets/scene-city.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 70%;opacity:{{ recCityOp }};transition:opacity 1.6s ease-in-out;">
+        <img src="assets/scene-bay.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 55%;opacity:{{ recBayOp }};transition:opacity 1.6s ease-in-out;">
+        <img src="assets/scene-bay-light.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;opacity:{{ recBayLightOp }};transition:opacity 1.6s ease-in-out;">
+        <img src="assets/abstract-1.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;opacity:{{ recA1Op }};transition:opacity 1.6s ease-in-out;">
+        <img src="assets/abstract-2.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;opacity:{{ recA2Op }};transition:opacity 1.6s ease-in-out;">
+        <img src="assets/abstract-3.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;opacity:{{ recA3Op }};transition:opacity 1.6s ease-in-out;">
+        <img src="assets/abstract-4.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;opacity:{{ recA4Op }};transition:opacity 1.6s ease-in-out;">
+        <img src="assets/abstract-5.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;opacity:{{ recA5Op }};transition:opacity 1.6s ease-in-out;">
+        <img src="assets/abstract-6.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;opacity:{{ recA6Op }};transition:opacity 1.6s ease-in-out;">
+        <img src="assets/abstract-7.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;opacity:{{ recA7Op }};transition:opacity 1.6s ease-in-out;">
+        <img src="assets/abstract-8.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;opacity:{{ recA8Op }};transition:opacity 1.6s ease-in-out;">
+        <img src="assets/abstract-9.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;opacity:{{ recA9Op }};transition:opacity 1.6s ease-in-out;">
+        <img src="assets/impression-1.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;opacity:{{ recM1Op }};transition:opacity 1.6s ease-in-out;">
+        <img src="assets/impression-2.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;opacity:{{ recM2Op }};transition:opacity 1.6s ease-in-out;">
+        <img src="assets/impression-3.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;opacity:{{ recM3Op }};transition:opacity 1.6s ease-in-out;">
+        <img src="assets/impression-4.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;opacity:{{ recM4Op }};transition:opacity 1.6s ease-in-out;">
+        <img src="assets/impression-5.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;opacity:{{ recM5Op }};transition:opacity 1.6s ease-in-out;">
+        <img src="assets/impression-6.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 50%;opacity:{{ recM6Op }};transition:opacity 1.6s ease-in-out;">
+        <svg style="position:absolute;inset:0;width:100%;height:100%;mix-blend-mode:multiply;"><rect width="100%" height="100%" filter="url(#grain)"></rect></svg>
+      </div>
+      <div style="height:2px;background:#ECE7DE;margin-top:18px;border-radius:1px;overflow:hidden;">
+        <div style="height:100%;width:{{ recPct }};background:#1F1D1A;transition:width 0.1s linear;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px;color:#A39D93;font-variant-numeric:tabular-nums;">
+        <span>{{ recTLabel }}</span><span>{{ recMaxLabel }}</span>
+      </div>
+    </div>
+
+    <sc-if value="{{ phaseReady }}" hint-placeholder-val="{{ true }}">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:36px 32px 0;">
+        <div style="text-align:center;">
+          <div style="font-family:'Cormorant Garamond',serif;font-weight:600;letter-spacing:-0.015em;font-size:34px;letter-spacing:-0.01em;">Sing a moment.</div>
+          <div style="font-size:14px;color:#8C867D;margin-top:10px;line-height:1.55;text-wrap:pretty;">A hum, a line, a lullaby. The color follows your voice.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:14px;">
+          <div onClick="{{ startRec }}" style="width:84px;height:84px;border-radius:42px;background:#1F1D1A;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 10px 28px rgba(30,25,20,0.28);" style-active="transform:scale(0.95);">
+            <svg width="22" height="30" viewBox="0 0 22 30"><rect x="6" y="1" width="10" height="18" rx="5" stroke="#FFFFFF" stroke-width="1.5" fill="none"></rect><path d="M2 14a9 9 0 0018 0M11 23v6" stroke="#FFFFFF" stroke-width="1.5" fill="none" stroke-linecap="round"></path></svg>
+          </div>
+          <span style="font-size:12px;color:#A39D93;">Tap to begin</span>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ phaseSinging }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:36px 32px 0;">
+        <div style="text-align:center;">
+          <div style="font-family:'Cormorant Garamond',serif;font-weight:600;letter-spacing:-0.015em;font-style:italic;font-size:30px;color:#5E5850;">{{ singingLine }}</div>
+          <div style="font-size:12px;color:#A39D93;margin-top:10px;">{{ micNote }}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:14px;">
+          <div style="position:relative;width:84px;height:84px;">
+            <div style="position:absolute;inset:0;border-radius:42px;background:{{ levelColor }};transform:scale({{ levelScale }});transition:transform 0.12s ease-out,background 0.4s;"></div>
+            <div onClick="{{ stopRec }}" style="position:absolute;inset:0;border-radius:42px;background:#1F1D1A;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+              <div style="width:22px;height:22px;border-radius:4px;background:#FFFFFF;"></div>
+            </div>
+          </div>
+          <span style="font-size:12px;color:#A39D93;">Tap to finish</span>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ phaseDrying }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+        <div style="font-family:'Cormorant Garamond',serif;font-weight:600;letter-spacing:-0.015em;font-style:italic;font-size:26px;color:#8C867D;">{{ dryingLine }}</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ phaseName }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:space-between;padding:30px 28px 0;">
+        <div>
+          <div style="font-size:12px;color:#A39D93;letter-spacing:0.04em;">{{ recSummary }}</div>
+          <input value="{{ caption }}" onChange="{{ onCaption }}" placeholder="What was this moment?" style="width:100%;margin-top:12px;border:none;border-bottom:1px solid #DDD6CA;background:transparent;font-family:'Cormorant Garamond',serif;font-weight:600;letter-spacing:-0.015em;font-size:24px;color:#1F1D1A;padding:8px 0 12px;outline:none;box-sizing:border-box;">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div onClick="{{ saveEntry }}" style="height:56px;border-radius:28px;background:#1F1D1A;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;" style-active="transform:scale(0.98);">Keep it</div>
+          <div onClick="{{ singAgain }}" style="height:48px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#8C867D;cursor:pointer;">Sing again</div>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+  <div data-screen-label="Painting" style="position:absolute;inset:0;display:flex;flex-direction:column;padding:54px 0 40px;box-sizing:border-box;">
+    <div style="height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;">
+      <div onClick="{{ goHome }}" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:22px;" style-hover="background:#EFEBE3;">
+        <svg width="10" height="18" viewBox="0 0 10 18"><path d="M9 1L1 9l8 8" stroke="#1F1D1A" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </div>
+      <div onClick="{{ deleteEntry }}" style="height:44px;padding:0 12px;display:flex;align-items:center;font-size:13px;color:#A39D93;cursor:pointer;" style-hover="color:#5E5850;">Delete</div>
+    </div>
+    <div style="padding:22px 18px 0;">
+      <div style="position:relative;width:100%;aspect-ratio:4/5;border-radius:4px;overflow:hidden;background:#F3EDE1;box-shadow:0 1px 2px rgba(60,45,30,0.08),0 18px 36px -18px rgba(60,45,30,0.3);">
+        <div style="position:absolute;inset:-6%;filter:url(#wc);">
+          <sc-for list="{{ detail.blobs }}" as="b" hint-placeholder-count="0"><div style="{{ b }}"></div></sc-for>
+        </div>
+        <sc-if value="{{ detail.isShore }}" hint-placeholder-val="{{ false }}"><img src="assets/scene-shore.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></sc-if>
+                <sc-if value="{{ detail.isCity }}" hint-placeholder-val="{{ false }}"><img src="assets/scene-city.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></sc-if>
+                <sc-if value="{{ detail.isBay }}" hint-placeholder-val="{{ false }}"><img src="assets/scene-bay.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></sc-if>
+                <sc-if value="{{ detail.isBayLight }}" hint-placeholder-val="{{ false }}"><img src="assets/scene-bay-light.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></sc-if>
+                <sc-if value="{{ detail.isA1 }}" hint-placeholder-val="{{ false }}"><img src="assets/abstract-1.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></sc-if>
+                <sc-if value="{{ detail.isA2 }}" hint-placeholder-val="{{ false }}"><img src="assets/abstract-2.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></sc-if>
+                <sc-if value="{{ detail.isA3 }}" hint-placeholder-val="{{ false }}"><img src="assets/abstract-3.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></sc-if>
+                <sc-if value="{{ detail.isA4 }}" hint-placeholder-val="{{ false }}"><img src="assets/abstract-4.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></sc-if>
+                <sc-if value="{{ detail.isA5 }}" hint-placeholder-val="{{ false }}"><img src="assets/abstract-5.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></sc-if>
+                <sc-if value="{{ detail.isA6 }}" hint-placeholder-val="{{ false }}"><img src="assets/abstract-6.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></sc-if>
+                <sc-if value="{{ detail.isA7 }}" hint-placeholder-val="{{ false }}"><img src="assets/abstract-7.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></sc-if>
+                <sc-if value="{{ detail.isA8 }}" hint-placeholder-val="{{ false }}"><img src="assets/abstract-8.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></sc-if>
+                <sc-if value="{{ detail.isA9 }}" hint-placeholder-val="{{ false }}"><img src="assets/abstract-9.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></sc-if>
+                <sc-if value="{{ detail.isM1 }}" hint-placeholder-val="{{ false }}"><img src="assets/impression-1.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></sc-if>
+                <sc-if value="{{ detail.isM2 }}" hint-placeholder-val="{{ false }}"><img src="assets/impression-2.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></sc-if>
+                <sc-if value="{{ detail.isM3 }}" hint-placeholder-val="{{ false }}"><img src="assets/impression-3.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></sc-if>
+                <sc-if value="{{ detail.isM4 }}" hint-placeholder-val="{{ false }}"><img src="assets/impression-4.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></sc-if>
+                <sc-if value="{{ detail.isM5 }}" hint-placeholder-val="{{ false }}"><img src="assets/impression-5.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></sc-if>
+                <sc-if value="{{ detail.isM6 }}" hint-placeholder-val="{{ false }}"><img src="assets/impression-6.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></sc-if>
+        <svg style="position:absolute;inset:0;width:100%;height:100%;mix-blend-mode:multiply;"><rect width="100%" height="100%" filter="url(#grain)"></rect></svg>
+      </div>
+    </div>
+    <div style="padding:26px 28px 0;flex:1;display:flex;flex-direction:column;">
+      <div style="font-size:12px;color:#A39D93;letter-spacing:0.04em;">{{ detail.longDate }}</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-weight:600;letter-spacing:-0.015em;font-size:26px;margin-top:6px;line-height:1.2;text-wrap:pretty;">{{ detail.caption }}</div>
+      <div style="display:flex;align-items:center;gap:16px;margin-top:auto;">
+        <div onClick="{{ togglePlay }}" style="width:48px;height:48px;border-radius:24px;border:1px solid #1F1D1A;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">
+          <sc-if value="{{ isPlaying }}" hint-placeholder-val="{{ false }}">
+            <svg width="12" height="14" viewBox="0 0 12 14"><rect x="1" y="0" width="3.2" height="14" fill="#1F1D1A"></rect><rect x="7.8" y="0" width="3.2" height="14" fill="#1F1D1A"></rect></svg>
+          </sc-if>
+          <sc-if value="{{ notPlaying }}" hint-placeholder-val="{{ true }}">
+            <svg width="13" height="15" viewBox="0 0 13 15"><path d="M1 1l11 6.5L1 14z" fill="#1F1D1A"></path></svg>
+          </sc-if>
+        </div>
+        <div style="flex:1;">
+          <div style="height:2px;background:#E4DDD1;border-radius:1px;overflow:hidden;">
+            <div style="height:100%;width:{{ playPct }};background:#1F1D1A;"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px;color:#A39D93;font-variant-numeric:tabular-nums;">
+            <span>{{ playTLabel }}</span><span>{{ detail.voice }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
+  <div data-screen-label="Settings" style="position:absolute;inset:0;overflow-y:auto;font-family:'Cormorant Garamond',serif;font-weight:600;background:#F8F5EF;padding:54px 0 40px;box-sizing:border-box;">
+    <div style="height:52px;display:flex;align-items:center;padding:0 14px;">
+      <div onClick="{{ goHome }}" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:22px;" style-hover="background:#EFEBE3;">
+        <svg width="10" height="18" viewBox="0 0 10 18"><path d="M9 1L1 9l8 8" stroke="#1F1D1A" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </div>
+    </div>
+    <div style="font-family:'Cormorant Garamond',serif;font-weight:600;letter-spacing:-0.015em;font-size:38px;padding:20px 28px 0;letter-spacing:-0.01em;">Settings</div>
+    <div style="font-size:16px;font-style:italic;color:#A39D93;padding:34px 30px 10px;">Diary</div>
+    <div style="margin:0 18px;background:#F2EDE4;border:1px solid #E6DFD3;border-radius:20px;overflow:hidden;">
+      <div onClick="{{ cycleLength }}" style="display:flex;justify-content:space-between;align-items:center;height:56px;padding:0 20px;border-bottom:1px solid #E6DFD3;cursor:pointer;font-size:16px;"><span>Recording length</span><span style="color:#A39D93;">{{ maxLabelLong }}</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;height:56px;padding:0 20px;border-bottom:1px solid #E6DFD3;font-size:16px;"><span>Start day of week</span><span style="color:#A39D93;">Sun</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;height:56px;padding:0 20px;border-bottom:1px solid #E6DFD3;font-size:16px;"><span>Daily reminder</span><span style="color:#A39D93;">22:00</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;height:56px;padding:0 20px;border-bottom:1px solid #E6DFD3;font-size:16px;"><span>Diary lock</span><svg width="7" height="12" viewBox="0 0 7 12"><path d="M1 1l5 5-5 5" stroke="#C2BBB0" stroke-width="1.4" fill="none" stroke-linecap="round"></path></svg></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;height:56px;padding:0 20px;font-size:19px;"><span>Backup / restore</span><svg width="7" height="12" viewBox="0 0 7 12"><path d="M1 1l5 5-5 5" stroke="#C2BBB0" stroke-width="1.4" fill="none" stroke-linecap="round"></path></svg></div>
+    </div>
+    <div style="font-size:16px;font-style:italic;color:#A39D93;padding:34px 30px 10px;">About</div>
+    <div style="margin:0 18px;background:#F2EDE4;border:1px solid #E6DFD3;border-radius:20px;overflow:hidden;">
+      <div style="display:flex;justify-content:space-between;align-items:center;height:56px;padding:0 20px;border-bottom:1px solid #E6DFD3;font-size:16px;"><span>Rate Sonmira</span><svg width="7" height="12" viewBox="0 0 7 12"><path d="M1 1l5 5-5 5" stroke="#C2BBB0" stroke-width="1.4" fill="none" stroke-linecap="round"></path></svg></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;height:56px;padding:0 20px;border-bottom:1px solid #E6DFD3;font-size:16px;"><span>Privacy policy</span><svg width="7" height="12" viewBox="0 0 7 12"><path d="M1 1l5 5-5 5" stroke="#C2BBB0" stroke-width="1.4" fill="none" stroke-linecap="round"></path></svg></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;height:56px;padding:0 20px;font-size:19px;"><span>Terms</span><svg width="7" height="12" viewBox="0 0 7 12"><path d="M1 1l5 5-5 5" stroke="#C2BBB0" stroke-width="1.4" fill="none" stroke-linecap="round"></path></svg></div>
+    </div>
+    <div style="text-align:center;font-size:15px;font-style:italic;color:#A39D93;padding:36px 0 0;">Recordings stay on this device.</div>
+  </div>
+</sc-if>
+
+</div>
+</x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;wash&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;soft&quot;,&quot;bold&quot;],&quot;default&quot;:&quot;soft&quot;,&quot;tsType&quot;:&quot;'soft'|'bold'&quot;},&quot;goodTakes&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;good&quot;,&quot;okay&quot;,&quot;poor&quot;],&quot;default&quot;:&quot;auto&quot;,&quot;tsType&quot;:&quot;'auto'|'good'|'okay'|'poor'&quot;},&quot;maxSeconds&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;10&quot;,&quot;15&quot;,&quot;30&quot;],&quot;default&quot;:&quot;15&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const TODAY = '2026-10-15';
+function rng(seed){let a=seed>>>0;return()=>{a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function br(r){const v=()=>Math.round(36+r()*28)+'%';return `${v()} ${v()} ${v()} ${v()} / ${v()} ${v()} ${v()} ${v()}`;}
+function genRaw(seed,hues,n){
+  const r=rng(seed);const out=[{x:50,y:50,w:115,h:115,hue:hues[0],l:0.93,c:0.025,a:0.75,rot:0,br:'50%',born:-99}];
+  for(let i=0;i<n;i++){const w=26+r()*48;out.push({x:8+r()*84,y:8+r()*84,w,h:w*(0.6+r()*0.55),hue:hues[i%hues.length]+(r()-0.5)*26,l:0.62+r()*0.22,c:0.06+r()*0.08,a:0.28+r()*0.3,rot:r()*360,br:br(r),born:-99});}
+  return out;
+}
+function blobStyle(b,age,mul){
+  const g=Math.min(1,Math.max(0,age/10));
+  const L=b.l,C=b.c,H=b.hue.toFixed(1),A=Math.min(0.95,b.a*mul);
+  const f=n=>n.toFixed(3);
+  return {position:'absolute',left:b.x+'%',top:b.y+'%',width:b.w+'%',height:b.h+'%',borderRadius:b.br,mixBlendMode:'multiply',
+    transform:`translate(-50%,-50%) rotate(${b.rot}deg) scale(${0.5+0.5*g})`,opacity:Math.min(1,g*1.6),transition:'transform .3s ease-out, opacity .3s',
+    background:`radial-gradient(closest-side, oklch(${f(L)} ${f(C)} ${H} / ${f(A)}) 0%, oklch(${f(L)} ${f(C)} ${H} / ${f(A*0.75)}) 60%, oklch(${f(L-0.1)} ${f(C+0.02)} ${H} / ${f(Math.min(1,A*1.3))}) 86%, oklch(${f(L)} ${f(C)} ${H} / 0) 100%)`};
+}
+const SCENES={shore:{src:'assets/scene-shore.png',pos:'50% 62%'},city:{src:'assets/scene-city.png',pos:'50% 70%'},bay:{src:'assets/scene-bay.png',pos:'50% 55%'},bayLight:{src:'assets/scene-bay-light.png',pos:'50% 50%'}};
+const ART_KEYS=['Shore','City','Bay','BayLight','A1','A2','A3','A4','A5','A6','A7','A8','A9','M1','M2','M3','M4','M5','M6'];
+const SCENE_TO_KEY={shore:'Shore',city:'City',bay:'Bay',bayLight:'BayLight'};
+const artKey=e=>e.scene?SCENE_TO_KEY[e.scene]:e.impression?'M'+e.impression:(e.abstract?'A'+e.abstract:null);
+const flagsFor=k=>Object.fromEntries(ART_KEYS.map(x=>['is'+x,x===k]));
+const fmt=s=>`0:${String(Math.floor(s)).padStart(2,'0')}`;
+
+class Component extends DCLogic {
+  state = {
+    screen:'home', view:'list', selDay:null, calY:2026, calM:9,
+    entries:[
+      {id:1,date:'2026-10-15',caption:'Humming on the walk home',hues:[300,350,245,70],seed:11,dur:12,voice:'Middle, drifting',impression:4},
+      {id:2,date:'2026-10-15',caption:'A line from the song in the café',hues:[235,255,200,45],seed:23,dur:9,voice:'Middle, bright, steady',scene:'bayLight'},
+      {id:3,date:'2026-10-12',caption:'Rain on the window',hues:[220,200,262],seed:5,dur:15,voice:'Low, soft, steady',scene:'shore'},
+      {id:4,date:'2026-10-09',caption:'Happy birthday, Mia',hues:[65,28,352,140],seed:41,dur:14,voice:'High, bright, steady',scene:'city'},
+      {id:5,date:'2026-10-03',caption:'Still half asleep',hues:[95,70,212],seed:17,dur:7,voice:'Middle, wandering',abstract:9},
+      {id:7,date:'2026-10-07',caption:'Lullaby, half remembered',hues:[180,60],seed:31,dur:13,voice:'Low, drifting',impression:6},
+      {id:8,date:'2026-10-05',caption:'Testing the high note',hues:[30,200],seed:37,dur:6,voice:'High, wandering',abstract:3},
+      {id:6,date:'2026-10-01',caption:'Singing in the car with the windows down',hues:[200,180,40],seed:29,dur:15,voice:'Middle, bright, steady',scene:'bay'}
+    ],
+    detailId:null, phase:'ready', tick:0, level:0, caption:'', playing:false, playT:0, maxOverride:null, live:false
+  };
+  rawCache = {};
+  raw = [];
+  componentWillUnmount(){this.cleanup();clearInterval(this.playIv);}
+  rawFor(e){ if(e.raw) return e.raw; if(!this.rawCache[e.id]) this.rawCache[e.id]=genRaw(e.seed,e.hues,10); return this.rawCache[e.id]; }
+  maxSec(){ return this.state.maxOverride ?? Number(this.props.maxSeconds ?? 15); }
+  mul(){ return (this.props.wash ?? 'soft')==='bold' ? 1.35 : 1; }
+
+  cleanup(){
+    clearInterval(this.iv);this.iv=null;
+    try{ if(this.mr && this.mr.state!=='inactive') this.mr.stop(); }catch(e){}
+    if(this.stream) this.stream.getTracks().forEach(t=>t.stop());
+    if(this.actx) this.actx.close().catch(()=>{});
+    this.stream=null;this.actx=null;this.analyser=null;
+  }
+  startRec = async () => {
+    if(this.state.phase!=='ready') return;
+    this.raw=[];this.t=0;this.h=240;this.walk={x:30+Math.random()*40,y:35+Math.random()*30};this.levels=[];this.hs=[];this.audioUrl=null;this.chunks=[];
+    this.setState({phase:'singing',tick:0,level:0,live:false});
+    this.iv=setInterval(this.onTick,100);
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      if(this.state.phase!=='singing'){stream.getTracks().forEach(t=>t.stop());return;}
+      this.stream=stream;
+      this.actx=new (window.AudioContext||window.webkitAudioContext)();
+      const src=this.actx.createMediaStreamSource(stream);
+      this.analyser=this.actx.createAnalyser();this.analyser.fftSize=2048;src.connect(this.analyser);
+      if(window.MediaRecorder){this.mr=new MediaRecorder(stream);this.mr.ondataavailable=e=>this.chunks.push(e.data);this.mr.onstop=()=>{if(this.chunks.length)this.audioUrl=URL.createObjectURL(new Blob(this.chunks));};this.mr.start();}
+      this.setState({live:true});
+    }catch(e){}
+  };
+  onTick = () => {
+    this.t++; const t=this.t/10; let level, hue;
+    if(this.analyser){
+      const n=this.analyser.fftSize, td=new Float32Array(n); this.analyser.getFloatTimeDomainData(td);
+      let s=0; for(let i=0;i<n;i++) s+=td[i]*td[i]; level=Math.min(1,Math.sqrt(s/n)*7);
+      const fd=new Float32Array(this.analyser.frequencyBinCount); this.analyser.getFloatFrequencyData(fd);
+      const hz=this.actx.sampleRate/n; let bi=0,bv=-Infinity;
+      for(let i=Math.floor(80/hz);i<Math.floor(1100/hz);i++) if(fd[i]>bv){bv=fd[i];bi=i;}
+      const p=Math.min(1,Math.max(0,(Math.log2(Math.max(1,bi*hz))-Math.log2(110))/3));
+      hue=255-p*235;
+    } else {
+      level=Math.max(0,0.38+0.28*Math.sin(t*2.1)+0.18*Math.sin(t*5.3+1)+(Math.random()-0.5)*0.15);
+      hue=265-150*(0.5+0.5*Math.sin(t*0.55));
+    }
+    this.h=this.h*0.8+hue*0.2; this.levels.push(level); this.hs.push(this.h);
+    if(this.t===3) this.raw.push({x:50,y:50,w:115,h:115,hue:this.h,l:0.93,c:0.025,a:0.75,rot:0,br:'50%',born:this.t});
+    if(this.t%4===0 && level>0.12){
+      const r=Math.random; this.walk.x=Math.min(90,Math.max(10,this.walk.x+(r()-0.5)*26)); this.walk.y=Math.min(88,Math.max(12,this.walk.y+(r()-0.5)*24));
+      const w=22+level*42;
+      this.raw.push({x:this.walk.x,y:this.walk.y,w,h:w*(0.6+r()*0.5),hue:this.h+(r()-0.5)*20,l:0.84-level*0.2,c:0.06+level*0.09,a:0.28+level*0.3,rot:r()*360,br:br(r),born:this.t});
+    }
+    this.setState({tick:this.t,level});
+    if(t>=this.maxSec()) this.stopRec();
+  };
+  stopRec = () => {
+    if(this.state.phase!=='singing') return;
+    this.cleanup();
+    const mode=this.props.goodTakes ?? 'auto';
+    const hs=(this.hs||[]).slice(5), m=hs.reduce((a,b)=>a+b,0)/Math.max(1,hs.length);
+    const sd=Math.sqrt(hs.reduce((a,b)=>a+(b-m)*(b-m),0)/Math.max(1,hs.length));
+    const lv=(this.levels||[]).reduce((a,b)=>a+b,0)/Math.max(1,(this.levels||[]).length);
+    let tier;
+    if(mode==='good'||mode==='okay'||mode==='poor') tier=mode;
+    else if(this.analyser){ const score=(this.t>=40?1:0)+(lv>0.25?1:0)+(sd<35?1:sd<60?0.5:0); tier=score>=2.5?'good':score>=1.5?'okay':'poor'; }
+    else { const r=Math.random(); tier=r<0.34?'good':r<0.67?'okay':'poor'; }
+    this.tier=tier; this.good=tier==='good';
+    if(this.raw.length<4) this.raw=this.raw.concat(genRaw(Math.floor(Math.random()*1e6),[this.h,this.h+40],5).slice(1));
+    this.raw.forEach(b=>b.born=-99);
+    this.setState({phase:'drying',good:this.good,tier:this.tier});
+    this.dryT=setTimeout(()=>this.setState({phase:'name'}),1700);
+  };
+  voiceDesc(){
+    const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+    const h=avg(this.hs||[]), l=avg(this.levels||[]);
+    return `${h>190?'Low':h>110?'Middle':'High'}, ${l>0.5?'bright':'soft'}${this.tier==='good'?', steady':this.tier==='okay'?', drifting':', wandering'}`;
+  }
+  sceneKey(){ const av=a=>a.reduce((x,y)=>x+y,0)/Math.max(1,a.length); const h=av(this.hs||[]), l=av(this.levels||[]); return h>200?'shore':h>120?(l>0.45?'bay':'bayLight'):'city'; }
+  abstractPick(){ if(this._abs) return this._abs; const hs=this.hs||[]; const h=hs.reduce((a,b)=>a+b,0)/Math.max(1,hs.length); const pool=h>235?[4,6,7,9]:h>150?[1,2,5,8]:[3,5,7]; this._abs=pool[Math.floor(Math.random()*pool.length)]; return this._abs; }
+  impressionPick(){ if(this._imp) return this._imp; const hs=this.hs||[]; const h=hs.reduce((a,b)=>a+b,0)/Math.max(1,hs.length); const pool=h>220?[3,5,6]:h>140?[2,6,1]:[1,4,5]; this._imp=pool[Math.floor(Math.random()*pool.length)]; return this._imp; }
+  resetRec(){ this.cleanup(); clearTimeout(this.dryT); this.raw=[]; this.t=0; this.good=false; this.tier=null; this._abs=null; this._imp=null; this.setState({phase:'ready',tick:0,level:0,caption:'',good:false,tier:null}); }
+  saveEntry = () => {
+    const e={id:Date.now(),date:TODAY,caption:this.state.caption.trim()||'Untitled',raw:this.raw.slice(),dur:Math.max(1,Math.round(this.t/10)),voice:this.voiceDesc(),audioUrl:this.audioUrl,scene:this.good?this.sceneKey():null,abstract:this.tier==='poor'?this.abstractPick():null,impression:this.tier==='okay'?this.impressionPick():null};
+    this.setState(s=>({entries:[e,...s.entries],screen:'home',view:'list',selDay:null,phase:'ready',caption:'',tick:0}));
+    this.raw=[];
+  };
+  open(id){ clearInterval(this.playIv); this.setState({screen:'detail',detailId:id,playing:false,playT:0}); }
+  togglePlay = () => {
+    const e=this.state.entries.find(x=>x.id===this.state.detailId); if(!e) return;
+    if(this.state.playing){ clearInterval(this.playIv); if(this.audio) this.audio.pause(); this.setState({playing:false}); return; }
+    const start=this.state.playT>=e.dur?0:this.state.playT;
+    if(e.audioUrl){ this.audio=new Audio(e.audioUrl); this.audio.currentTime=start; this.audio.play().catch(()=>{}); }
+    this.setState({playing:true,playT:start});
+    this.playIv=setInterval(()=>{ const nt=this.state.playT+0.1; if(nt>=e.dur){clearInterval(this.playIv);this.setState({playing:false,playT:e.dur});} else this.setState({playT:nt}); },100);
+  };
+
+  renderVals(){
+    const s=this.state, mul=this.mul(), max=this.maxSec();
+    const style=raw=>raw.map(b=>blobStyle(b,99,mul));
+    const sorted=[...s.entries].sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:b.id-a.id);
+    const filtered=s.view==='calendar'&&s.selDay?sorted.filter(e=>e.date===s.selDay):sorted;
+    const groups=[];
+    filtered.forEach(e=>{
+      let g=groups[groups.length-1];
+      if(!g||g.date!==e.date){const [y,m,d]=e.date.split('-');{const dt=new Date(+y,+m-1,+d);g={date:e.date,md:`${MONTHS[+m-1]} ${+d}`,year:DAYS[dt.getDay()],items:[]};}groups.push(g);}
+      g.items.push({...flagsFor(artKey(e)),caption:e.caption,durLabel:fmt(e.dur),blobs:style(this.rawFor(e)),open:()=>this.open(e.id)});
+    });
+    const has=new Set(s.entries.map(e=>e.date));
+    const first=new Date(s.calY,s.calM,1).getDay(), dim=new Date(s.calY,s.calM+1,0).getDate(), pdim=new Date(s.calY,s.calM,0).getDate();
+    const cells=[]; const total=Math.ceil((first+dim)/7)*7;
+    for(let i=0;i<total;i++){
+      const d=i-first+1, inM=d>=1&&d<=dim;
+      const key=inM?`${s.calY}-${String(s.calM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`:null;
+      const sel=key&&key===s.selDay, today=key===TODAY, hasE=key&&has.has(key);
+      cells.push({label:inM?d:(d<1?pdim+d:d-dim),bg:sel?'#1F1D1A':today?'#EFEAE1':'transparent',color:sel?'#FFFFFF':inM?'#1F1D1A':'#CFC9BF',dot:hasE?(sel?'#FFFFFF':'#1F1D1A'):'transparent',cursor:hasE?'pointer':'default',
+        onClick:()=>{ if(hasE) this.setState({selDay:sel?null:key}); }});
+    }
+    const de=s.entries.find(e=>e.id===s.detailId);
+    let detail={blobs:[],caption:'',longDate:'',voice:'',...flagsFor(null)};
+    if(de){const [y,m,d]=de.date.split('-').map(Number);const dt=new Date(y,m-1,d);detail={...flagsFor(artKey(de)),blobs:style(this.rawFor(de)),caption:de.caption,longDate:`${DAYS[dt.getDay()]}, ${MONTHS[m-1]} ${d}`.toUpperCase(),voice:`${fmt(de.dur)} · ${de.voice}`};}
+    const recT=s.tick/10;
+    const lines=['Keep going…','Let it out.','Softly, softly.','That’s it.'];
+    const selLabel=s.selDay?(()=>{const [,m,d]=s.selDay.split('-');return `${MONTHS[+m-1]} ${+d}`;})():'';
+    return {
+      wcScale:(this.props.wash ?? 'soft')==='bold'?70:46,
+      isHome:s.screen==='home', isRecord:s.screen==='record', isDetail:s.screen==='detail', isSettings:s.screen==='settings',
+      isCalendar:s.view==='calendar', isList:s.view==='list',
+      toggleView:()=>this.setState(st=>({view:st.view==='list'?'calendar':'list',selDay:null})),
+      openSettings:()=>this.setState({screen:'settings'}),
+      openRecord:()=>{this.resetRec();this.setState({screen:'record'});},
+      closeRecord:()=>{this.resetRec();this.setState({screen:'home'});},
+      goHome:()=>{clearInterval(this.playIv);if(this.audio)this.audio.pause();this.setState({screen:'home',playing:false});},
+      groups, showEmpty:filtered.length===0, emptyText:s.selDay?`Nothing sung on ${selLabel}.`:'Nothing here yet. Tap + and sing.',
+      weekdays:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], calCells:cells, calMonthName:MONTHS[s.calM], calYear:s.calY,
+      prevMonth:()=>this.setState(st=>st.calM===0?{calM:11,calY:st.calY-1}:{calM:st.calM-1}),
+      nextMonth:()=>this.setState(st=>st.calM===11?{calM:0,calY:st.calY+1}:{calM:st.calM+1}),
+      todayLabel:'THURSDAY, OCTOBER 15',
+      recBlobs:this.raw.map(b=>blobStyle(b,s.tick-b.born,mul)),
+      recPct:`${Math.min(100,recT/max*100)}%`, recTLabel:fmt(recT), recMaxLabel:fmt(max),
+      phaseReady:s.phase==='ready', phaseSinging:s.phase==='singing', phaseDrying:s.phase==='drying', phaseName:s.phase==='name',
+      singingLine:lines[Math.floor(recT/3.5)%lines.length],
+      micNote:s.live?'Listening':'No microphone — painting with a sample voice',
+      levelScale:(1+s.level*0.55).toFixed(3), levelColor:`oklch(0.78 0.1 ${(this.h||240).toFixed(0)} / 0.55)`,
+      startRec:this.startRec, stopRec:this.stopRec,
+      recSummary:s.tier==='good'?`${fmt(recT)} · STEADY VOICE — IT BECAME A PLACE`:s.tier==='okay'?`${fmt(recT)} · ALMOST STEADY — A PLACE IN THE MIST`:`${fmt(recT)} · ${this.voiceDesc().toUpperCase()}`,
+      ...(()=>{const show=s.phase==='drying'||s.phase==='name';const k=show?(s.tier==='good'?SCENE_TO_KEY[this.sceneKey()]:s.tier==='okay'?'M'+this.impressionPick():'A'+this.abstractPick()):null;return Object.fromEntries(ART_KEYS.map(x=>['rec'+x+'Op',x===k?1:0]));})(),
+      dryingLine:s.tier==='good'?'That was lovely. Something is appearing…':s.tier==='okay'?'Almost. A place is half-showing…':'Letting it dry…',
+      caption:s.caption, onCaption:e=>this.setState({caption:e.target.value}),
+      saveEntry:this.saveEntry, singAgain:()=>this.resetRec(),
+      detail, isPlaying:s.playing, notPlaying:!s.playing, togglePlay:this.togglePlay,
+      playPct:de?`${Math.min(100,s.playT/de.dur*100)}%`:'0%', playTLabel:fmt(s.playT),
+      deleteEntry:()=>{clearInterval(this.playIv);this.setState(st=>({entries:st.entries.filter(e=>e.id!==st.detailId),screen:'home',playing:false}));},
+      maxLabelLong:`${max} seconds`,
+      cycleLength:()=>{const o=[10,15,30];this.setState({maxOverride:o[(o.indexOf(max)+1)%3]});}
+    };
+  }
+}
+</script>
+</body>
+</html>
