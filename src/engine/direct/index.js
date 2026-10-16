@@ -165,7 +165,7 @@ export function expressionLine(x, withReference = false) {
 // looks. Figurative language is painted as its meaning.
 const article = (label) => `${/^[aeiou]/.test(label) ? 'An' : 'A'} ${label}`;
 const labelOf = (tier, withReference) => (withReference ? LEVELS[tier].refLabel : LEVELS[tier].label);
-const wordsOf = (c) => (c.source === 'note' ? "the person's note about this moment" : 'the sung words');
+const wordsOf = (c) => (c.source === 'note' ? "the note written for this moment" : 'the sung words');
 function subjectFromConcept(tier, c, withReference = false) {
   if (tier === 'loose') return `${article(labelOf('loose', withReference))}. It depicts nothing; its marks carry the feeling of ${wordsOf(c)}: ${c.text}`;
   if (tier === 'gathered') return `${article(labelOf('gathered', withReference))}, only suggesting, never spelling out: ${c.text}`;

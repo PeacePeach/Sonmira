@@ -38,6 +38,15 @@ test('no prompt, in any tier, family, reference or motif, with or without words,
   assert.equal(n, LIBRARY_COUNT() * MOTIFS.length * 2);
 });
 
+test('a note as the subject stays clean in every tier and family', () => {
+  for (const text of ['雨后的花园', 'tea by the window', 'mountain road at dusk']) for (const family of Object.keys(FAMILIES)) {
+    const concept = { text, theme: [], imagery: [], figurative: [], source: 'note' };
+    const d = direct({ completeness: FAMILIES[family].tier, emotion: 'tender', motif: 'garden', seed: 1, family, energy: { value: 'moderate' }, concept });
+    assert.equal(checkPrompt(d).verdict, 'ok', `${family} ${text}: ${JSON.stringify(checkPrompt(d))}`);
+    assert.equal(d.subjectSource, 'note');
+  }
+});
+
 test('without words or a note, Gathered and Resolved paint an atmosphere of the motif, not invented subjects', () => {
   for (const family of Object.keys(FAMILIES).filter((id) => FAMILIES[id].tier !== 'loose')) for (const motif of MOTIFS) {
     const d = direct({ completeness: FAMILIES[family].tier, emotion: 'tender', motif, seed: 4, family, energy: { value: 'calm' } });
