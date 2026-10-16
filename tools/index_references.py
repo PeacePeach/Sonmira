@@ -2,6 +2,7 @@
 
 Usage:
   python3 tools/index_references.py <refs_root> [--assign <path>=<FAMILY> ...] [--deactivate <id> ...] [--activate <id> ...]
+  python3 tools/index_references.py --measure <image>   (prints the palette JSON; used by tools/references.mjs)
 
 The registry src/engine/direct/references.js is the single source of truth for
 which reference belongs to which family. This tool keeps it in step with the
@@ -128,6 +129,8 @@ def measure(path):
 def main(argv):
     if not argv:
         print(__doc__); return 2
+    if argv[0] == '--measure':
+        print(json.dumps(measure(Path(argv[1])))); return 0
     root = Path(argv[0])
     global REGISTRY
     opts = {'--assign': [], '--deactivate': [], '--activate': [], '--registry': []}

@@ -27,7 +27,7 @@ import { join } from 'node:path';
 import { direct, LIBRARY, FAMILIES } from '../src/engine/direct/index.js';
 import { AFFINITY, SUBJECTS } from '../src/engine/direct/families.js';
 import { generateFromDirection, openaiConfig } from '../src/engine/providers/openai.js';
-import { fileReferenceLoader } from '../src/engine/providers/reference-files.js';
+import { localStore } from '../src/engine/providers/reference-store.js';
 
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf(`--${k}`); return i >= 0 ? args.splice(i, 2)[1] : d; };
@@ -70,7 +70,7 @@ for (const a of args) {
   // Streamed, so the ~30 s proxy limit does not cut long requests. Any API or
   // proxy error stops the run: no retries, since a failed request may still
   // be billed.
-  const g = await generateFromDirection(d, { loadReference: fileReferenceLoader(refsDir), stream: !noStream }).catch((e) => {
+  const g = await generateFromDirection(d, { loadReference: localStore(refsDir).loadImage, stream: !noStream }).catch((e) => {
     console.error(`  ✗ ${family}: ${e.message}${e.status ? ` (HTTP ${e.status})` : ''}. Stopping; nothing was retried.`);
     process.exit(1);
   });

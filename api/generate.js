@@ -8,14 +8,17 @@
 // The browser sends the visual spec (layer B); the prompt is built here from
 // it by the provider-independent art direction (layer C).
 
-import { direct, FAMILIES } from '../src/engine/direct/index.js';
+import { direct, createLibrary, FAMILIES } from '../src/engine/direct/index.js';
 import { generateFromDirection, openaiConfig } from '../src/engine/providers/openai.js';
-import { fileReferenceLoader } from '../src/engine/providers/reference-files.js';
+import { referenceStoreFromEnv } from '../src/engine/providers/reference-store.js';
 
-// With SONMIRA_REFS_DIR set, the selected primary reference image is sent
-// with the prompt (edits endpoint, streamed); without it, text-only
-// generation that still uses the reference's measured palette.
-const REFS_DIR = process.env.SONMIRA_REFS_DIR;
+// References come from private Vercel Blob in production (registry and
+// images), or SONMIRA_REFS_DIR locally. The selected primary reference's
+// bytes are read here and sent with the prompt (edits endpoint, streamed).
+// With no store, text-only generation that still uses the bundled
+// registry's measured palette. Nothing about the store reaches the client
+// beyond the reference id.
+// createHandler takes its dependencies so tests can run it with mocks.
 
 const LEVELS = ['loose', 'gathered', 'resolved'];
 const EMOTIONS = ['tender', 'bright', 'melancholic', 'intense'];
@@ -29,11 +32,11 @@ function cleanSpec(s) {
   return out;
 }
 
-export default async function handler(req, res) {
+export const createHandler = ({ store = referenceStoreFromEnv(), env = process.env, fetchImpl = fetch } = {}) => async function handler(req, res) {
   res.setHeader('cache-control', 'no-store');
   if (req.method === 'GET') {
-    const o = openaiConfig();
-    res.status(200).json({ providers: { openai: { configured: o.configured, model: o.model, quality: o.quality, size: o.size } } });
+    const o = openaiConfig(env);
+    res.status(200).json({ providers: { openai: { configured: o.configured, model: o.model, quality: o.quality, size: o.size } }, references: store?.kind ?? 'none' });
     return;
   }
   if (req.method !== 'POST') { res.status(405).json({ ok: false, error: 'POST only' }); return; }
@@ -41,11 +44,14 @@ export default async function handler(req, res) {
   const spec = cleanSpec(body.spec);
   if (!spec) { res.status(400).json({ ok: false, error: 'invalid spec' }); return; }
   if ((body.provider || 'openai') !== 'openai') { res.status(400).json({ ok: false, error: 'unknown provider' }); return; }
-  const direction = direct(spec);
   try {
-    const g = await generateFromDirection(direction, { loadReference: REFS_DIR && fileReferenceLoader(REFS_DIR), stream: true });
+    const library = store ? createLibrary(await store.loadRegistry()) : undefined;
+    const direction = direct({ ...spec, library });
+    const g = await generateFromDirection(direction, { loadReference: store?.loadImage, stream: true, env, fetchImpl });
     res.status(200).json({ ok: true, provider: g.provider, model: g.model, quality: g.quality, size: g.size, ms: g.ms, usage: g.usage, prompt: direction.prompt, family: direction.family, familyLabel: direction.familyLabel, familyRefs: direction.refs, reference: direction.reference?.id ?? null, referenceSent: Boolean(g.reference), seed: direction.seed, libraryVersion: direction.libraryVersion, swatches: direction.swatches, image: `data:${g.mime};base64,${g.b64}` });
   } catch (e) {
     res.status(e.code === 'not_configured' ? 503 : 502).json({ ok: false, error: e.message, code: e.code || 'error' });
   }
-}
+};
+
+export default createHandler();
