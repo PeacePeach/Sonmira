@@ -4,7 +4,7 @@
 :root {
   --paper: #F8F5EF;          /* app background */
   --painting-paper: #F3EDE1;
-  --tile: #F2EDE4;
+  --tile: #F5F1EA;          /* tiles and rows on --paper: a shade darker than the background */
   --tile-line: #E6DFD3;
   --hairline: #ECE7DE;
   --hover: #EFEBE3;
