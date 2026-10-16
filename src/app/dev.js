@@ -90,14 +90,17 @@ export function mountDevPanel(app) {
     h('div', { style: 'margin-top:6px' }, h('a', { href: 'dev/gallery.html' + location.search, target: '_blank' }, 'engine gallery ↗')),
     h('div', { style: 'margin-top:6px;opacity:.7' }, 'engine: ', h('a', { href: '?dev&engine=ai' }, 'ai'), ' · ', h('a', { href: '?dev&engine=real' }, 'real'), ' · ', h('a', { href: '?dev&engine=mock' }, 'mock')),
     diag));
-  // Last generation: how the recording was understood and what made the
-  // painting. Ids and measurements only; no keys or storage URLs reach here.
-  app.dev.onGeneration = (g) => {
+  // Diagnostics for one painting: how the recording was understood and what
+  // made it. Ids and measurements only; no keys or storage URLs reach here.
+  // The panel shows either the take just made on the Sing screen or the saved
+  // artwork that is open, always from that painting's own record.
+  const render = (g, { title, engineId, entryId = null }) => {
     const rows = (pairs) => pairs.filter(([, v]) => v !== undefined).map(([k, v]) => h('div', {}, `${k}: ${v == null ? '—' : typeof v === 'object' ? JSON.stringify(v) : v}`));
     const section = (title, pairs, open = false) => h('details', open ? { open: '' } : {}, h('summary', {}, title), ...rows(pairs));
     const u = g?.understanding;
-    const out = [h('div', { style: 'opacity:.7' }, 'last generation')];
-    if (!g) out.push(...rows([['engine', app.engine.id], ['provider', 'none (local renderer)']]));
+    const out = [h('div', { style: 'opacity:.7' }, title)];
+    diag.dataset.entry = entryId ?? '';
+    if (!g) out.push(...rows([['engine', engineId], ['provider', 'none (local renderer)']]));
     else {
       if (g.error) out.push(...rows([['error', g.error], ['status', g.status], ['detail', g.detail]]));
       if (u) {
@@ -114,11 +117,33 @@ export function mountDevPanel(app) {
         out.push(section('singing', [['score', q?.score], ['confidence', q?.confidence], ['strong', q?.strong], ...Object.entries(q?.components ?? {}).map(([k, c]) => [k, c]), ['unavailable', q?.unavailable?.join('; ')], ['expression', u.expression]]));
         out.push(section('semantics', [['source', s?.source], ['why', s?.reason], ['concept', s?.concept?.text], ['theme', s?.concept?.theme?.join(', ')], ['imagery', s?.concept?.imagery?.join(', ')], ['figurative', s?.concept?.figurative], ['mood', u.emotion?.value + ' · ' + u.emotion?.source], ['motif', u.motif?.value + ' · ' + u.motif?.source]]));
       }
-      if (!g.error) out.push(section('generation', [['engine', app.engine.id], ['provider', g.provider], ['model', g.model], ['quality', g.quality], ['tier', g.tier], ['family', g.family], ['subject from', g.subjectSource],
+      if (!g.error) out.push(section('generation', [['engine', engineId], ['provider', g.provider], ['model', g.model], ['quality', g.quality], ['tier', g.tier], ['family', g.family], ['subject from', g.subjectSource],
         ['reference', g.reference], ['ref sent', g.referenceSent], ['library', g.libraryVersion], ['seed', g.seed], ['time', g.ms ? `${(g.ms / 1000).toFixed(1)} s` : null]], true));
-      else out.push(...rows([['engine', app.engine.id]]));
+      else out.push(...rows([['engine', engineId]]));
     }
     diag.replaceChildren(...out);
+  };
+  let last = null; // the latest take on this page load, restored when an artwork closes
+  const showLast = () => (last ? render(last.g, { title: 'last generation', engineId: last.engineId }) : diag.replaceChildren('last generation: none yet'));
+  app.dev.onGeneration = (g) => {
+    last = { g, engineId: app.engine.id };
+    showLast();
     console.info('[sonmira] generation', g);
   };
+  // A saved artwork: its own saved metadata, never the latest take's. Entries
+  // saved before generation metadata existed (or by an engine that keeps
+  // none) say so instead of borrowing another painting's values.
+  app.dev.onArtworkOpen = (entry) => {
+    const g = entry?.painting?.generation ?? null;
+    const engineId = entry?.painting?.engineId ?? 'unknown';
+    if (!g) {
+      diag.dataset.entry = entry?.id ?? '';
+      diag.replaceChildren(h('div', { style: 'opacity:.7' }, 'opened artwork'), h('div', { 'data-diag': 'unavailable' }, 'Diagnostics unavailable'), h('div', {}, `engine: ${engineId}`));
+      return;
+    }
+    render(g, { title: 'opened artwork', engineId, entryId: entry.id });
+  };
+  // Screens mount before the previous one is destroyed, so closing artwork A
+  // after opening B must not replace B's diagnostics.
+  app.dev.onArtworkClose = (entry) => { if (diag.dataset.entry === (entry?.id ?? '')) showLast(); };
 }
