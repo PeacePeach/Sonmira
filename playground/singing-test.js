@@ -206,6 +206,7 @@ async function analyse(slot, { fetchWords = false } = {}) {
   }
   renderTake(slot);
   renderSummary();
+  if (fetchWords) sendTake(slot);
 }
 
 // A take the analysis barely heard is a recording problem, not a tier result.
@@ -369,9 +370,10 @@ function renderCalibration() {
     <p class="hint">Green passes, red fails. Rows above “Singing score” decide Loose; the rest decide Gathered vs Resolved. Singing checks are shown for every take, even when stage 2 wasn’t reached.</p>`;
 }
 
-// Compact results (no audio) to paste into the project thread.
-function resultsJson() {
-  const takes = TAKES.map(({ slot, title }) => {
+// Compact results for one take (no audio).
+function takeResult(slot) {
+  {
+    const title = labelFor(slot).title;
     const t = state.get(slot), u = view.get(slot)?.u;
     if (!u) return { slot, title, expected: t.expected, recorded: Boolean(t.blob) };
     const q = u.singing?.quality, C = q?.components ?? {}, P = C.performance ?? {};
@@ -394,8 +396,36 @@ function resultsJson() {
       performance: { controlledShare: P.controlledShare, labels: P.labels, windowP25: P.windowP25, weakWindowShare: P.weakWindowShare, drift: P.tuning?.driftCents, windows: (P.windows ?? []).map((w) => [w.t0, w.t1, w.controlled]) },
       expression: u.expression,
     };
-  });
-  return JSON.stringify({ kind: 'sonmira-singing-test', version: 1, at: new Date().toISOString(), browser: navigator.userAgent, calibration: { singing: SINGING_CALIBRATION.strong, performance: SINGING_CALIBRATION.strongPerformance, sung: SINGING_CALIBRATION.sung, gate: GATE_CALIBRATION }, takes });
+  }
+}
+const calibrationSnapshot = () => ({ singing: SINGING_CALIBRATION.strong, performance: SINGING_CALIBRATION.strongPerformance, sung: SINGING_CALIBRATION.sung, gate: GATE_CALIBRATION });
+
+// Results for the thread (Copy button).
+function resultsJson() {
+  const takes = TAKES.map(({ slot }) => takeResult(slot));
+  return JSON.stringify({ kind: 'sonmira-singing-test', version: 1, at: new Date().toISOString(), browser: navigator.userAgent, calibration: calibrationSnapshot(), takes });
+}
+
+// Saves one take's results on the server (a private results repository)
+// when the deployment is configured for it, so nothing has to be copied.
+let saving = false;
+const sendTimers = new Map();
+function sendTake(slot, delay = 0) {
+  if (!saving) return;
+  clearTimeout(sendTimers.get(slot));
+  sendTimers.set(slot, setTimeout(async () => {
+    const t = state.get(slot), r = takeResult(slot);
+    if (!view.get(slot)?.u) return;
+    const el = $(`take-${slot}`)?.querySelector('.sent');
+    if (el) el.textContent = 'Sending to Claude…';
+    try {
+      const res = await fetch('/api/singing-results', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ take: { kind: 'sonmira-singing-take', version: 1, at: new Date().toISOString(), recordedAt: t.recordedAt, browser: navigator.userAgent, calibration: calibrationSnapshot(), ...r } }) });
+      const j = await res.json().catch(() => null);
+      if (el) el.textContent = res.ok && j?.ok ? 'Claude has this take ✓' : `Couldn’t send this take to Claude (${j?.code || res.status}). The Copy button still works.`;
+    } catch {
+      if (el) el.textContent = 'Couldn’t send this take to Claude. The Copy button still works.';
+    }
+  }, delay));
 }
 
 async function copyResults() {
@@ -424,6 +454,7 @@ function takeCard({ slot, title, ask }) {
       <label>After listening back, this take deserves ${tierSelect('judged', t.judged, 'not judged yet')}</label>
       <input type="text" class="comment" placeholder="Optional note, e.g. “I was off-key at the end”" value="${esc(t.comment || '')}">
     </div>
+    <p class="hint sent"></p>
     <button class="ghost rerun" hidden title="Re-measure with the current code and the saved word reading; no paid call">Re-analyse (free)</button>
   </article>`;
 }
@@ -439,8 +470,8 @@ export async function initSingingTest() {
     const card = $(`take-${slot}`), t = state.get(slot);
     card.querySelector('.recbtn').addEventListener('click', () => (rec?.slot === slot ? stopRecording() : startRecording(slot)));
     card.querySelector('.expected').addEventListener('change', (e) => { t.expected = e.target.value; saveTake(t); renderTake(slot); renderSummary(); });
-    card.querySelector('.judged').addEventListener('change', (e) => { t.judged = e.target.value; saveTake(t); renderTake(slot); renderSummary(); });
-    card.querySelector('.comment').addEventListener('change', (e) => { t.comment = e.target.value; saveTake(t); });
+    card.querySelector('.judged').addEventListener('change', (e) => { t.judged = e.target.value; saveTake(t); renderTake(slot); renderSummary(); sendTake(slot, 800); });
+    card.querySelector('.comment').addEventListener('change', (e) => { t.comment = e.target.value; saveTake(t); sendTake(slot, 800); });
     card.querySelector('.rerun').addEventListener('click', () => analyse(slot));
     renderTake(slot);
   }
@@ -459,6 +490,13 @@ export async function initSingingTest() {
 }
 
 async function checkServer() {
+  try {
+    const r = await fetch('/api/singing-results');
+    saving = r.ok && (await r.json()).configured === true;
+  } catch { saving = false; }
+  $('stSaving').textContent = saving
+    ? 'Each take’s results (no audio) are sent to Claude automatically after it is analysed and whenever you change its label.'
+    : 'Results are not sent automatically on this deployment: use “Copy results for Claude” at the bottom when you’re done.';
   try {
     const r = await fetch('/api/understand');
     const j = r.ok ? await r.json() : null;
