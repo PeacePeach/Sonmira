@@ -292,6 +292,8 @@ test('callers must hold the account, and each address is rate limited', async ()
   assert.equal(out.code, 200);
   const st = res(); await createStatusHandler({ ledger: s.ledger, log: () => {}, authorize: async () => false, limit: async () => true })({ method: 'GET', headers: {}, query: { account: A } }, st);
   assert.equal(st.code, 401);
+  const n = res(); await createNotificationsHandler({ ledger: s.ledger, verifier: s.verifier, log: () => {}, limit: async () => false })({ method: 'POST', headers: {}, body: {} }, n);
+  assert.equal(n.code, 429);
 });
 
 test('the per-address limit counts in one-minute windows', async () => {

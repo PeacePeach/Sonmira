@@ -192,3 +192,16 @@ test('in a browser the simulator stays', async () => {
   assert.equal(b.manageSubscriptions, null);
   globalThis.location = { reload() {} };
 });
+
+test('on the released site a browser cannot buy; previews keep the simulator', async () => {
+  globalThis.location = { hostname: 'sonmira.vercel.app', reload() {} };
+  try {
+    const b = createBilling({ ask: () => { throw new Error('no simulator on the released site'); } });
+    assert.equal(b.simulated, false);
+    await assert.rejects(b.purchase(PACK), { kind: 'appOnly' });
+    await assert.rejects(b.restore(), { kind: 'appOnly' });
+    assert.equal(b.status().free, 3, 'the free paintings are still there');
+    globalThis.location = { hostname: 'sonmira-git-claude-storekit-iap-18jb4y-zizibittergourd-9441.vercel.app', reload() {} };
+    assert.equal(createBilling({ ask: async () => 'success' }).simulated, true);
+  } finally { globalThis.location = { reload() {} }; }
+});

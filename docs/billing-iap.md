@@ -1,7 +1,9 @@
 # Apple In-App Purchase (StoreKit 2)
 
-The iOS app sells through the App Store; web previews keep the purchase
-simulation described in `docs/paywall.md`. The paywall's design, copy and
+The iOS app sells through the App Store; web previews and local development
+keep the purchase simulation described in `docs/paywall.md`. On the released
+site (`sonmira.vercel.app`) a browser can't buy: the paywall says purchases
+are made in the iPhone app, since the server counts every painting there. The paywall's design, copy and
 states are the same in both.
 
 ## Products
@@ -78,6 +80,10 @@ npm run ios          # builds www/, syncs the Xcode project
 npx cap open ios     # Xcode: pick your team, then Product → Archive → upload
 ```
 
+Without a Mac: `.github/workflows/testflight.yml` archives, signs (Apple-managed
+signing through an App Store Connect API key) and uploads to TestFlight. It
+needs four repository secrets, listed at the top of the file.
+
 `native/ios.json` chooses how the app loads:
 
 - `hosted` (default): the app opens `appUrl`, so web changes reach phones on
@@ -99,6 +105,35 @@ to the native code.
   StoreKit testing (Edit Scheme → Run → Options → StoreKit Configuration).
 - TestFlight builds buy in Sandbox: nothing is charged, and a monthly
   subscription renews every 5 minutes.
+
+## Sandbox test plan
+
+| Step | Needs the Paid Apps Agreement active? |
+| --- | --- |
+| Xcode run with `Sonmira.storekit` (already selected in the shared App scheme): buy, cancel, Ask to Buy, refund and renewals from Xcode's Transaction Manager | No |
+| Upload to TestFlight (`.github/workflows/testflight.yml`, or Xcode → Archive) and install | No |
+| Create a Sandbox Apple Account (App Store Connect → Users and Access → Sandbox) | No |
+| Products load in a TestFlight build, Sandbox purchases, renewals every 5 minutes, Restore | **Yes** |
+| App Store Server Notifications (Sandbox) reaching `/api/billing/apple-notifications` | Yes, and a deployed server with the billing ledger |
+
+Xcode's local transactions are signed by Xcode, so a server only accepts them
+with `SONMIRA_ALLOW_XCODE_STOREKIT=1` (never in Production). Against the
+released site they show in the app but are not recorded, which is enough to
+check the paywall and StoreKit flows.
+
+In TestFlight, with a Sandbox account:
+
+1. First launch: 3 free paintings; the paywall shows US$2.99 and US$4.99.
+2. Buy Little Moments: 10 paintings, in Settings and on the server
+   (`/api/billing/status`).
+3. Kill the app during the purchase sheet, reopen: the purchase is applied once.
+4. Buy Daily Ritual: one painting today; a second opens the paywall with
+   Little Moments only. Wait 5 minutes: it renews; after 6 renewals it ends.
+5. Settings → Daily Ritual opens Apple's subscription settings; cancel there:
+   it stays until the period ends, then stops.
+6. Delete and reinstall, Restore Purchases: the remaining paintings and Daily
+   Ritual come back, the free paintings do not.
+7. A painting that fails to generate takes nothing.
 
 ## Joining the generation guard
 

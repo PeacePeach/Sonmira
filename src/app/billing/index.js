@@ -13,11 +13,11 @@
 // is a second local copy that a simulated reinstall keeps.
 
 import { createWallet } from './wallet.js';
-import { createSimulatedStore, StoreError } from './store.js';
+import { createSimulatedStore, createAppOnlyStore, StoreError } from './store.js';
 import { createNativeStore } from './native-store.js';
 import { createBillingServer } from './remote.js';
 import { PRODUCTS, productById } from './products.js';
-import { nativePlugin } from '../native/platform.js';
+import { nativePlugin, isReleaseSite } from '../native/platform.js';
 import { dayKey } from '../format.js';
 
 export { StoreError };
@@ -43,7 +43,7 @@ export function createBilling({ ask, native, server }) {
     const base = server;
     server = { ...base, send: async (req) => base.send({ ...req, device: await native.deviceId().catch(() => null) }) };
   }
-  const store = native ?? createSimulatedStore({ ask });
+  const store = native ?? (isReleaseSite() ? createAppOnlyStore() : createSimulatedStore({ ask }));
   let account = native ? native.accountId().catch((e) => { console.warn('[sonmira] no account id', e); return null; }) : Promise.resolve(null);
   const today = () => { const d = new Date(); if (!native) d.setDate(d.getDate() + (Number(readJSON(DAY_SHIFT)) || 0)); return dayKey(d); };
   const wallet = createWallet({

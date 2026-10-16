@@ -7,11 +7,13 @@ export const DOCS = {
   privacy: {
     title: 'Privacy policy',
     body: [
-      'Sonmira is a personal diary. Your diary (recordings, notes and paintings) is stored only in this browser, on this device.',
-      'To make a painting, your recording and note are sent to Sonmira’s painting service and to OpenAI, which listens for the words and paints the image. OpenAI handles them under its API data policy and does not use them to train its models.',
-      'Sonmira’s painting service keeps the finished painting and the reading of your words for 24 hours, so a painting isn’t lost if the app closes while it is being made. It keeps no recordings.',
-      'An anonymous install id and your invitation code are used only to limit how many paintings can be made. There are no analytics or advertising.',
-      'An account is optional. If you sign in with Apple, we keep only an anonymous account id linked to your Apple ID, with the paintings you have left and your purchases. We never ask for your name or email, and your diary, recordings and paintings are not part of your account: they stay on this device. You can delete your account in Settings → Account.',
+      'Sonmira is a personal diary. Here is what stays on your device, what is sent to make a painting, and what Sonmira’s server keeps.',
+      'Stays on this device: your diary, meaning every recording, note and painting you keep, is stored only in this browser, on this device. It is not backed up or synced, and signing in doesn’t change that.',
+      'Sent to make a painting: your recording goes to Sonmira’s painting service and on to OpenAI, which writes down any words you sing. An OpenAI language model then reads those words for their mood and imagery. A short description of what to paint, taken from your words or, when there are none, from your note, is sent to OpenAI to paint the image. Your note is sent only in that case. OpenAI handles all of this under its API data policy and does not use it to train its models.',
+      'Kept on Sonmira’s server: your recording is never stored. The words it heard, how they were read, the description sent for painting and the finished painting are kept for 24 hours, so a painting isn’t lost if the app closes while it is being made, and are then deleted.',
+      'To limit how many paintings can be made and to keep your balance, the server also keeps an anonymous install id, your invitation code, daily counts, the paintings you have left and your purchases.',
+      'An account is optional. If you sign in with Apple, the server links that anonymous id to a coded form of your Apple ID, so your paintings left and purchases can be found again. We never ask for your name or email, and your diary is not part of your account. You can delete your account in Settings → Account.',
+      'There are no analytics or advertising.',
       'The microphone is used only while you are singing, after you tap to begin.',
       'Clearing this site’s data in your browser removes your diary permanently. Backup is not available yet.',
       'Purchases are handled by Apple. Sonmira never sees your payment details. In this prototype, purchases are simulated and nothing is charged.',
