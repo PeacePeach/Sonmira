@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sonmira Engine Playground</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>Sonmira Watercolor Engine Playground</h1>
+  <p class="sub">Local test bench for the real engine (<span id="method">procedural-watercolor-v1</span>). Nothing leaves this computer.</p>
+  <nav>
+    <button class="tab active" data-view="studio">Studio</button>
+    <button class="tab" data-view="library">Library &amp; compare <span id="libCount"></span></button>
+  </nav>
+</header>
+
+<main id="studio" class="view">
+  <section class="col input">
+    <div class="card">
+      <h2>1 · Voice</h2>
+      <div class="rec">
+        <button id="recBtn" class="primary">● Record</button>
+        <span id="timer" class="timer">0.0 / 30 s</span>
+      </div>
+      <div class="meter"><div id="meterFill"></div></div>
+      <p class="hint" id="recHint">Recording asks for microphone permission. Stops by itself at 30 s.</p>
+      <div class="or">or</div>
+      <label class="file">Upload WAV, MP3 or M4A
+        <input id="fileInput" type="file" accept=".wav,.mp3,.m4a,.aac,.mp4,audio/*">
+      </label>
+      <div id="clip" class="clip" hidden>
+        <div class="clipname" id="clipName"></div>
+        <audio id="player" controls></audio>
+        <button id="retryBtn" class="ghost">Discard and record again</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2 · Note (optional)</h2>
+      <textarea id="note" rows="3" placeholder="A line about the song or the moment. Emotion and motif come only from these words."></textarea>
+    </div>
+
+    <div class="card dev">
+      <h2>Developer overrides</h2>
+      <label>Vocal control
+        <select id="ovTier">
+          <option value="auto">Auto (from the voice)</option>
+          <option value="loose">Loose</option>
+          <option value="gathered">Gathered</option>
+          <option value="resolved">Resolved</option>
+          <option value="custom">Custom position…</option>
+        </select>
+      </label>
+      <label id="posRow" hidden>Style position <output id="posOut">0.50</output>
+        <input id="ovPos" type="range" min="0" max="1" step="0.01" value="0.5">
+      </label>
+      <label>Emotion
+        <select id="ovEmotion"><option value="auto">Auto (from the note)</option></select>
+      </label>
+      <label>Motif
+        <select id="ovMotif"><option value="auto">Auto (from the note)</option></select>
+      </label>
+      <label>Seed
+        <span class="seedrow">
+          <input id="seed" type="text" inputmode="numeric" placeholder="auto (from the audio)">
+          <button id="rollSeed" class="ghost" title="New random seed">↻</button>
+        </span>
+      </label>
+      <p class="hint">Fix a seed to compare tiers or emotions on the same composition.</p>
+    </div>
+
+    <div class="actions">
+      <button id="paintBtn" class="primary" disabled>Analyze &amp; paint</button>
+      <button id="tiersBtn" disabled title="Same audio, note and seed, painted at Loose, Gathered and Resolved">Paint all three tiers</button>
+    </div>
+    <p class="hint" id="status"></p>
+  </section>
+
+  <section class="col art">
+    <div id="artwork" class="artwork empty">
+      <p>The painting appears here.</p>
+    </div>
+  </section>
+
+  <section class="col results">
+    <div class="card" id="results">
+      <h2>Analysis</h2>
+      <p class="hint">Record or upload a take, then press Analyze &amp; paint.</p>
+    </div>
+    <details class="card limits">
+      <summary>What these numbers can and cannot say</summary>
+      <ul>
+        <li>Vocal control measures how sustained and connected the pitch was and how often the sound broke. It picks an artistic register. It is not a singing-quality score.</li>
+        <li>There is no reference melody or beat, so nothing here can judge whether notes or rhythm were correct.</li>
+        <li>Vibrato and slides count as connected. Onset regularity is only a proxy from loudness rises.</li>
+        <li>Emotion and motif come only from the note. With no note: tender and an abstract motif.</li>
+        <li>Thresholds (gathered ≥ 0.50, resolved ≥ 0.78) are artistic calibration, not validated against listeners.</li>
+        <li>Confidence drops with little pitched sound, unclear pitch or mostly noise; low-confidence takes are pulled toward the middle.</li>
+      </ul>
+    </details>
+  </section>
+</main>
+
+<main id="library" class="view" hidden>
+  <div class="libbar">
+    <span id="libHint" class="hint">Every painting is saved here in this browser. Tick runs to compare them side by side.</span>
+    <span class="spacer"></span>
+    <button id="compareBtn" disabled>Compare selected</button>
+    <button id="clearSel" class="ghost">Clear selection</button>
+  </div>
+  <div id="compare" class="compare" hidden></div>
+  <div id="runs" class="runs"></div>
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
