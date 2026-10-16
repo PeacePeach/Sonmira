@@ -261,7 +261,7 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .pw-done .actions { padding-top: 26px; }
 .pw-done .pw-dev { margin-top: 16px; }
 /* a real watercolor bloom on cotton paper; multiply lets the paper melt into the sheet */
-.pw-bloom { display: block; width: 240px; max-width: 70%; aspect-ratio: 840 / 681; margin: 0 auto 14px; mix-blend-mode: multiply; -webkit-mask-image: radial-gradient(closest-side, #000 72%, transparent 100%); mask-image: radial-gradient(closest-side, #000 72%, transparent 100%); animation: bloomIn 1.6s ease-out both; }
+.pw-bloom { display: block; width: 168px; max-width: 50%; aspect-ratio: 540 / 436; margin: 6px auto 16px; mix-blend-mode: multiply; -webkit-mask-image: radial-gradient(closest-side, #000 86%, transparent 100%); mask-image: radial-gradient(closest-side, #000 86%, transparent 100%); animation: bloomIn 1.6s ease-out both; }
 @keyframes bloomIn { from { opacity: 0; transform: scale(.96); filter: blur(3px); } }
 @media (prefers-reduced-motion: reduce) { .pw-bloom, .pw-why-body { animation: none !important; } }
 
