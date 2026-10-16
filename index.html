@@ -29,6 +29,21 @@
   </filter>
 </svg>
 <div id="stage"><div id="app" class="device"></div></div>
-<script type="module" src="src/app/main.js"></script>
+<script>
+// TEMPORARY (preview debugging, remove before merge): if the app fails to start, show why instead of a blank page.
+(function () {
+  var errs = [];
+  function show() {
+    var el = document.getElementById('app'); if (!el || el.children.length) return;
+    el.style.cssText = 'padding:24px;font:13px/1.5 -apple-system,sans-serif;color:#333;white-space:pre-wrap;word-break:break-word;overflow:auto';
+    el.textContent = 'Sonmira could not start.\n\n' + (errs.join('\n\n') || 'No error was reported.') + '\n\n' + navigator.userAgent;
+  }
+  window.addEventListener('error', function (e) { errs.push((e.message || 'error') + (e.filename ? '\n' + e.filename + ':' + e.lineno : '')); });
+  window.addEventListener('unhandledrejection', function (e) { var r = e.reason; errs.push('Unhandled: ' + (r && (r.stack || r.message) || r)); });
+  window.__bootFailed = function () { errs.push('src/app/main.js (or a file it imports) failed to load'); };
+  setTimeout(show, 4000);
+})();
+</script>
+<script type="module" src="src/app/main.js" onerror="__bootFailed()"></script>
 </body>
 </html>
