@@ -1,6 +1,6 @@
 # Vercel configuration for a real beta
 
-The smallest setup that turns the guarded integration into a paid beta. Nothing here is needed for the no-cost Preview, which runs on the fake provider with no setup (see the end).
+The smallest setup that turns the guarded integration into a paid beta. The order of the steps, and the line between merging code and deploying Production, are in `docs/beta-deployment-checklist.md`.
 
 ## 1. Storage (one shared store)
 
@@ -22,16 +22,20 @@ Nothing else is required. Optional later: `SONMIRA_COST_IMAGE_USD` once the real
 
 Never set in Production: `SONMIRA_FAKE_PROVIDER` and `SONMIRA_PROTECT` (both are ignored there anyway), `SONMIRA_REFERENCE_VIEW`.
 
+Kill switch, no deploy needed: set `SONMIRA_DAILY_CAP_USD` to `0` (every paid request is refused with `spend_cap`), or remove a code from `SONMIRA_INVITE_CODES` (its devices lose access). Vercel applies environment changes on the next deployment, so redeploy the current Production deployment after changing them.
+
 ## 3. Project settings
 
-- **Production deploys.** `vercel.json` currently has `git.deploymentEnabled.main: false`, so merging to main does not deploy. For the beta, either remove that line in the merge or promote a deployment by hand.
+- **Production deploys stay manual** (decided by Han). `vercel.json` keeps `git.deploymentEnabled.main: false`, so merging to main deploys nothing; Production is deployed by hand, after approval (see the checklist).
 - **Function duration.** `vercel.json` asks for 120 s on `/api/generate` and 60 s on `/api/understand`; the plan must allow 120 s.
 - **System environment variables** stay exposed (the default), so functions see `VERCEL_ENV`.
 - **Deployment Protection** on Preview deployments, so only the team opens Preview URLs.
 
-## 4. Code change at merge time
+## 4. No-cost test deployments
 
-Remove the branch-name switch in `server/dev/mode.js` (Previews of `claude/production-readiness*` turn the fake provider on by themselves). With it gone, a Preview is free only with `SONMIRA_FAKE_PROVIDER=1` in the Preview environment; without that, and without Preview's own secret, codes and store, a Preview refuses paid requests.
+The fake provider is on only where `SONMIRA_FAKE_PROVIDER=1` is set, and never in Production. To keep a Preview usable for testing at no cost, add `SONMIRA_FAKE_PROVIDER=1` to the Preview environment (it can be limited to one branch). It then uses the invitation code `SONMIRA-PREVIEW`, a fixed token secret and an in-memory store, and paints with the offline renderer.
+
+A Preview without that switch uses the real provider behind the full guard. Without its own secret, codes and shared store, it refuses paid requests (`503 not_configured`). `SONMIRA_PROTECT=off` is ignored on every Vercel deployment.
 
 ## 5. Beta setup task: transcription check (Engine)
 
@@ -50,6 +54,6 @@ Details: `docs/engine-v1.md`, "Beta setup: transcription check".
 2. Open the app, enter a code, sing, paint once: the painting arrives; the function log shows one `sonmira.guard` line with `outcome: "ok"` and `dayUsd` of about 0.16.
 3. The OpenAI project's usage shows one image and one transcription.
 
-## Today's no-cost Preview, for reference
+## Proof that a deployment can't make an unguarded paid call
 
-Previews of the `claude/production-readiness*` branches use the fake provider: invitation code `SONMIRA-PREVIEW`, a fixed token secret, an in-memory store per function instance, and a procedural painting instead of an OpenAI call. `tests/no-paid-calls.test.mjs` loads the deployed functions under each environment a deployment can have, with a real-looking OpenAI key set, and shows no request reaches `api.openai.com`.
+`tests/no-paid-calls.test.mjs` loads the deployed functions under each environment a deployment can have, with a real-looking OpenAI key set, and counts requests to `api.openai.com`. The counts are zero in every case: a Preview with the switch paints on the fake provider; a Preview without it on any branch, a Preview with `SONMIRA_PROTECT=off`, a half-configured Preview, and Production with either switch set all refuse before any provider call.

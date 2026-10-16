@@ -27,7 +27,7 @@ The guard counts fixed unit costs, not the provider bill: **$0.15 per image**, $
 | `KV_REST_API_URL`, `KV_REST_API_TOKEN` | Vercel KV / Upstash Redis (Storage → Marketplace → Upstash) |
 | `SONMIRA_DAILY_CAP_USD` | `3` |
 | optional | `SONMIRA_COST_*_USD`, `SONMIRA_LIMIT_<NAME>` (see `server/protect/config.js`) |
-| local only | `SONMIRA_PROTECT=off` (ignored in Production) |
+| local only | `SONMIRA_PROTECT=off` (ignored on every Vercel deployment) |
 
 Also (P0-2, OpenAI dashboard, no code): a separate project and key per environment, a monthly budget with alerts, and Vercel Deployment Protection on Preview URLs.
 
