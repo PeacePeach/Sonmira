@@ -11,6 +11,8 @@
 //   palette  measured: colors [{hex, share}] dominant first, accent, paper,
 //            dark, lightness, saturation, temperature (shares are 0..1)
 //   light, motif  optional curated hints
+//   content  curated: what the image depicts, as leakage.js term ids (for
+//            the leakage check only; never sent to the model)
 
 export const REFERENCE_LIBRARY = /*BEGIN*/[
  {
@@ -39,7 +41,11 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
    "lightness": 0.799,
    "saturation": 0.115,
    "temperature": "warm"
-  }
+  },
+  "content": [
+   "building",
+   "boat"
+  ]
  },
  {
   "id": "gathered_05",
@@ -67,7 +73,10 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
    "lightness": 0.76,
    "saturation": 0.125,
    "temperature": "neutral"
-  }
+  },
+  "content": [
+   "wave"
+  ]
  },
  {
   "id": "gathered_02",
@@ -91,7 +100,8 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
    "lightness": 0.854,
    "saturation": 0.057,
    "temperature": "warm"
-  }
+  },
+  "content": []
  },
  {
   "id": "gathered_03",
@@ -119,7 +129,10 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
    "lightness": 0.464,
    "saturation": 0.15,
    "temperature": "warm"
-  }
+  },
+  "content": [
+   "tree"
+  ]
  },
  {
   "id": "gathered_04",
@@ -147,7 +160,11 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
    "lightness": 0.482,
    "saturation": 0.252,
    "temperature": "warm"
-  }
+  },
+  "content": [
+   "cafe",
+   "building"
+  ]
  },
  {
   "id": "loose_01",
@@ -175,7 +192,8 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
    "lightness": 0.879,
    "saturation": 0.221,
    "temperature": "cool"
-  }
+  },
+  "content": []
  },
  {
   "id": "loose_02",
@@ -199,7 +217,8 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
    "lightness": 0.677,
    "saturation": 0.347,
    "temperature": "cool"
-  }
+  },
+  "content": []
  },
  {
   "id": "loose_03",
@@ -227,7 +246,8 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
    "lightness": 0.82,
    "saturation": 0.128,
    "temperature": "warm"
-  }
+  },
+  "content": []
  },
  {
   "id": "resolved_01",
@@ -251,7 +271,12 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
    "lightness": 0.744,
    "saturation": 0.284,
    "temperature": "cool"
-  }
+  },
+  "content": [
+   "person",
+   "fir",
+   "snow"
+  ]
  },
  {
   "id": "resolved_14",
@@ -275,7 +300,12 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
    "lightness": 0.675,
    "saturation": 0.296,
    "temperature": "cool"
-  }
+  },
+  "content": [
+   "house",
+   "fir",
+   "snow"
+  ]
  },
  {
   "id": "resolved_08",
@@ -303,7 +333,12 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
    "lightness": 0.474,
    "saturation": 0.263,
    "temperature": "cool"
-  }
+  },
+  "content": [
+   "boat",
+   "rope",
+   "beach"
+  ]
  },
  {
   "id": "resolved_12",
@@ -330,7 +365,13 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
    "lightness": 0.435,
    "saturation": 0.382,
    "temperature": "cool"
-  }
+  },
+  "content": [
+   "boat",
+   "rope",
+   "buoy",
+   "dock"
+  ]
  },
  {
   "id": "resolved_02",
@@ -357,7 +398,12 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
    "lightness": 0.764,
    "saturation": 0.217,
    "temperature": "cool"
-  }
+  },
+  "content": [
+   "wave",
+   "person",
+   "animal"
+  ]
  },
  {
   "id": "resolved_03",
@@ -381,7 +427,10 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
    "lightness": 0.692,
    "saturation": 0.414,
    "temperature": "cool"
-  }
+  },
+  "content": [
+   "animal"
+  ]
  },
  {
   "id": "resolved_05",
@@ -414,7 +463,13 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
    "lightness": 0.673,
    "saturation": 0.164,
    "temperature": "warm"
-  }
+  },
+  "content": [
+   "building",
+   "waterfall",
+   "person",
+   "tree"
+  ]
  },
  {
   "id": "resolved_06",
@@ -444,7 +499,12 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
    "lightness": 0.812,
    "saturation": 0.12,
    "temperature": "cool"
-  }
+  },
+  "content": [
+   "person",
+   "animal",
+   "beach"
+  ]
  },
  {
   "id": "resolved_07",
@@ -474,7 +534,11 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
    "lightness": 0.811,
    "saturation": 0.143,
    "temperature": "cool"
-  }
+  },
+  "content": [
+   "person",
+   "beach"
+  ]
  },
  {
   "id": "resolved_13",
@@ -503,7 +567,14 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
    "lightness": 0.701,
    "saturation": 0.187,
    "temperature": "warm"
-  }
+  },
+  "content": [
+   "person",
+   "building",
+   "lamp",
+   "car",
+   "snow"
+  ]
  },
  {
   "id": "resolved_04",
@@ -533,7 +604,10 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
    "lightness": 0.473,
    "saturation": 0.233,
    "temperature": "cool"
-  }
+  },
+  "content": [
+   "car"
+  ]
  },
  {
   "id": "resolved_09",
@@ -563,7 +637,12 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
    "lightness": 0.572,
    "saturation": 0.144,
    "temperature": "cool"
-  }
+  },
+  "content": [
+   "person",
+   "beach",
+   "island"
+  ]
  },
  {
   "id": "resolved_10",
@@ -596,7 +675,14 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
    "lightness": 0.716,
    "saturation": 0.224,
    "temperature": "cool"
-  }
+  },
+  "content": [
+   "tree",
+   "building",
+   "cafe",
+   "snow",
+   "person"
+  ]
  },
  {
   "id": "resolved_11",
@@ -624,6 +710,10 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
    "lightness": 0.679,
    "saturation": 0.089,
    "temperature": "cool"
-  }
+  },
+  "content": [
+   "person",
+   "dress"
+  ]
  }
 ]/*END*/;

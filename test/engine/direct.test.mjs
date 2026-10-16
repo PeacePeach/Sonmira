@@ -1,7 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { direct, familiesFor, FAMILIES, REFERENCES, LIBRARY } from '../../src/engine/direct/index.js';
-import { SUBJECTS } from '../../src/engine/direct/families.js';
 import { visualSpec } from '../../src/engine/interpret/spec.js';
 import { interpret } from '../../src/engine/interpret/index.js';
 
@@ -74,7 +73,7 @@ test('no words: no people and no story at any tier', () => {
     assert.equal(s.motif, 'abstract');
     for (const level of LEVELS) {
       const d = direct({ ...s, completeness: level });
-      assert.ok(SUBJECTS[d.family]?.abstract !== null, d.family);
+      if (d.level !== 'loose') assert.equal(d.subjectSource, 'atmosphere', d.family);
       assert.doesNotMatch(d.subject || '', /figure|person|people|woman|child|friends|skater|walker|swimmer/i);
     }
   }

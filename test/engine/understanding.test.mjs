@@ -194,7 +194,8 @@ test('fixture 9: an unrelated reference keeps its style; the subject comes from 
   assert.ok(d.sections.subject.includes('a small boat far out on a night sea'));
   assert.doesNotMatch(d.prompt, /garden|leaves/i, 'no garden content from the reference or the family');
   assert.match(d.sections.palette, /measured from the reference: dominant/, 'palette still from the reference');
-  assert.match(d.sections.family, /only if they fit the subject above/);
+  assert.match(d.sections.family, /only how it is painted, never what is depicted/);
+  assert.match(d.sections.content, /add no objects, scenery or story/);
   assert.equal(REFERENCE_AUTHORITY, d.referencePrompt);
 });
 
@@ -205,7 +206,7 @@ test('Loose without words expresses the sound itself; unreliable words carry no 
   const d = direct({ completeness: 'loose', emotion: 'tender', motif: 'abstract', seed: 2, soundOnly: true, expression: { range: 'wide', flow: 'broken', dynamics: 'swelling', vibrato: true } });
   assert.equal(d.subjectSource, 'sound');
   assert.match(d.prompt, /expresses the sound of the voice itself/);
-  assert.match(d.prompt, /Gesture, from how the voice moved, made only with the reference's own kind of marks: long, travelling marks.*separate islands.*swelling.*trembling/);
+  assert.match(d.prompt, /Gesture, from how the voice moved, made only with the reference's own kind of marks: long, travelling marks.*separate patches.*swelling.*trembling/);
 });
 
 test('fixture 10: after a library change, selection stays in the decided tier', () => {

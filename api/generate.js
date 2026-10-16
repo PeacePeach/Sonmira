@@ -50,6 +50,7 @@ function cleanConcept(c) {
   if (!c || typeof c !== 'object' || !flat(c.text, 240)) return null;
   const list = (xs, k, n) => (Array.isArray(xs) ? xs : []).map((x) => flat(x, n)).filter(Boolean).slice(0, k);
   return {
+    source: c.source === 'note' ? 'note' : 'lyrics',
     text: flat(c.text, 240), theme: list(c.theme, 3, 60), imagery: list(c.imagery, 5, 60),
     figurative: (Array.isArray(c.figurative) ? c.figurative : []).slice(0, 4).map((f) => ({ phrase: flat(f?.phrase, 80), meaning: flat(f?.meaning, 120) })).filter((f) => f.phrase && f.meaning),
   };

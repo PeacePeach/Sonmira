@@ -52,10 +52,14 @@ test('within a family, every active reference is equally likely', () => {
   assert.deepEqual(Object.keys(r.references).sort(), active);
 });
 
-test('without words, only families that have their own subject for the motif are drawn', () => {
-  const pool = familiesFor('resolved', 'abstract', LIBRARY).map(([id]) => id);
-  assert.ok(!pool.includes('R4-lyrical-everyday') && !pool.includes('R6-misty-monochrome'));
-  assert.equal(familiesFor('resolved', 'water', LIBRARY).length, ofTier('resolved').length);
+test('without words, every family of the tier is still drawn, painting an atmosphere rather than its own subjects', () => {
+  for (const t of TIERS) for (const motif of MOTIFS) {
+    const pool = familiesFor(t, motif, LIBRARY);
+    assert.deepEqual(pool.map(([id]) => id).sort(), ofTier(t).sort(), `${t}/${motif}`);
+    assert.ok(pool.every(([, w]) => w === 1));
+  }
+  const d = direct({ completeness: 'resolved', emotion: 'tender', motif: 'abstract', seed: 3, family: 'R4-lyrical-everyday', energy: { value: 'calm' } });
+  assert.equal(d.subjectSource, 'atmosphere');
 });
 
 test('a family with no active reference is not drawn, so a generation never lacks its reference', () => {

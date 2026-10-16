@@ -127,6 +127,10 @@ export function createAIEngine({ fetchImpl = (...a) => globalThis.fetch(...a), d
         throw new GenerationError('Couldn’t listen to this recording. Please try again.', { code: 'understand', cause: e });
       }
       const sem = u.semantics;
+      // What is depicted: the words when they are reliable, else the
+      // person's own note; the reference never supplies a subject.
+      const noteText = String(note ?? '').trim();
+      const concept = sem.concept ? { ...sem.concept, source: 'lyrics' } : noteText ? { text: noteText, theme: [], imagery: [], figurative: [], source: 'note' } : null;
       const plan = planPainting({
         features: silent ? null : features,
         noteText: note,
@@ -139,7 +143,7 @@ export function createAIEngine({ fetchImpl = (...a) => globalThis.fetch(...a), d
       const { spec, interpretation: it } = plan;
       const body = { spec: {
         completeness: spec.completeness, emotion: spec.emotion, motif: spec.motif, seed: spec.seed, energy: spec.energy, family: spec.family,
-        concept: sem.concept, soundOnly: !sem.concept && spec.completeness === 'loose', expression: u.expression,
+        concept, soundOnly: !concept && spec.completeness === 'loose', expression: u.expression,
       } };
       const understanding = { ...u, emotion: { value: it.emotion, source: sem.mood ? 'lyrics' : it.sources.emotion }, motif: { value: it.motif, source: sem.motif ? 'lyrics' : it.sources.motif }, plannedFamily: plan.direction.family };
       stage('feeling', { tier: u.tier });

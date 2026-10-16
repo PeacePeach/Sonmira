@@ -83,7 +83,8 @@ Meaning (only from the words; never invent meaning that is not there; if not lex
 - concepts, in English, one sentence each, for a watercolor whose style comes from a separate reference image (so say nothing about colour palette or technique):
   - loose: no depicted objects at all; only movement, weight, rhythm, temperature and density of marks that carry the feeling.
   - gathered: the main image only suggested, ambiguous and emerging, nothing clearly identifiable.
-  - resolved: one clear, recognisable focal subject or scene drawn from the imagery; for figurative words, a quiet visual equivalent of the meaning. No lettering, no distress or violence shown literally.`;
+  - resolved: one clear, recognisable focal subject or scene drawn from the imagery; for figurative words, a quiet visual equivalent of the meaning. No lettering, no distress or violence shown literally.
+  - every tier: no people at all, no human figures, silhouettes, faces or body parts. When the words are about people (I, you, a mother, lovers, a crowd), carry them through the place, the light, the weather and the things they touch or leave behind, never through a person.`;
 
 const SCHEMA = {
   name: 'lyrics_reading',

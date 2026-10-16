@@ -25,7 +25,7 @@
 import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { direct, LIBRARY, FAMILIES } from '../src/engine/direct/index.js';
-import { AFFINITY, SUBJECTS } from '../src/engine/direct/families.js';
+import { AFFINITY } from '../src/engine/direct/families.js';
 import { generateFromDirection, openaiConfig } from '../src/engine/providers/openai.js';
 import { localStore } from '../src/engine/providers/reference-store.js';
 
@@ -42,7 +42,7 @@ const emotion = opt('emotion', 'tender');
 const resolveFamily = (a) => FAMILIES[a] ? a : Object.keys(FAMILIES).find((id) => id.toUpperCase().startsWith(`${a.toUpperCase()}-`));
 // Gathered stays unnamed; other tiers take the motif hint of the primary
 // reference when the registry has one, else the family's first matching motif.
-const motifFor = (id, ref) => motifArg || (FAMILIES[id].tier === 'gathered' ? 'abstract' : [ref?.motif, ...(AFFINITY[id] || [])].find((m) => m && SUBJECTS[id]?.[m]) || 'landscape');
+const motifFor = (id, ref) => motifArg || (FAMILIES[id].tier === 'gathered' ? 'abstract' : [ref?.motif, ...(AFFINITY[id] || [])].find(Boolean) || 'landscape');
 
 if (!args.length || !refsDir) {
   console.error('usage: node tools/generate-family.mjs <family…> --refs <dir> [--seed N] [--dry-run]');

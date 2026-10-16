@@ -41,6 +41,8 @@ HEADER = """// Reference library: the single source of truth for which reference
 //   palette  measured: colors [{hex, share}] dominant first, accent, paper,
 //            dark, lightness, saturation, temperature (shares are 0..1)
 //   light, motif  optional curated hints
+//   content  curated: what the image depicts, as leakage.js term ids (for
+//            the leakage check only; never sent to the model)
 """
 
 

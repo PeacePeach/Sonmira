@@ -16,7 +16,7 @@ import { singingAnalysis } from './analysis/singing.js';
 import { analyzeSamples } from './analysis/features.js';
 import { completionGate, decideTier, GATE_CALIBRATION } from './interpret/lyrics.js';
 
-export const UNDERSTAND_VERSION = 1;
+export const UNDERSTAND_VERSION = 2;
 // Below this much sound there is nothing to transcribe: skip the paid call.
 export const MIN_SOUND_FOR_WORDS_SEC = 1.0;
 

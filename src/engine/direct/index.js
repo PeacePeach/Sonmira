@@ -7,20 +7,23 @@
 // 2. A style family is drawn, by seed, from the families derived from that
 //    tier's references (families.js), every eligible family equally likely;
 //    then one reference image is drawn from that family (library.js).
-// 3. The motif picks new content suited to the family's treatment; the
-//    emotion shifts light and colour within the family's own palette.
+// 3. What is depicted comes from the lyrics, else the person's note, else an
+//    atmosphere of the motif with no objects (never from the family or its
+//    references); the emotion shifts light and colour within the palette.
 // 4. The family's rules, the tier's form rules and the global Sonmira
 //    constraints are assembled into one provider-independent prompt.
 //
 // Every style statement traces to references through `refs`.
 
 import { rng, hashSeed } from '../render/rng.js';
-import { FAMILIES, SUBJECTS, familiesOfTier } from './families.js';
+import { FAMILIES, familiesOfTier } from './families.js';
 import { LIBRARY, referencePalette, REFERENCE_AUTHORITY } from './library.js';
+import { PEOPLE } from './leakage.js';
 
 export { FAMILIES, REFERENCES, LIBRARY_VERSION } from './families.js';
 export { LIBRARY, createLibrary, colourName, referencePalette } from './library.js';
-export const DIRECTION_VERSION = 5;
+export { checkLeakage, checkPrompt } from './leakage.js';
+export const DIRECTION_VERSION = 6;
 
 // Global Sonmira constraints: true for every family and every tier.
 // Materiality is independent of abstraction: Loose, Gathered and Resolved all
@@ -50,6 +53,7 @@ export const AVOID = [
   'a realistic image with paper texture applied',
   'glossy digital rendering', 'heavy black ink outlines',
   'text, letters, titles, signature, logo or watermark', 'a frame, border or mat', 'a photo of a painting on a table',
+  'people, human figures, silhouettes or faces',
 ];
 
 // With a reference image attached, the reference is the style authority, so
@@ -65,7 +69,27 @@ export const REFERENCE_STYLE = 'A hand-made painting in the artistic language of
 export const REFERENCE_AVOID = [
   'text, letters, titles, signature, logo or watermark', 'a frame, border or mat', 'a photo of a painting on a table',
   'photorealism or a photograph', 'a photo-to-painting filter effect', 'glossy digital or 3D rendering',
+  'people, human figures, silhouettes or faces',
 ];
+
+// What may be depicted, for every tier and family. The references and the
+// family rules decide only how the painting is made; the subject above is
+// the whole content. No people in any tier: a reference with figures lends
+// its treatment, never its figures, and words about people are painted
+// through place, light and traces.
+export const CONTENT_RULE = 'Content: paint only what the subject above names, in its own setting, and add no objects, scenery or story that it does not ask for. No people anywhere: no human figures, silhouettes, faces or body parts, however small or distant. When the words tell of love, loss or company, carry that through place, light, weather and the traces left behind.';
+
+// The subject when there are neither reliable words nor a note (Gathered and
+// Resolved): an atmosphere of the motif, with nothing placed in it. The tier
+// still decides how recognisable it is; the family how it is painted.
+export const ATMOSPHERES = {
+  water: 'water as atmosphere: its surface, depth, movement and the light on it',
+  sky: 'sky as atmosphere: cloud, air, weather and light',
+  garden: 'growing things as atmosphere: foliage, blossom and light, close and enveloping',
+  landscape: 'open land as atmosphere: ground, horizon, distance and light',
+  interior: 'the quiet light of an inside space falling across bare surfaces',
+  abstract: 'colour, light and texture alone, nothing named',
+};
 
 export const LEVELS = {
   loose: {
@@ -115,14 +139,14 @@ const EMOTION = {
 // gesture varies within the reference's language, never its identity.
 export const EXPRESSION = {
   range: { narrow: 'strokes kept close and contained', moderate: 'strokes that rise and fall a little', wide: 'long, travelling strokes that sweep across the sheet' },
-  flow: { connected: 'one connected flow of washes', broken: 'separate islands of marks with paper between them' },
+  flow: { connected: 'one connected flow of washes', broken: 'separate patches of marks with paper between them' },
   dynamics: { even: 'even pressure throughout', swelling: 'washes swelling from pale to deep and back' },
   vibrato: 'a gently trembling edge to some strokes',
 };
 
 export const EXPRESSION_REF = {
   range: { narrow: 'marks kept close and contained', moderate: 'marks that rise and fall a little', wide: 'long, travelling marks across the sheet' },
-  flow: { connected: 'one connected flow', broken: 'separate islands of marks' },
+  flow: { connected: 'one connected flow', broken: 'separate patches of marks' },
   dynamics: { even: 'even pressure throughout', swelling: 'marks swelling from light to strong and back' },
   vibrato: 'a gently trembling edge to some marks',
 };
@@ -140,8 +164,9 @@ export function expressionLine(x, withReference = false) {
 // looks. Figurative language is painted as its meaning.
 const article = (label) => `${/^[aeiou]/.test(label) ? 'An' : 'A'} ${label}`;
 const labelOf = (tier, withReference) => (withReference ? LEVELS[tier].refLabel : LEVELS[tier].label);
+const wordsOf = (c) => (c.source === 'note' ? "the person's note about this moment" : 'the sung words');
 function subjectFromConcept(tier, c, withReference = false) {
-  if (tier === 'loose') return `${article(labelOf('loose', withReference))}. It depicts nothing; its marks carry the feeling of the sung words: ${c.text}`;
+  if (tier === 'loose') return `${article(labelOf('loose', withReference))}. It depicts nothing; its marks carry the feeling of ${wordsOf(c)}: ${c.text}`;
   if (tier === 'gathered') return `${article(labelOf('gathered', withReference))}, only suggesting, never spelling out: ${c.text}`;
   return `${article(labelOf('resolved', withReference))} of: ${c.text}`;
 }
@@ -149,8 +174,10 @@ function subjectFromConcept(tier, c, withReference = false) {
 function meaningLine(tier, c) {
   const out = [];
   if (c.theme?.length) out.push(`theme: ${c.theme.join(', ')}`);
-  if (tier !== 'loose' && c.imagery?.length) out.push(`imagery: ${c.imagery.join(', ')}`);
-  let line = out.length ? `From the sung words — ${out.join('; ')}.` : '';
+  // People are never painted, so imagery naming them is left out.
+  const imagery = (c.imagery ?? []).filter((x) => !PEOPLE.test(x));
+  if (tier !== 'loose' && imagery.length) out.push(`imagery: ${imagery.join(', ')}`);
+  let line = out.length ? `From ${wordsOf(c)} — ${out.join('; ')}.` : '';
   if (c.figurative?.length) line += ` Figurative words are painted as their meaning, never literally: ${c.figurative.map((f) => `"${f.phrase}" means ${f.meaning}`).join('; ')}.`;
   return line.trim() || null;
 }
@@ -170,16 +197,14 @@ function pickWeighted(list, r) {
 
 // Families allowed for a tier, each equally likely: the style is chosen
 // first among families, then an image within the family (library.select),
-// so a family with more references is not chosen more often. A family is
-// left out only when it cannot be painted: it has no active reference, or
-// there are no words and it has no subject of its own for the motif (the
-// families whose references centre on people). With words the subject comes
-// from the lyrics, so every family of the tier is eligible.
-export function familiesFor(level, motif, library = LIBRARY, { concept = false } = {}) {
+// so a family with more references is not chosen more often. Every family
+// can paint any subject (the subject never comes from the family), so a
+// family is left out only when it has no active reference. `motif` and
+// `concept` no longer change eligibility; kept for callers.
+export function familiesFor(level, motif, library = LIBRARY, { concept = false } = {}) { // eslint-disable-line no-unused-vars
   const all = familiesOfTier(level);
-  const paintable = all.filter((id) => FAMILIES[id].tier === 'loose' || concept || SUBJECTS[id]?.[motif] != null);
-  const stocked = paintable.filter((id) => library.pool(id).length > 0);
-  return (stocked.length ? stocked : paintable.length ? paintable : all).map((id) => [id, 1]);
+  const stocked = all.filter((id) => library.pool(id).length > 0);
+  return (stocked.length ? stocked : all).map((id) => [id, 1]);
 }
 
 export function direct(spec) {
@@ -192,7 +217,7 @@ export function direct(spec) {
   const familyId = FAMILIES[spec.family] ? spec.family : drawn;
   const F = FAMILIES[familyId];
   const tier = F.tier;
-  const subject = tier === 'loose' ? null : (SUBJECTS[familyId]?.[motif] ?? SUBJECTS[familyId]?.landscape ?? null);
+  const subject = tier === 'loose' ? null : (ATMOSPHERES[motif] ?? ATMOSPHERES.abstract);
   const energy = spec.energy?.value || 'calm';
 
   // The primary reference: drawn from the family's pool by seed (or given,
@@ -211,9 +236,10 @@ export function direct(spec) {
   if (P.accent) chosen.push(P.accent);
   const swatches = fromRef ? fromRef.swatches : chosen;
 
-  // The subject: from the song's words when there are any; a Loose take
-  // without words expresses the sound itself; otherwise (no understanding
-  // step, e.g. tools) the family's own subject for the motif.
+  // The subject: from the song's words when they are reliable, else from the
+  // person's note (both arrive as `concept`, with source 'lyrics' or 'note');
+  // a Loose take without either expresses the sound itself; otherwise an
+  // atmosphere of the motif, with no objects or figures invented for it.
   const concept = spec.concept?.text ? spec.concept : null;
   const withRef = Boolean(reference);
   const subjectLine = concept ? subjectFromConcept(tier, concept, withRef)
@@ -223,18 +249,19 @@ export function direct(spec) {
   const sections = {
     subject: subjectLine,
     meaning: concept ? meaningLine(tier, concept) : null,
-    family: `Style — ${F.label}: ${F.rules}${concept ? ' Where this style names people, places or objects, use them only if they fit the subject above.' : ''}`,
+    family: `Style — ${F.label}: ${F.rules} This describes only how it is painted, never what is depicted.`,
+    content: CONTENT_RULE,
     form: withRef ? LEVELS[tier].refForm : LEVELS[tier].form,
-    // With a subject from the words, the reference's light note (which can
-    // name its own objects, e.g. "sun through leaves") becomes its quality only.
-    palette: fromRef ? (concept ? fromRef.text.replace(/Light: [^.]*\./, 'Light: the reference\'s own quality and direction of light, carried onto the new subject.') : fromRef.text) : `Colour: ${P.colors.filter((p) => chosen.includes(p)).map((p) => p.name).join(', ')}, on white or warm white paper${P.accent ? `, with ${P.accent.name} as the only accent, kept small` : ''}.`,
+    // The reference's light note can name its own objects ("sun through
+    // leaves", "windows under violet shadow"), so only its quality is kept.
+    palette: fromRef ? fromRef.text.replace(/Light: [^.]*\./, 'Light: the reference\'s own quality and direction of light, carried onto the new subject.') : `Colour: ${P.colors.filter((p) => chosen.includes(p)).map((p) => p.name).join(', ')}, on white or warm white paper${P.accent ? `, with ${P.accent.name} as the only accent, kept small` : ''}.`,
     // Sound varies mood and marks inside the reference's language, never its identity.
     emotion: withRef ? (EMOTION_REF[spec.emotion] || EMOTION_REF.tender) : (EMOTION[spec.emotion] || EMOTION.tender),
     energy: withRef ? ENERGY_REF[energy] : ENERGY[energy],
     gesture: expressionLine(spec.expression, withRef),
     style: withRef ? REFERENCE_STYLE : GLOBAL_STYLE,
   };
-  const prompt = [sections.subject, sections.meaning, sections.family, sections.form, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.energy, sections.gesture, sections.style, `Avoid: ${avoid.join(', ')}.`].filter(Boolean).join('\n');
+  const prompt = [sections.subject, sections.meaning, sections.family, sections.content, sections.form, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.energy, sections.gesture, sections.style, `Avoid: ${avoid.join(', ')}.`].filter(Boolean).join('\n');
   return {
     version: DIRECTION_VERSION, level: tier, requestedLevel: level,
     family: familyId, familyLabel: F.label, refs: library.pool(familyId).map((e) => e.path.split('/').pop()),
@@ -242,7 +269,8 @@ export function direct(spec) {
     reference: reference ? { id: reference.id, path: reference.path, family: reference.family } : null,
     referencePrompt: reference ? REFERENCE_AUTHORITY : null,
     libraryVersion: library.version, seed: spec.seed >>> 0,
-    subject: concept ? concept.text : subject, subjectSource: concept ? 'lyrics' : tier === 'loose' && spec.soundOnly ? 'sound' : 'family',
+    concept: concept ?? null,
+    subject: concept ? concept.text : subject, subjectSource: concept ? (concept.source === 'note' ? 'note' : 'lyrics') : tier === 'loose' && spec.soundOnly ? 'sound' : 'atmosphere',
     pigments: swatches.map((p) => p.name), swatches, sections, prompt, avoid: avoid.slice(),
   };
 }
