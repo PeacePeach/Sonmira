@@ -53,13 +53,6 @@ await page.route('**/api/understand', async (route) => {
   return route.fulfill({ json: nextWords === 'line' ? { ok: true, transcript, lyrics } : { ok: true, transcript: empty, lyrics: null } });
 });
 
-const saved = [];
-await page.route('**/api/singing-results', async (route) => {
-  if (route.request().method() === 'GET') return route.fulfill({ json: { configured: true } });
-  saved.push(route.request().postDataJSON().take);
-  return route.fulfill({ json: { ok: true, path: 'x' } });
-});
-
 await page.goto(`${BASE}?view=singing`);
 await page.waitForFunction(() => document.querySelectorAll('#stTakes .take').length === 9);
 assert.match(await page.textContent('#stServer'), /stub-transcribe/);
@@ -88,17 +81,11 @@ assert.match(t1, /Loose/);
 assert.match(t1, /Words were heard/);
 assert.equal(posts, 2);
 
-await page.waitForFunction(() => /Claude has this take/.test(document.querySelector('#take-1 .sent').textContent));
-assert.deepEqual(saved.map((t) => t.slot), [7, 1], 'each new take is sent once');
-assert.ok(saved.every((t) => t.kind === 'sonmira-singing-take' && t.recordedAt && t.engine && !('blob' in t)));
-
 // Labels: judge take 7 one tier off and see the disagreement explained.
 const engine7 = await page.evaluate(() => window.__singingTest.view.get(7).u.tier);
 const other = engine7 === 'resolved' ? 'gathered' : 'resolved';
 await page.selectOption('#take-7 .judged', other);
 assert.match(await page.innerText('#take-7 .out'), /than your judgement/);
-await page.waitForTimeout(1500);
-assert.equal(saved.at(-1).slot, 7); assert.equal(saved.at(-1).judged, other, 'a new label is sent');
 assert.match(await page.innerText('#stSummary'), /2 of 9 recorded/);
 assert.ok(await page.$('#stCalib table.calib'), 'calibration table');
 await page.screenshot({ path: `${S}/1-singing.png`, fullPage: true });
@@ -107,7 +94,6 @@ await page.screenshot({ path: `${S}/1-singing.png`, fullPage: true });
 await page.reload();
 await page.waitForFunction(() => window.__singingTest?.view.get(7)?.u && window.__singingTest.view.get(1)?.u, null, { timeout: 60000 });
 assert.equal(posts, 2, 'no transcription on reload');
-const sentBefore = saved.length;
 assert.equal(await page.$eval('#take-7 .judged', (s) => s.value), other);
 assert.equal(await page.evaluate(() => window.__singingTest.view.get(7).u.tier), engine7, 'same decision from the saved reading');
 
@@ -115,7 +101,6 @@ assert.equal(await page.evaluate(() => window.__singingTest.view.get(7).u.tier),
 await page.click('#take-7 .rerun');
 await page.waitForFunction(() => document.querySelector('#take-7 .verdict'));
 assert.equal(posts, 2);
-assert.equal(saved.length, sentBefore, 'reload and re-analysis send nothing');
 
 // Results for the thread.
 await page.click('#stCopy');

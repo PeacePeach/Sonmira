@@ -36,9 +36,6 @@
     },
     "api/understand.js": {
       "maxDuration": 60
-    },
-    "api/singing-results.js": {
-      "maxDuration": 30
     }
   }
 }
