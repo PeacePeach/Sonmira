@@ -5,6 +5,14 @@
   "scripts": {
     "start": "node server.js",
     "test": "node --test tests/*.test.mjs test/engine/*.test.mjs",
-    "e2e": "node tests/e2e/flow.mjs"
+    "e2e": "node tests/e2e/flow.mjs",
+    "ios": "node scripts/ios.mjs"
+  },
+  "dependencies": {
+    "@apple/app-store-server-library": "^3.1.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/ios": "^8.5.3"
   }
 }

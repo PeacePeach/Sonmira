@@ -26,9 +26,9 @@ export function mountSettings(app) {
   };
 
   // In the app this opens Apple's subscription settings (AppStore.showManageSubscriptions).
-  const manage = () => app.toast(b.simulated
-    ? 'In the app, this opens Apple’s subscription settings. In this simulation, use Development below.'
-    : 'Opening subscription settings…');
+  const manage = () => (b.manageSubscriptions
+    ? b.manageSubscriptions().then(() => b.refresh()).then(paint).catch(() => app.toast('We couldn’t open your subscription settings. You’ll also find them in Settings, under your name.'))
+    : app.toast('In the app, this opens Apple’s subscription settings. In this simulation, use Development below.'));
 
   async function restore() {
     try {

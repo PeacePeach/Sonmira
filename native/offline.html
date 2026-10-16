@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sonmira</title>
+<style>
+  /* Tokens from styles.css; this page ships inside the app, without the network. */
+  :root { --paper: #F8F5EF; --ink: #1F1D1A; --body: #5E5850; --serif: 'Cormorant Garamond', 'Iowan Old Style', Georgia, serif; }
+  html, body { margin: 0; height: 100%; background: var(--paper); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  body { display: flex; flex-direction: column; justify-content: center; padding: 0 36px calc(env(safe-area-inset-bottom) + 40px); box-sizing: border-box; font-family: -apple-system, system-ui, sans-serif; }
+  h1 { font-family: var(--serif); font-weight: 600; letter-spacing: -0.015em; font-size: 30px; line-height: 1.15; margin: 0 0 14px; }
+  p { font-size: 16px; line-height: 1.5; color: var(--body); margin: 0 0 36px; }
+  button { font: inherit; height: 56px; border-radius: 28px; border: 0; background: var(--ink); color: #fff; font-size: 16px; width: 100%; }
+  button:active { opacity: .8; }
+</style>
+</head>
+<body>
+  <h1>Sonmira needs a connection to open.</h1>
+  <p>Your diary is safe on this iPhone. It will be here as soon as you’re back online.</p>
+  <button onclick="location.href = window.SONMIRA_APP_URL || '/'">Try again</button>
+  <script src="offline-config.js"></script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+{
+  "identifier" : "5A0E1C51",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "2.99",
+      "familyShareable" : false,
+      "internalID" : "5A0E1C52",
+      "localizations" : [
+        {
+          "description" : "10 paintings, whenever you like.",
+          "displayName" : "Little Moments",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "app.sonmira.little_moments.10",
+      "referenceName" : "Little Moments",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "5A0E1C50",
+    "_developerTeamID" : "",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ],
+    "_timeRate" : 0
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "5A0E1C53",
+      "localizations" : [
+        {
+          "description" : "",
+          "displayName" : "Sonmira",
+          "locale" : "en_US"
+        }
+      ],
+      "name" : "Sonmira",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "4.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "5A0E1C54",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "One painting every day.",
+              "displayName" : "Daily Ritual",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "app.sonmira.daily_ritual.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Daily Ritual",
+          "subscriptionGroupID" : "5A0E1C53",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

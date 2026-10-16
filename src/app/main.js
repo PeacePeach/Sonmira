@@ -13,6 +13,7 @@ import { mountLegal } from './screens/legal.js';
 import { createBilling } from './billing/index.js';
 import { askSimulator } from './paywall/simulator.js';
 import { openPaywall } from './paywall/paywall.js';
+import { installApiFetch } from './native/fetch.js';
 
 const SCREENS = { diary: mountDiary, sing: mountSing, detail: mountDetail, settings: mountSettings, legal: mountLegal };
 const ENTER = { diary: 'enter-fade', sing: 'enter-modal', detail: 'enter-push', settings: 'enter-push', legal: 'enter-push' };
@@ -86,6 +87,8 @@ export const app = {
 };
 
 async function boot() {
+  // API calls carry the local day, and reach the hosted API from the bundled iOS build.
+  installApiFetch();
   const [engine, storage] = await Promise.all([getEngine(), initStorage()]);
   app.engine = engine;
   app.storage = storage;
