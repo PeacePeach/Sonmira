@@ -76,6 +76,8 @@ export function mountDiary(app) {
     }
     scroll.replaceChildren(...[
       app.ui.view === 'calendar' ? calendar() : null,
+      app.dev.preview && app.entries.some((e) => e.id.startsWith('sample-')) && !sel
+        ? h('p', { class: 'notice' }, 'The first entries are examples. Tap + to sing your own.') : null,
       !app.storage.persistent ? h('p', { class: 'notice' }, app.storage.loadFailed
         ? 'Your diary couldn’t be opened on this device. New entries may not be kept.'
         : 'This browser isn’t keeping data (private browsing?). Entries will disappear when you close it.') : null,

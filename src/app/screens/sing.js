@@ -74,11 +74,11 @@ export function mountSing(app) {
 
     recorder = createRecorder({
       maxSeconds,
-      simulate: app.dev.simulate,
+      simulate: app.dev.simulate || app.dev.preview,
       onReady: (sampleRate) => {
         session = app.engine.createLiveSession({ sampleRate, maxSeconds });
         phase = 'singing';
-        note.textContent = app.dev.simulate ? 'Listening (sample voice)' : 'Listening';
+        note.textContent = app.dev.preview ? 'Preview: a sample voice sings, the microphone isn’t available here' : app.dev.simulate ? 'Listening (sample voice)' : 'Listening';
       },
       onFrame: (samples, t) => {
         if (phase !== 'singing') return;

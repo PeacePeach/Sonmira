@@ -22,7 +22,9 @@ export const app = {
   engine: null,
   settings: loadSettings(),
   storage: { persistent: true },
-  dev: { enabled: new URLSearchParams(location.search).has('dev'), completeness: null, simulate: false },
+  // preview: the hosted preview link, where the microphone is not available,
+  // so takes use the sample voice and the diary starts with example entries.
+  dev: { enabled: new URLSearchParams(location.search).has('dev') || location.hash === '#dev', completeness: null, simulate: false, preview: !!window.SONMIRA_PREVIEW },
   ui: { view: 'list', selDay: null, calY: now.getFullYear(), calM: now.getMonth() },
   entries: [],
   current: null,
@@ -78,8 +80,17 @@ async function boot() {
   app.storage = storage;
   try { app.entries = await listEntries(); }
   catch (e) { console.warn(e); app.storage = { persistent: false, loadFailed: true }; }
+  if (app.dev.preview) await seedPreview();
   app.navigate('diary');
   if (app.dev.enabled) (await import('./dev.js')).mountDevPanel(app);
+}
+
+async function seedPreview() {
+  try {
+    if (app.entries.length || localStorage.getItem('sonmira.previewSeeded')) return;
+    localStorage.setItem('sonmira.previewSeeded', '1');
+    await (await import('./dev.js')).seed(app);
+  } catch (e) { console.warn('[sonmira] preview seed skipped', e); }
 }
 
 // On desktop, scale the 402×874 canvas down to fit short browser windows.
