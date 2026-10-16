@@ -13,6 +13,7 @@ import { FAMILIES } from '../src/engine/direct/families.js';
 import { REFERENCE_LIBRARY } from '../src/engine/direct/references.js';
 import { checkLeakage } from '../src/engine/direct/leakage.js';
 import { saveRun, deleteRun, listRuns } from './store.js';
+import { initSingingTest } from './singing-test.js';
 
 const MAX_SEC = 30;
 const W = 720, H = 900;
@@ -639,7 +640,9 @@ function switchView(v) {
   $('library').hidden = v !== 'library';
   $('refs').hidden = v !== 'refs';
   $('validation').hidden = v !== 'validation';
+  $('singing').hidden = v !== 'singing';
   if (v === 'validation') loadValidation();
+  if (v === 'singing') initSingingTest();
 }
 
 // ---------- validation runs ----------
@@ -734,7 +737,7 @@ async function checkProviders() {
 
 setBusy(false);
 const startView = new URLSearchParams(location.search).get('view');
-if (['library', 'refs', 'validation'].includes(startView)) switchView(startView);
+if (['library', 'refs', 'validation', 'singing'].includes(startView)) switchView(startView);
 checkProviders();
 refreshLibrary();
 window.__playground = { ready: true };

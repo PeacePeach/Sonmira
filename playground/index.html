@@ -17,6 +17,7 @@
     <button class="tab" data-view="library">Library &amp; compare <span id="libCount"></span></button>
     <button class="tab" data-view="refs">References</button>
     <button class="tab" data-view="validation">Validation</button>
+    <button class="tab" data-view="singing">Singing test</button>
   </nav>
 </header>
 
@@ -155,6 +156,24 @@
 <main id="validation" class="view" hidden>
   <p class="hint">Validation runs (newest first) made with the real pipeline and saved with this deployment. Each original reference is on the left and its generated image on the right, with the settings and the checks.</p>
   <div id="valSets"></div>
+</main>
+
+<main id="singing" class="view" hidden>
+  <section class="card stintro">
+    <h2>Singing test · how the app classifies a whole recording</h2>
+    <p>Nine short takes, each sung a particular way. Before each take, set the tier you expect; after listening back, set the tier you think it deserves. The engine decides exactly as the app does: first whether the words form a complete sung phrase (if not, Loose), then whether the singing is controlled across the whole take (Resolved) or not (Gathered). Your labels are compared with the engine, not treated as correct: the table at the bottom shows where each threshold sits against your voice.</p>
+    <p class="hint" id="stServer">Checking the transcription server…</p>
+    <p class="hint">Takes and recordings stay in this browser. Recording again replaces a take. Use headphones off and a quiet room; the microphone settings are the app’s.</p>
+  </section>
+  <section class="card"><h2>Summary</h2><div id="stSummary"></div></section>
+  <div id="stTakes" class="takes"></div>
+  <section class="card"><h2>Calibration · every check, every take</h2><div id="stCalib"></div></section>
+  <section class="card stdone">
+    <h2>When you’re done</h2>
+    <div class="actions"><button id="stCopy" class="primary">Copy results for Claude</button><button id="stClear" class="ghost">Delete all takes</button></div>
+    <p class="hint" id="stCopyHint">Copies the measurements and your labels (no audio) as text to paste into the Sonmira thread.</p>
+    <textarea id="stCopyBox" rows="6" hidden readonly></textarea>
+  </section>
 </main>
 
 <script type="module" src="app.js"></script>

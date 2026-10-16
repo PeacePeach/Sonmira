@@ -1,0 +1,123 @@
+// Browser check of the Playground's Singing test, with NO paid call:
+// /api/understand is answered in the browser by a stub (a confident, complete
+// line for sung takes; nothing for the hum), the fake microphone plays a
+// synthetic steady singer, and everything else is the real page and engine.
+// Checks: record → tier, reason and measurements; labels; persistence and
+// free re-analysis after reload (no second transcription); copyable results.
+//
+//   npm run playground -- --no-open &   then   node tests/e2e/singing-test.mjs
+//   (SHOTS=dir keeps the screenshots)
+
+import { chromium } from 'playwright';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import assert from 'node:assert/strict';
+import { singers, SR } from '../../test/engine/synth.js';
+import { analyzeTranscript } from '../../src/engine/interpret/lyrics.js';
+import { cleanReading } from '../../src/engine/providers/openai-understand.js';
+
+const S = process.env.SHOTS || mkdtempSync(join(tmpdir(), 'sonmira-sing-'));
+mkdirSync(S, { recursive: true });
+const BASE = process.env.BASE || 'http://localhost:5180/playground/';
+
+function wav(samples, sr) {
+  const b = Buffer.alloc(44 + samples.length * 2);
+  b.write('RIFF', 0); b.writeUInt32LE(36 + samples.length * 2, 4); b.write('WAVEfmt ', 8);
+  b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22); b.writeUInt32LE(sr, 24); b.writeUInt32LE(sr * 2, 28); b.writeUInt16LE(2, 32); b.writeUInt16LE(16, 34);
+  b.write('data', 36); b.writeUInt32LE(samples.length * 2, 40);
+  samples.forEach((v, i) => b.writeInt16LE(Math.max(-32768, Math.min(32767, Math.round(v * 32767))), 44 + i * 2));
+  return b;
+}
+const mic = join(S, 'singer.wav');
+writeFileSync(mic, wav(singers.strong(), SR));
+
+const line = 'the moon lies quiet on the sea';
+const transcript = analyzeTranscript(line, { logprobs: line.split(' ').map((token) => ({ token, logprob: Math.log(0.92) })) });
+const lyrics = cleanReading({ language: 'en', lexical: true, coherent: true, structure: 'clause', unfinished: false, linked: true, missing: '', phraseComplete: true, completionConfidence: 0.9, completionReason: 'a full line', theme: [], imagery: [], figurative: [], mood: 'tender', motif: 'water', concepts: { loose: 'x', gathered: 'y', resolved: 'z' } });
+const empty = analyzeTranscript('', { logprobs: [] });
+
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH, args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${mic}`, '--autoplay-policy=no-user-gesture-required'] });
+const ctx = await browser.newContext({ viewport: { width: 1280, height: 1000 } });
+await ctx.grantPermissions(['microphone', 'clipboard-read', 'clipboard-write'], { origin: new URL(BASE).origin });
+const page = await ctx.newPage();
+const errors = [];
+page.on('pageerror', (e) => errors.push(String(e)));
+page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+let posts = 0, nextWords = 'line';
+await page.route('**/api/understand', async (route) => {
+  if (route.request().method() === 'GET') return route.fulfill({ json: { configured: true, transcribeModel: 'stub-transcribe', textModel: 'stub-text' } });
+  posts++;
+  const body = route.request().postDataJSON();
+  assert.ok(body.audio.length > 1000 && body.mime, 'audio is sent');
+  return route.fulfill({ json: nextWords === 'line' ? { ok: true, transcript, lyrics } : { ok: true, transcript: empty, lyrics: null } });
+});
+
+await page.goto(`${BASE}?view=singing`);
+await page.waitForFunction(() => document.querySelectorAll('#stTakes .take').length === 9);
+assert.match(await page.textContent('#stServer'), /stub-transcribe/);
+
+async function record(slot, sec) {
+  const card = `#take-${slot}`;
+  await page.click(`${card} .recbtn`);
+  await page.waitForTimeout(sec * 1000);
+  await page.click(`${card} .recbtn`);
+  await page.waitForFunction((c) => document.querySelector(`${c} .verdict, ${c} .err`), card, { timeout: 60000 });
+  return page.innerText(`${card} .out`);
+}
+
+// Take 7: a steady sung line with a complete phrase.
+const t7 = await record(7, 9);
+console.log('take 7 →', t7.split('\n').slice(0, 4).join(' | '));
+assert.match(t7, /Resolved|Gathered/, 'a complete sung phrase passes the words gate');
+assert.match(t7, /moon lies quiet/);
+assert.equal(posts, 1);
+
+// Take 1: the stub hears no words → Loose at the words gate.
+nextWords = 'none';
+const t1 = await record(1, 4);
+console.log('take 1 →', t1.split('\n').slice(0, 4).join(' | '));
+assert.match(t1, /Loose/);
+assert.match(t1, /Words were heard/);
+assert.equal(posts, 2);
+
+// Labels: judge take 7 one tier off and see the disagreement explained.
+const engine7 = await page.evaluate(() => window.__singingTest.view.get(7).u.tier);
+const other = engine7 === 'resolved' ? 'gathered' : 'resolved';
+await page.selectOption('#take-7 .judged', other);
+assert.match(await page.innerText('#take-7 .out'), /than your judgement/);
+assert.match(await page.innerText('#stSummary'), /2 of 9 recorded/);
+assert.ok(await page.$('#stCalib table.calib'), 'calibration table');
+await page.screenshot({ path: `${S}/1-singing.png`, fullPage: true });
+
+// Reload: takes, labels and audio come back and are re-measured for free.
+await page.reload();
+await page.waitForFunction(() => window.__singingTest?.view.get(7)?.u && window.__singingTest.view.get(1)?.u, null, { timeout: 60000 });
+assert.equal(posts, 2, 'no transcription on reload');
+assert.equal(await page.$eval('#take-7 .judged', (s) => s.value), other);
+assert.equal(await page.evaluate(() => window.__singingTest.view.get(7).u.tier), engine7, 'same decision from the saved reading');
+
+// Re-analyse button: free.
+await page.click('#take-7 .rerun');
+await page.waitForFunction(() => document.querySelector('#take-7 .verdict'));
+assert.equal(posts, 2);
+
+// Results for the thread.
+await page.click('#stCopy');
+const copied = JSON.parse(await page.evaluate(() => navigator.clipboard.readText()));
+assert.equal(copied.kind, 'sonmira-singing-test');
+const c7 = copied.takes.find((t) => t.slot === 7);
+assert.equal(c7.engine, engine7); assert.equal(c7.judged, other);
+assert.ok(c7.performance.windows.length >= 1 && c7.strong.length > 5 && c7.gate.length > 5);
+console.log('copied', JSON.stringify(copied).length, 'chars; take 7 strong checks:', c7.strong.map(([id, ok]) => `${id}${ok ? '✓' : '✗'}`).join(' '));
+
+// Phone width: no horizontal page scroll.
+await page.setViewportSize({ width: 390, height: 844 });
+const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+await page.screenshot({ path: `${S}/2-phone.png`, fullPage: false });
+const wide = await page.evaluate(() => [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right > innerWidth + 1 && !e.closest('.scroll')).slice(0, 8).map((e) => `${e.tagName}.${e.className}`));
+assert.ok(overflow <= 1, `page overflows by ${overflow}px at phone width: ${wide.join(', ')}`);
+
+assert.deepEqual(errors, []);
+console.log('singing test ok; screenshots in', S);
+await browser.close();

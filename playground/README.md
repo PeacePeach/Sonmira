@@ -34,3 +34,9 @@ OpenAI paintings show the original reference on the left and the output on the r
 The reference image comes from `/api/reference?id=…`, which reads it on the server from the same private store as `/api/generate`, so no storage URL reaches the page. It is off in Production unless `SONMIRA_REFERENCE_VIEW=1` is set there.
 
 Browser check without paid generation: `SONMIRA_REFS_DIR=… npm run playground -- --no-open &` then `node tests/e2e/playground-compare.mjs`.
+
+## Singing test
+
+`?view=singing` guides nine takes recorded in the page (hum, spoken words, an unfinished line, casual, falling apart, hesitant start, best line, the same song sung well, slow with vibrato). Each take goes through the app's own decision (`src/engine/understand.js`): the words are transcribed and read by `/api/understand` (one transcription, plus one short text call when there are words; no image), then the lyrical-completion gate and whole-take singing control pick the tier. The page shows the tier, why (the checks that decided it), the transcript, a pitch timeline with each 2 s stretch shaded by how controlled it was, and every measurement. The singer sets the tier they expect before singing and the tier they judge after listening; the calibration table lays every check's value against its threshold for all takes. Takes, audio and the word readings stay in this browser's IndexedDB; reloading or "Re-analyse" re-measures with the current code for free. "Copy results for Claude" copies the measurements and labels (no audio) as JSON.
+
+Browser check without paid calls: `npm run playground -- --no-open &` then `node tests/e2e/singing-test.mjs`.

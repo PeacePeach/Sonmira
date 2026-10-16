@@ -37,7 +37,7 @@ async function api(req, res, name) {
 async function handler(req, res) {
   try {
     const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-    if (path === '/api/generate' || path === '/api/reference') { await api(req, res, path.slice(5)); return; }
+    if (path === '/api/generate' || path === '/api/reference' || path === '/api/understand') { await api(req, res, path.slice(5)); return; }
     if (path === '/' || path === '/playground') { res.writeHead(302, { location: '/playground/' }).end(); return; }
     const file = normalize(join(ROOT, path.endsWith('/') ? path + 'index.html' : path));
     const top = file.slice(ROOT.length).split(sep)[0];
