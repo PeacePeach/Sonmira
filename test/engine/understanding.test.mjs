@@ -205,7 +205,7 @@ test('Loose without words expresses the sound itself; unreliable words carry no 
   const d = direct({ completeness: 'loose', emotion: 'tender', motif: 'abstract', seed: 2, soundOnly: true, expression: { range: 'wide', flow: 'broken', dynamics: 'swelling', vibrato: true } });
   assert.equal(d.subjectSource, 'sound');
   assert.match(d.prompt, /expresses the sound of the voice itself/);
-  assert.match(d.prompt, /Gesture, from how the voice moved: long, travelling strokes.*separate islands.*swelling.*trembling/);
+  assert.match(d.prompt, /Gesture, from how the voice moved, made only with the reference's own kind of marks: long, travelling marks.*separate islands.*swelling.*trembling/);
 });
 
 test('fixture 10: after a library change, selection stays in the decided tier', () => {
@@ -290,7 +290,7 @@ test('api/generate refuses a family from another tier, and bounds the concept', 
   assert.equal(ok.json.subjectSource, 'lyrics');
   const line = prompt.split('\n').find((l) => l.includes('a boat on a night sea'));
   assert.ok(line && !line.includes('"') && line.length < 320, 'flattened and bounded');
-  assert.match(prompt, /long, travelling strokes/);
+  assert.match(prompt, /long, travelling marks/);
 });
 
 test('ai engine: understanding, then one painting with the words’ concept; analyze-only makes no image call', async () => {

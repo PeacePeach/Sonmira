@@ -48,14 +48,14 @@ test('loose depicts nothing; gathered and resolved always have a subject', () =>
   }
 });
 
-test('palette is the selected reference\'s measured hierarchy, and the avoid list is always sent', () => {
+test('palette is the selected reference\'s measured hierarchy, and the essential avoid list is always sent', () => {
   for (const id of Object.keys(FAMILIES)) for (let seed = 1; seed <= 30; seed++) {
     const d = direct(spec(FAMILIES[id].tier, { seed, family: id }));
     const ref = LIBRARY.get(d.reference.id);
     assert.equal(ref.family, id);
     assert.deepEqual(d.swatches.map((c) => c.hex), [...ref.palette.colors, ref.palette.accent].filter(Boolean).map((c) => c.hex), id);
     assert.ok(d.pigments.length >= 1 && d.pigments.length <= 4, `${id}: ${d.pigments.length}`);
-    assert.match(d.prompt, /Avoid: neon/);
+    assert.match(d.prompt, /Avoid: text, letters/);
     assert.match(d.prompt, /signature, logo or watermark/);
   }
 });

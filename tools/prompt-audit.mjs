@@ -17,7 +17,7 @@
 // family's own observed style. Then it measures how much of the prompt is
 // word-for-word identical across the families.
 
-import { direct, FAMILIES, LIBRARY, AVOID, GLOBAL_STYLE, createLibrary } from '../src/engine/direct/index.js';
+import { direct, FAMILIES, LIBRARY, REFERENCE_AVOID as AVOID, REFERENCE_STYLE as GLOBAL_STYLE, createLibrary } from '../src/engine/direct/index.js';
 import { generateFromDirection } from '../src/engine/providers/openai.js';
 import { localStore, blobStore } from '../src/engine/providers/reference-store.js';
 
@@ -39,6 +39,20 @@ export const CONFLICTS = [
   { says: 'Fine detail and the sharpest edges only at the focus', against: /\bflat\b|silhouette|two-colour/i, why: 'Resolved form rule vs a family of flat, evenly crisp shapes' },
   { says: 'a complete sense of space', against: /.^/, why: 'Resolved form rule contradicts the global "only a small part is resolved"' },
 ];
+
+// Technique, composition and colour prescriptions that must come from the
+// reference (or the family's own rules), never from the shared layer. Any of
+// these in the prompt outside the reference-authority paragraph, the family's
+// style line and the reference's measured palette is reported.
+export const UNIVERSAL_TECHNIQUE = [
+  /wet-on-wet|wet-in-wet/i, /\bblooms?\b/i, /backruns?/i, /granulation/i, /white paper|bare paper|reserved white/i, /negative space/i,
+  /smooth (artificial )?gradients?/i, /cinematic/i, /pastel/i, /splash|spatter|flicks?\b/i, /transparent layered/i, /one clear colour idea|at most one accent/i,
+  /sharpest edges/i, /only a small part of the picture/i, /more paper showing|overcast light|open sunlit light/i, /cold-press/i,
+];
+
+export function sharedLayer(prompt, direction) {
+  return prompt.replace(direction.referencePrompt ?? '', '').replace(direction.sections.family, '').replace(direction.sections.palette ?? '', '').replace(direction.sections.subject, '').replace(direction.sections.meaning ?? '', '');
+}
 
 async function storeFor(env) {
   if (env.BLOB_READ_WRITE_TOKEN) return { kind: 'blob', store: blobStore({ token: env.BLOB_READ_WRITE_TOKEN }) };
@@ -86,6 +100,7 @@ export async function auditTier({ tier = 'resolved', lyrics = 'a lantern floatin
         imagesInRequest: req?.images ?? [], correctImage: req ? req.images.length === 1 && req.images[0].name === ref.path.split('/').pop() : false,
         inputFidelity: req?.inputFidelity ?? 'not set (API default)',
         prompt: req?.prompt ?? null, promptChars: req?.prompt?.length ?? 0,
+        universal: req?.prompt ? UNIVERSAL_TECHNIQUE.filter((re) => re.test(sharedLayer(req.prompt, d))).map((re) => re.source) : [],
         conflicts: CONFLICTS.filter((c) => req?.prompt?.includes(c.says) && (c.against.test(own) || c.against.source === '.^')).map((c) => `${c.says} → ${c.why}`),
       });
     }
@@ -105,6 +120,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   for (const x of r.rows) {
     console.log(`${x.reference.padEnd(12)} ${x.family.padEnd(22)} file ${x.file} · image[] ${x.imagesInRequest.map((i) => `${i.name} ${i.bytes} B`).join(', ') || 'none'} · correct ${x.correctImage} · ${x.promptChars} chars`);
     for (const c of x.conflicts) console.log(`    ⚠ ${c}`);
+    if (x.universal.length) console.log(`    ⚠ shared layer prescribes: ${x.universal.join(', ')}`);
     if (has('prompts')) console.log(`\n${x.prompt}\n`);
   }
   console.log(`\nidentical across every family: ${Math.round(r.identical.share * 100)}% of the prompt (${r.identical.sentences} sentences); input_fidelity ${r.rows[0]?.inputFidelity}`);

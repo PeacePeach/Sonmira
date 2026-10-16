@@ -86,6 +86,17 @@ coherence. Note or rhythm *accuracy* is not measurable and is not claimed.
 Every threshold is in `SINGING_CALIBRATION` / `GATE_CALIBRATION` and is
 provisional: set on synthetic voices, to be calibrated on real recordings.
 
+Those components only see notes that settled, so Strong also needs control
+across the **whole performance** (`analysis/performance.js`): every voiced
+frame is a settled note, an expressive bend between notes, a phrase onset or
+release, or unstable (pauses and breaths are not counted). Strong needs
+enough controlled voiced time, controlled weaker 2-second windows (p25), few
+weak windows, no sliding key (a constant transposition is free), and rhythm
+and coherence above an extreme-case floor. Confidence is evidence (how much
+clean material) × consistency (the weaker windows). These only decide
+Resolved vs Gathered; a complete phrase is never sent to Loose for how it was
+sung. Every condition is listed ✓/✗ in the `?dev` panel.
+
 **Semantics.** The reading gives theme, imagery, figurative meanings
 ("drowning in memories" → overwhelmed by the past), mood, motif and one
 concept per tier (Loose: no objects, only movement and weight; Gathered:
@@ -93,6 +104,16 @@ suggested; Resolved: one recognisable subject). Words carry meaning only when
 the transcript is reliable; a Loose take without them expresses the sound
 itself. The reference keeps palette, light and technique; its own subjects
 never enter the painting (`REFERENCE_AUTHORITY`).
+
+**Style prompt with a reference.** The attached reference decides medium,
+technique, texture, colour treatment, composition language and degree of
+stylisation. The written prompt adds only the subject (lyrics), how
+recognisable it is (tier), the family's own observed rules, the reference's
+measured palette, and mood and gesture phrased as a lean *within* the
+reference. The universal watercolor technique and long avoid list
+(`GLOBAL_STYLE`, `AVOID`) are used only for text-only generation;
+`tools/prompt-audit.mjs` builds the exact request without sending it and
+flags any shared prescription that would compete with the reference.
 
 **Validate on real voices (no image made):**
 `node --env-file=.env.local tools/understand.mjs take.m4a` prints the tier,

@@ -16,3 +16,13 @@ test('every resolved reference is audited with its own image in the request and 
   }
   assert.ok(r.identical.share > 0 && r.identical.share < 1);
 });
+
+test('no tier\'s prompt carries a shared technique, composition or colour prescription that conflicts with its reference', async () => {
+  for (const tier of ['loose', 'gathered', 'resolved']) {
+    const r = await auditTier({ tier, env: {} });
+    for (const x of r.rows) {
+      assert.deepEqual(x.conflicts, [], `${tier} ${x.reference}`);
+      assert.deepEqual(x.universal, [], `${tier} ${x.reference}`);
+    }
+  }
+});

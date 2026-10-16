@@ -23,8 +23,9 @@
 // on synthetic voices and needs calibration on real recordings.
 
 import { TRACK_HOP_SEC } from './pitchtrack.js';
+import { performanceProfile } from './performance.js';
 
-export const SINGING_VERSION = 2;
+export const SINGING_VERSION = 3;
 
 export const SINGING_CALIBRATION = {
   smoothSec: 0.15,          // removes vibrato (4–8 Hz) to see the note's slow line
@@ -41,6 +42,29 @@ export const SINGING_CALIBRATION = {
   transitions: { overshoot: 50, minCount: 2 },
   weights: { stability: 0.3, intonation: 0.25, transitions: 0.15, control: 0.15, rhythm: 0.1, coherence: 0.05 },
   strong: { score: 0.8, confidence: 0.6, stability: 0.7, intonation: 0.6, transitions: 0.6 },
+  // Whole-performance control (performance.js). PROVISIONAL: set on
+  // synthetic takes only (mixed-quality takes measure window p25 0.43–0.45
+  // and 40 % weak windows; consistently controlled takes, including
+  // improvised, transposed, breathy and fast syllabic singing, ≥ 0.70 and
+  // none), to be recalibrated on labelled real recordings. They only decide
+  // Strong (Resolved) eligibility; they never move a take below Gathered.
+  performance: {
+    bendMaxSec: 0.6,        // a slide between notes up to this long is expressive, not unstable
+    bendDirectness: 0.7,    // net movement / path length for a bend (1 = one-way)
+    bendMarginCents: 100,   // or, between notes < 150 cents apart, never leaving their span by more than this
+    edgeSec: 0.25,          // onset scoop / release fall-off allowed per phrase
+    phraseGapSec: 0.35,     // silence longer than this ends a phrase (a breath)
+    windowSec: 2,           // windows of voiced time
+    weakWindow: 0.5,        // a window less controlled than this is weak
+  },
+  strongPerformance: {
+    controlledShare: 0.6,   // of all voiced time: notes, bends and phrase edges
+    windowP25: 0.6,         // the weaker windows must be controlled too
+    maxWeakWindowShare: 0.15, // at most about 1 weak window in 7 (none in a short take)
+    maxTuningDriftCents: 50, // the singer's own key may not keep sliding
+    minRhythm: 0.25,        // only extremely weak rhythm blocks Strong (timing is expressive)
+    minCoherence: 0.25,     // only extremely erratic leaps block Strong
+  },
   // Sung vs spoken: share of voiced time spent on held notes. Synthetic
   // speech measures 0.13–0.19; syllabic sung lyrics 0.36–0.66 (very fast
   // syllables, ~0.15–0.28 s, about 0.28). Provisional until real recordings.
@@ -214,7 +238,8 @@ export function singingAnalysis(track, features = null, cal = SINGING_CALIBRATIO
   const inNotes = notes.filter((n) => n.sec >= 0.15);
   if (inNotes.length >= cal.intonation.minNotes) {
     const { deviation, offset } = intonationDeviation(inNotes);
-    C.intonation = { score: r3(goodBad(deviation, cal.intonation.devGood, cal.intonation.devRandom)), deviationCents: r3(deviation), tuningOffsetCents: offset, notes: inNotes.length };
+    C.intonation = { measures: 'relative tuning consistency: notes on one semitone grid at the singer\'s own tuning, not the song\'s notes',
+      score: r3(goodBad(deviation, cal.intonation.devGood, cal.intonation.devRandom)), deviationCents: r3(deviation), tuningOffsetCents: offset, notes: inNotes.length };
   } else unavailable.push(`intonation: fewer than ${cal.intonation.minNotes} notes`);
 
   // 3. Transitions: does the voice arrive cleanly, or hunt around the target?
@@ -258,22 +283,46 @@ export function singingAnalysis(track, features = null, cal = SINGING_CALIBRATIO
     C.coherence = { score: r3(ints.filter((d) => d <= 700).length / ints.length), largestLeapCents: r3(Math.max(...ints)) };
   }
 
-  // Combined score over the available components; confidence from evidence.
+  // 7. The whole performance: how much of the voiced singing, and of its
+  // weakest stretches, is controlled (not scored; it decides eligibility).
+  const perf = performanceProfile(track, notes, cal.performance, cal.smoothSec);
+  C.performance = { scored: false, ...perf };
+
+  // Combined score over the available components (settled notes only).
   const W = cal.weights;
   const keys = Object.keys(W).filter((k) => C[k]);
   const wsum = keys.reduce((a, k) => a + W[k], 0);
   const score = wsum ? keys.reduce((a, k) => a + W[k] * C[k].score, 0) / wsum : null;
   const clarity = notes.length ? mean(notes.flatMap((n) => n.clarity)) : 0;
-  const confidence = clamp01(noteSec / 4) * clamp01(notes.length / 6) * clamp01((clarity - 0.6) / 0.3) * (C.intonation ? 1 : 0.6);
+  // Evidence: how much clean material there was to judge (this used to be
+  // reported as confidence). Confidence also asks whether the judgement
+  // holds for the whole take: it falls when the weaker windows are not
+  // controlled, so a few good notes cannot carry it.
+  const evidence = clamp01(noteSec / 4) * clamp01(notes.length / 6) * clamp01((clarity - 0.6) / 0.3) * (C.intonation ? 1 : 0.6);
+  const consistency = perf.windowP25 == null ? 0 : clamp01((perf.windowP25 - 0.3) / 0.4);
+  const confidence = evidence * consistency;
   // Ending: reported for stage 2, not scored. Stopping the recording right
   // after singing is a recording action, not a singing fault, so it never
   // lowers the score or the tier.
   C.ending = { scored: false, ...vocal.ending };
 
-  const S = cal.strong;
-  const strong = score != null && score >= S.score && confidence >= S.confidence
-    && (C.stability?.score ?? 0) >= S.stability && (C.intonation?.score ?? 0) >= S.intonation
-    && (!C.transitions || C.transitions.score >= S.transitions);
+  // Strong needs a high score from the settled notes AND control across the
+  // whole performance. Each condition is reported for the dev panel.
+  const S = cal.strong, SP = cal.strongPerformance;
+  const strongChecks = [
+    { id: 'score', ok: score != null && score >= S.score, value: r3(score), need: `≥ ${S.score}` },
+    { id: 'confidence', ok: confidence >= S.confidence, value: r3(confidence), need: `≥ ${S.confidence} (evidence × consistency)` },
+    { id: 'stability', ok: (C.stability?.score ?? 0) >= S.stability, value: C.stability?.score ?? null, need: `≥ ${S.stability}` },
+    { id: 'intonation', ok: (C.intonation?.score ?? 0) >= S.intonation, value: C.intonation?.score ?? null, need: `≥ ${S.intonation} (relative tuning consistency)` },
+    { id: 'transitions', ok: !C.transitions || C.transitions.score >= S.transitions, value: C.transitions?.score ?? 'not measured', need: `≥ ${S.transitions} when measured` },
+    { id: 'controlled_share', ok: (perf.controlledShare ?? 0) >= SP.controlledShare, value: perf.controlledShare, need: `≥ ${SP.controlledShare} of voiced time controlled` },
+    { id: 'weakest_windows', ok: (perf.windowP25 ?? 0) >= SP.windowP25, value: perf.windowP25, need: `p25 of ${cal.performance.windowSec} s windows ≥ ${SP.windowP25}` },
+    { id: 'weak_windows', ok: perf.windows.length > 0 && perf.weakWindowShare <= SP.maxWeakWindowShare, value: perf.weakWindowShare, need: `≤ ${SP.maxWeakWindowShare} of windows under ${cal.performance.weakWindow}` },
+    { id: 'key_drift', ok: perf.tuning.driftCents <= SP.maxTuningDriftCents, value: perf.tuning.driftCents, need: `≤ ${SP.maxTuningDriftCents} cents` },
+    { id: 'rhythm', ok: !C.rhythm || C.rhythm.score >= SP.minRhythm, value: C.rhythm?.score ?? 'not measured', need: `≥ ${SP.minRhythm} (only extreme cases)` },
+    { id: 'coherence', ok: !C.coherence || C.coherence.score >= SP.minCoherence, value: C.coherence?.score ?? 'not measured', need: `≥ ${SP.minCoherence} (only extreme cases)` },
+  ];
+  const strong = strongChecks.every((c) => c.ok);
 
   const cents = notes.map((n) => n.center);
   const expression = {
@@ -285,7 +334,7 @@ export function singingAnalysis(track, features = null, cal = SINGING_CALIBRATIO
   return {
     version: SINGING_VERSION,
     vocal,
-    quality: { score: r3(score), confidence: r3(confidence), strong, components: C, unavailable },
+    quality: { score: r3(score), confidence: r3(confidence), evidence: r3(evidence), consistency: r3(consistency), strong, strongChecks, components: C, unavailable },
     expression,
   };
 }

@@ -1,6 +1,6 @@
-// Whole-performance singing control (PROTOTYPE in tools/performance-profile.mjs,
-// not yet used by the tier decision). Ordering tests only: no threshold is
-// fixed until labelled real recordings exist.
+// Whole-performance singing control (src/engine/analysis/performance.js) and
+// the Strong decision that uses it. Thresholds are provisional (synthetic
+// takes only) until labelled real recordings exist.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mixedTakes } from './mixed-takes.js';
@@ -35,11 +35,17 @@ test('tuning that keeps sinking is reported as drift; a steady key is not', () =
   assert.ok(R.strong.p.tuning.driftCents < 20 && R.improvised.p.tuning.driftCents < 20);
 });
 
-test('known gap: the current decision calls both mixed takes Strong', () => {
-  // Documents today's behaviour; flips when the proposed rule is adopted.
-  for (const m of MIXED) assert.equal(R[m].q.strong, true, m);
+test('mixed-quality takes are not Strong (Resolved); consistent, expressive and transposed takes stay Strong', () => {
+  for (const m of MIXED) {
+    assert.equal(R[m].q.strong, false, m);
+    const failed = R[m].q.strongChecks.filter((c) => !c.ok).map((c) => c.id);
+    assert.ok(failed.includes('weakest_windows') && failed.includes('weak_windows'), `${m}: ${failed}`);
+  }
+  for (const c of CONSISTENT) assert.equal(R[c].q.strong, true, `${c}: ${JSON.stringify(R[c].q.strongChecks.filter((x) => !x.ok))}`);
+  assert.equal(R.sinking.q.strong, false, 'sinking tuning is not Strong');
 });
 
-test('mixed takes are not Strong (Resolved) under the decision', { todo: 'adopt the whole-performance rule after calibration on labelled recordings' }, () => {
-  for (const m of MIXED) assert.equal(R[m].q.strong, false, m);
+test('confidence is evidence × consistency: high for consistent takes, low when weak windows remain', () => {
+  for (const c of CONSISTENT) assert.ok(R[c].q.confidence >= 0.6, `${c} ${R[c].q.confidence}`);
+  for (const m of MIXED) { assert.ok(R[m].q.evidence >= 0.9, m); assert.ok(R[m].q.confidence < 0.6, `${m} ${R[m].q.confidence}`); }
 });

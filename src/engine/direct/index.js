@@ -20,7 +20,7 @@ import { LIBRARY, referencePalette, REFERENCE_AUTHORITY } from './library.js';
 
 export { FAMILIES, REFERENCES, LIBRARY_VERSION } from './families.js';
 export { LIBRARY, createLibrary, colourName, referencePalette } from './library.js';
-export const DIRECTION_VERSION = 4;
+export const DIRECTION_VERSION = 5;
 
 // Global Sonmira constraints: true for every family and every tier.
 // Materiality is independent of abstraction: Loose, Gathered and Resolved all
@@ -52,19 +52,54 @@ export const AVOID = [
   'text, letters, titles, signature, logo or watermark', 'a frame, border or mat', 'a photo of a painting on a table',
 ];
 
+// With a reference image attached, the reference is the style authority, so
+// the written layer says only what is true of every painting and what the
+// reference cannot know: the subject (from the lyrics), how recognisable it
+// is (the tier), and the mood and gesture of this take, each phrased
+// relative to the reference. The universal watercolor technique, composition
+// and avoid rules above remain only for text-only generation (no
+// reference), where nothing else defines the style. They contradicted
+// several families (flat R1, smooth R4/R6, deep-valued R2/R5) and pulled
+// every result toward one generic look.
+export const REFERENCE_STYLE = 'A hand-made painting in the artistic language of the attached reference: its medium, technique, texture, brushwork, colour treatment, composition language and degree of stylisation. An original composition, not a copy of the reference or of any existing artwork.';
+export const REFERENCE_AVOID = [
+  'text, letters, titles, signature, logo or watermark', 'a frame, border or mat', 'a photo of a painting on a table',
+  'photorealism or a photograph', 'a photo-to-painting filter effect', 'glossy digital or 3D rendering',
+];
+
 export const LEVELS = {
   loose: {
     label: 'abstract watercolor',
+    refLabel: 'abstract painting',
     form: 'Abstract: nothing is deliberately depicted, there is no focal point and no picture space to step into. The marks are the painting.',
+    refForm: 'Abstract: nothing is deliberately depicted and there is no picture space to step into; the reference\'s own marks, colour and texture are the painting.',
   },
   gathered: {
     label: 'semi-abstract watercolor study',
+    refLabel: 'semi-abstract painting',
+    refForm: 'Semi-abstract: ambiguous, emerging forms; a mood of place may be felt but no subject is clearly identifiable. No complete silhouettes, clearly identifiable objects or fully formed scenery: ambiguity, not a blurred illustration. Less resolved than the reference itself, in its own technique.',
     form: 'Semi-abstract: ambiguous, emerging forms; a mood of place may be felt but no subject is clearly identifiable, and nothing is drawn in detail. Depth is beginning to appear and one area is starting to draw the eye. No complete silhouettes, clearly identifiable objects, realistic perspective or fully formed scenery: ambiguity, not a blurred illustration. Clearly a study, left unfinished in places.',
   },
   resolved: {
     label: 'finished watercolor painting',
+    refLabel: 'finished painting',
+    refForm: 'Finished and fully considered: a clear, recognisable subject, carried as far and as richly as the reference carries its own, with the reference\'s own finish, edges, detail distribution and composition language. Never a realistic image.',
     form: 'Finished and fully considered: a clear, recognisable focal subject, a deliberate composition and a complete sense of space, rendered entirely through watercolor technique, never as a realistic image. Fine detail and the sharpest edges only at the focus; secondary elements simplified into painterly gestures.',
   },
+};
+
+// With a reference: the same moods as a lean within the reference's own
+// range, never a fixed lightness, paper share or kind of light.
+const EMOTION_REF = {
+  tender: 'Mood: tender, leaning toward the softer, gentler end of the reference\'s own colour and value range.',
+  bright: 'Mood: bright, leaning toward the warmer, clearer end of the reference\'s own colour and value range.',
+  melancholic: 'Mood: melancholic, leaning toward the cooler, quieter end of the reference\'s own colour and value range.',
+  intense: 'Mood: intense, leaning toward the deeper, richer end of the reference\'s own colour and value range.',
+};
+const ENERGY_REF = {
+  calm: 'Pace of the marks, in the reference\'s own technique: slow and settled.',
+  moderate: 'Pace of the marks, in the reference\'s own technique: mostly settled, with a few quicker marks.',
+  lively: 'Pace of the marks, in the reference\'s own technique: quick and energetic.',
 };
 
 // Emotion moves light and colour inside the family's palette; it never
@@ -85,20 +120,30 @@ export const EXPRESSION = {
   vibrato: 'a gently trembling edge to some strokes',
 };
 
-export function expressionLine(x) {
+export const EXPRESSION_REF = {
+  range: { narrow: 'marks kept close and contained', moderate: 'marks that rise and fall a little', wide: 'long, travelling marks across the sheet' },
+  flow: { connected: 'one connected flow', broken: 'separate islands of marks' },
+  dynamics: { even: 'even pressure throughout', swelling: 'marks swelling from light to strong and back' },
+  vibrato: 'a gently trembling edge to some marks',
+};
+
+export function expressionLine(x, withReference = false) {
   if (!x) return null;
-  const parts = [EXPRESSION.range[x.range], EXPRESSION.flow[x.flow], EXPRESSION.dynamics[x.dynamics], x.vibrato ? EXPRESSION.vibrato : null].filter(Boolean);
-  return parts.length ? `Gesture, from how the voice moved: ${parts.join('; ')}.` : null;
+  const E = withReference ? EXPRESSION_REF : EXPRESSION;
+  const parts = [E.range[x.range], E.flow[x.flow], E.dynamics[x.dynamics], x.vibrato ? E.vibrato : null].filter(Boolean);
+  if (!parts.length) return null;
+  return withReference ? `Gesture, from how the voice moved, made only with the reference's own kind of marks: ${parts.join('; ')}.` : `Gesture, from how the voice moved: ${parts.join('; ')}.`;
 }
 
 // What the painting expresses, from the song's words (spec.concept). The
 // tier decides how recognisable it is; the family and reference decide how it
 // looks. Figurative language is painted as its meaning.
-function subjectFromConcept(tier, c) {
-  const article = (label) => `${/^[aeiou]/.test(label) ? 'An' : 'A'} ${label}`;
-  if (tier === 'loose') return `${article(LEVELS.loose.label)}. It depicts nothing; its marks carry the feeling of the sung words: ${c.text}`;
-  if (tier === 'gathered') return `${article(LEVELS.gathered.label)}, only suggesting, never spelling out: ${c.text}`;
-  return `${article(LEVELS.resolved.label)} of: ${c.text}`;
+const article = (label) => `${/^[aeiou]/.test(label) ? 'An' : 'A'} ${label}`;
+const labelOf = (tier, withReference) => (withReference ? LEVELS[tier].refLabel : LEVELS[tier].label);
+function subjectFromConcept(tier, c, withReference = false) {
+  if (tier === 'loose') return `${article(labelOf('loose', withReference))}. It depicts nothing; its marks carry the feeling of the sung words: ${c.text}`;
+  if (tier === 'gathered') return `${article(labelOf('gathered', withReference))}, only suggesting, never spelling out: ${c.text}`;
+  return `${article(labelOf('resolved', withReference))} of: ${c.text}`;
 }
 
 function meaningLine(tier, c) {
@@ -170,24 +215,26 @@ export function direct(spec) {
   // without words expresses the sound itself; otherwise (no understanding
   // step, e.g. tools) the family's own subject for the motif.
   const concept = spec.concept?.text ? spec.concept : null;
-  const subjectLine = concept ? subjectFromConcept(tier, concept)
-    : tier === 'loose' && spec.soundOnly ? `${/^[aeiou]/.test(LEVELS.loose.label) ? 'An' : 'A'} ${LEVELS.loose.label} that expresses the sound of the voice itself, not any subject or story.`
-    : `${/^[aeiou]/.test(LEVELS[tier].label) ? 'An' : 'A'} ${LEVELS[tier].label}${subject ? ` of ${subject}` : ''}.`;
+  const withRef = Boolean(reference);
+  const subjectLine = concept ? subjectFromConcept(tier, concept, withRef)
+    : tier === 'loose' && spec.soundOnly ? `${article(labelOf('loose', withRef))} that expresses the sound of the voice itself, not any subject or story.`
+    : `${article(labelOf(tier, withRef))}${subject ? ` of ${subject}` : ''}.`;
+  const avoid = withRef ? REFERENCE_AVOID : AVOID;
   const sections = {
     subject: subjectLine,
     meaning: concept ? meaningLine(tier, concept) : null,
     family: `Style — ${F.label}: ${F.rules}${concept ? ' Where this style names people, places or objects, use them only if they fit the subject above.' : ''}`,
-    form: LEVELS[tier].form,
+    form: withRef ? LEVELS[tier].refForm : LEVELS[tier].form,
     // With a subject from the words, the reference's light note (which can
     // name its own objects, e.g. "sun through leaves") becomes its quality only.
     palette: fromRef ? (concept ? fromRef.text.replace(/Light: [^.]*\./, 'Light: the reference\'s own quality and direction of light, carried onto the new subject.') : fromRef.text) : `Colour: ${P.colors.filter((p) => chosen.includes(p)).map((p) => p.name).join(', ')}, on white or warm white paper${P.accent ? `, with ${P.accent.name} as the only accent, kept small` : ''}.`,
     // Sound varies mood and marks inside the reference's language, never its identity.
-    emotion: `${reference ? 'Mood, within the reference\'s own colours and light — ' : ''}${EMOTION[spec.emotion] || EMOTION.tender}`,
-    energy: ENERGY[energy],
-    gesture: expressionLine(spec.expression),
-    style: GLOBAL_STYLE,
+    emotion: withRef ? (EMOTION_REF[spec.emotion] || EMOTION_REF.tender) : (EMOTION[spec.emotion] || EMOTION.tender),
+    energy: withRef ? ENERGY_REF[energy] : ENERGY[energy],
+    gesture: expressionLine(spec.expression, withRef),
+    style: withRef ? REFERENCE_STYLE : GLOBAL_STYLE,
   };
-  const prompt = [sections.subject, sections.meaning, sections.family, sections.form, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.energy, sections.gesture, sections.style, `Avoid: ${AVOID.join(', ')}.`].filter(Boolean).join('\n');
+  const prompt = [sections.subject, sections.meaning, sections.family, sections.form, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.energy, sections.gesture, sections.style, `Avoid: ${avoid.join(', ')}.`].filter(Boolean).join('\n');
   return {
     version: DIRECTION_VERSION, level: tier, requestedLevel: level,
     family: familyId, familyLabel: F.label, refs: library.pool(familyId).map((e) => e.path.split('/').pop()),
@@ -196,6 +243,6 @@ export function direct(spec) {
     referencePrompt: reference ? REFERENCE_AUTHORITY : null,
     libraryVersion: library.version, seed: spec.seed >>> 0,
     subject: concept ? concept.text : subject, subjectSource: concept ? 'lyrics' : tier === 'loose' && spec.soundOnly ? 'sound' : 'family',
-    pigments: swatches.map((p) => p.name), swatches, sections, prompt, avoid: AVOID.slice(),
+    pigments: swatches.map((p) => p.name), swatches, sections, prompt, avoid: avoid.slice(),
   };
 }

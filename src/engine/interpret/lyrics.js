@@ -147,6 +147,6 @@ export function decideTier({ gate, quality }) {
   if (!gate?.pass) return { tier: 'loose', stage: 1, reason: gate?.reason ?? 'no lyrics gate result' };
   if (quality?.strong) return { tier: 'resolved', stage: 2, reason: `complete phrase, confidently strong singing (score ${quality.score}, confidence ${quality.confidence})` };
   const why = quality?.score == null ? 'singing quality could not be measured'
-    : `singing not confidently strong (score ${quality.score}, confidence ${quality.confidence})`;
+    : `singing not confidently strong (score ${quality.score}, confidence ${quality.confidence}${quality.strongChecks ? `; not met: ${quality.strongChecks.filter((c) => !c.ok).map((c) => c.id).join(', ')}` : ''})`;
   return { tier: 'gathered', stage: 2, reason: `complete phrase; ${why}` };
 }

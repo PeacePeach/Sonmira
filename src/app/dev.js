@@ -114,7 +114,12 @@ export function mountDevPanel(app) {
           ['model says complete', l ? `${l.phraseComplete} (${l.completionConfidence})` : null], ['why', l?.completionReason], ['text model', l?.model],
           ['gate', u.gate ? `${u.gate.pass ? 'PASS' : 'FAIL'} (confidence ${u.gate.confidence})` : null], ['failed checks', u.gate?.failed?.join(', ')],
           ...(u.gate?.checks ?? []).map((c) => [`  ${c.ok ? '✓' : '✗'} ${c.id}`, `${typeof c.value === 'object' ? JSON.stringify(c.value) : c.value} (need ${c.need})`])]));
-        out.push(section('singing', [['score', q?.score], ['confidence', q?.confidence], ['strong', q?.strong], ...Object.entries(q?.components ?? {}).map(([k, c]) => [k, c]), ['unavailable', q?.unavailable?.join('; ')], ['expression', u.expression]]));
+        out.push(section('singing', [['score (settled notes)', q?.score], ['confidence (evidence × consistency)', q?.confidence], ['evidence', q?.evidence], ['consistency', q?.consistency], ['strong', q?.strong],
+          ...(q?.strongChecks ?? []).map((c) => [`  ${c.ok ? '✓' : '✗'} ${c.id}`, `${c.value} (need ${c.need})`]),
+          ...Object.entries(q?.components ?? {}).filter(([k]) => k !== 'performance').map(([k, c]) => [k, c]), ['unavailable', q?.unavailable?.join('; ')], ['expression', u.expression]]));
+        const p = q?.components?.performance;
+        if (p) out.push(section('whole performance', [['voiced s', p.voicedSec], ['controlled share', p.controlledShare], ['seconds by kind', p.labels], ['weakest windows (p25)', p.windowP25], ['weak window share', p.weakWindowShare],
+          ['windows', p.windows.map((w) => `${w.t0}–${w.t1}s ${w.controlled}`).join(' · ')], ['key drift cents', p.tuning?.driftCents], ['grid per window', p.tuning?.localOffsets?.join(' ')]]));
         out.push(section('semantics', [['source', s?.source], ['why', s?.reason], ['concept', s?.concept?.text], ['theme', s?.concept?.theme?.join(', ')], ['imagery', s?.concept?.imagery?.join(', ')], ['figurative', s?.concept?.figurative], ['mood', u.emotion?.value + ' · ' + u.emotion?.source], ['motif', u.motif?.value + ' · ' + u.motif?.source]]));
       }
       if (!g.error) out.push(section('generation', [['engine', engineId], ['provider', g.provider], ['model', g.model], ['quality', g.quality], ['tier', g.tier], ['family', g.family], ['subject from', g.subjectSource],
