@@ -7,7 +7,8 @@ export const DOCS = {
     title: 'Privacy policy',
     body: [
       'Sonmira is a personal diary. In this prototype, your recordings, notes and paintings are stored only in this browser, on this device.',
-      'Nothing is uploaded. There are no accounts, analytics or advertising.',
+      'Nothing is uploaded. There are no analytics or advertising.',
+      'An account is optional. If you sign in with Apple, we keep only an anonymous account id linked to your Apple ID, with the paintings you have left and your purchases. We never ask for your name or email, and your diary, recordings and paintings are not part of your account: they stay on this device. You can delete your account in Settings → Account.',
       'The microphone is used only while you are singing, after you tap to begin.',
       'Clearing this site’s data in your browser removes your diary permanently. Backup is not available yet.',
       'Purchases are handled by Apple. Sonmira never sees your payment details. In this prototype, purchases are simulated and nothing is charged.',

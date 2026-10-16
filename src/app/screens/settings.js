@@ -12,9 +12,11 @@ export function mountSettings(app) {
   const paintings = h('div', { class: 'group', 'data-paintings': '' });
   const devGroup = h('div', { class: 'group', 'data-dev-group': '' });
   const weekVal = h('span', { class: 'val' });
+  const accountVal = h('span', { class: 'val acct-row-val' });
   const paint = () => {
     lengthVal.textContent = `${app.settings.maxSeconds} seconds`;
     weekVal.textContent = app.settings.weekStart === 1 ? 'Mon' : 'Sun';
+    accountVal.textContent = app.account?.status().signedIn ? 'Signed in with Apple' : 'On this iPhone';
     const st = b.status();
     paintings.replaceChildren(...[
       h('div', { class: 'row' }, h('span', {}, 'Available'), h('span', { class: 'val' }, balanceLabel(st))),
@@ -74,6 +76,9 @@ export function mountSettings(app) {
       soon('Backup / restore')),
     h('div', { class: 'section' }, 'Paintings'),
     paintings,
+    h('div', { class: 'section' }, 'Account'),
+    h('div', { class: 'group' },
+      h('button', { class: 'row action', 'data-account-row': '', onClick: () => app.navigate('account') }, h('span', {}, 'Account'), h('span', { class: 'row-end' }, accountVal, icons.chevron()))),
     h('div', { class: 'section' }, 'About'),
     h('div', { class: 'group' },
       soon('Rate Sonmira'),

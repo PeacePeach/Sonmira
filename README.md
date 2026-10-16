@@ -34,6 +34,7 @@ If that's awkward, any HTTPS tunnel also works, e.g. `npx localtunnel --port 517
 | Settings | Recording length 15 / 30 s and start day Sun / Mon both work and are remembered. Daily reminder, Diary lock, Backup / restore and Rate say **Coming soon** and do nothing. Privacy policy and Terms open short prototype drafts. |
 | Share | A share icon on the result screen and on a saved painting. **Share image** makes a 2160×2700 (4:5) card with the painting, the optional note, the date and a small *Sonmira* wordmark. **Make a video** records a 1080×1920 (9:16) MP4 with the original recording (up to 30 s), the painting and a quiet waveform. Both open the system share sheet (on iPhone, the native iOS sheet with Save Image, Messages, Instagram…). Everything happens on the device and nothing is uploaded. Video is offered only where the browser can record MP4. |
 | Paintings & paywall | 3 free paintings, then a quiet sheet offers **Daily Ritual** (monthly, one painting a day) or **Little Moments** (10 paintings, one-time), with *Why we charge*, renewal details, Restore purchases, Terms and Privacy. A painting is counted only when it's made. Purchases are a clearly labeled **development simulation**: nothing is charged. Settings → Paintings shows what's left. See `docs/paywall.md`. |
+| Account | Optional, never asked before painting. **Settings → Account** offers Sign in with Apple, which keeps paintings left and purchases with the person on a new iPhone; the diary, recordings and paintings stay on the device. Sign out and Delete account (two taps, Apple confirms; the diary is erased only if chosen). In web previews Apple is a labeled **development simulation**. See `docs/account.md`. |
 | Persistence | Entries, audio and paintings are stored in IndexedDB and survive reloads. Settings are kept in localStorage. |
 
 ### Edge cases handled
@@ -98,6 +99,7 @@ ENGINE_ID=real npm test   # contract tests against the real engine
 npm i -D playwright && npx playwright install chromium
 node server.js &  npm run e2e          # SHOTS=./shots saves screenshots; ENGINE_ID=real to use the real engine
 node tests/e2e/paywall.mjs             # free tier → paywall → simulated purchases, failures, restore, reinstall
+node tests/e2e/account.mjs             # guest-first, Sign in with Apple (simulated), sign out, delete
 ```
 
 The e2e test covers all 11 prototype requirements (record, stop, auto-stop at 15 s, playback, retry, note, generate, result, save, open, replay, reload), plus mic-denied, a too-short take, settings, calendar and delete.

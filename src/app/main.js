@@ -13,9 +13,12 @@ import { mountLegal } from './screens/legal.js';
 import { createBilling } from './billing/index.js';
 import { askSimulator } from './paywall/simulator.js';
 import { openPaywall } from './paywall/paywall.js';
+import { mountAccount } from './screens/account.js';
+import { mountAccountDelete } from './screens/account-delete.js';
+import { createAccountForDevice } from './account/setup.js';
 
-const SCREENS = { diary: mountDiary, sing: mountSing, detail: mountDetail, settings: mountSettings, legal: mountLegal };
-const ENTER = { diary: 'enter-fade', sing: 'enter-modal', detail: 'enter-push', settings: 'enter-push', legal: 'enter-push' };
+const SCREENS = { diary: mountDiary, sing: mountSing, detail: mountDetail, settings: mountSettings, legal: mountLegal, account: mountAccount, accountDelete: mountAccountDelete };
+const ENTER = { diary: 'enter-fade', sing: 'enter-modal', detail: 'enter-push', settings: 'enter-push', legal: 'enter-push', account: 'enter-push', accountDelete: 'enter-push' };
 
 const root = document.getElementById('app');
 const now = new Date();
@@ -32,6 +35,7 @@ export const app = {
   entries: [],
   current: null,
   billing: null,
+  account: null,
   paywallOpen: null,
 
   /** Go to Sing if a painting can be made; otherwise offer more, then go on. */
@@ -90,6 +94,7 @@ async function boot() {
   app.engine = engine;
   app.storage = storage;
   app.billing = createBilling({ ask: (req) => askSimulator(app, req) });
+  app.account = createAccountForDevice(app);
   // A purchase that finishes while no paywall is open (an Ask to Buy approval).
   app.billing.onChange((ev) => {
     if (ev.type !== 'transaction' || !ev.product || app.paywallOpen) return;
@@ -99,6 +104,8 @@ async function boot() {
   catch (e) { console.warn(e); app.storage = { persistent: false, loadFailed: true }; }
   if (app.dev.preview) await seedPreview();
   app.navigate('diary');
+  // Apple or the server may have ended the session while the app was closed.
+  app.account.check().then((r) => { if (r === 'signedOut') app.toast('You’re no longer signed in with Apple. Your diary is still here.'); });
   if (app.dev.enabled) (await import('./dev.js')).mountDevPanel(app);
 }
 
