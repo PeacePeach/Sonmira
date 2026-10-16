@@ -18,7 +18,7 @@ import { FREE_PAINTINGS } from './products.js';
 const KEEP_SPENT = 60; // recent committed keys kept for de-duplication
 
 export function freshState() {
-  return { v: 1, free: FREE_PAINTINGS, credits: 0, sub: null, dailyUsed: null, holds: {}, spent: {}, granted: {}, purchased: false };
+  return { v: 1, free: FREE_PAINTINGS, credits: 0, sub: null, dailyUsed: null, holds: {}, spent: {}, granted: {}, revoked: {}, purchased: false };
 }
 
 /**
@@ -30,7 +30,9 @@ export function createWallet({ load = () => null, save = () => {}, today, now = 
   const persist = () => save(s);
   const held = (source) => Object.values(s.holds).filter((x) => x.source === source).length;
   const subscribed = () => !!(s.sub && s.sub.expiresAt > now());
-  const dailyOpen = () => subscribed() && s.dailyUsed !== today() && !held('daily');
+  // A day already used, or one before it, never opens again (the server takes
+  // the phone's local day, within limits, and must not be walked back and forth).
+  const dailyOpen = () => subscribed() && !(s.dailyUsed && s.dailyUsed >= today()) && !held('daily');
 
   function nextSource() {
     if (dailyOpen()) return 'daily';
@@ -108,6 +110,34 @@ export function createWallet({ load = () => null, save = () => {}, today, now = 
       return true;
     },
 
+    /** A refunded pack: take back what's left of its credits, never below zero. */
+    revoke(transactionId) {
+      if (!s.granted[transactionId] || s.revoked[transactionId] != null) return 0;
+      const taken = Math.min(s.granted[transactionId], s.credits);
+      s.revoked[transactionId] = taken;
+      s.credits -= taken;
+      persist();
+      return taken;
+    },
+
+    /** A refund that Apple reversed: give back what revoke() took. */
+    unrevoke(transactionId) {
+      const taken = s.revoked[transactionId];
+      if (taken == null) return 0;
+      delete s.revoked[transactionId];
+      s.credits += taken;
+      persist();
+      return taken;
+    },
+
+    /** Holds older than maxAgeMs belong to a generation that died; hand them back. */
+    releaseStale(maxAgeMs) {
+      const old = Object.keys(s.holds).filter((k) => now() - s.holds[k].at > maxAgeMs);
+      old.forEach((k) => delete s.holds[k]);
+      if (old.length) persist();
+      return old.length;
+    },
+
     /** Mirror the store's current subscription entitlement (or null). */
     setSubscription(sub) {
       s.sub = sub ? { productId: sub.productId, expiresAt: sub.expiresAt, willRenew: !!sub.willRenew } : null;
@@ -127,7 +157,7 @@ function normalize(x) {
   return {
     ...base, ...x,
     free: num(x.free, base.free), credits: num(x.credits, 0),
-    holds: obj(x.holds), spent: obj(x.spent), granted: obj(x.granted),
+    holds: obj(x.holds), spent: obj(x.spent), granted: obj(x.granted), revoked: obj(x.revoked),
   };
 }
 const num = (v, d) => (Number.isFinite(v) && v >= 0 ? Math.floor(v) : d);

@@ -4,3 +4,4 @@ shots/
 qa/out/
 .vercel/
 .env*.local
+www/
