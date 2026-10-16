@@ -33,6 +33,7 @@ If that's awkward, any HTTPS tunnel also works, e.g. `npx localtunnel --port 517
 | Painting | Full painting, date, note, play/pause of the original recording. Delete asks for a second tap. |
 | Settings | Recording length 15 / 30 s and start day Sun / Mon both work and are remembered. Daily reminder, Diary lock, Backup / restore and Rate say **Coming soon** and do nothing. Privacy policy and Terms open short prototype drafts. |
 | Share | A share icon on the result screen and on a saved painting. **Share image** makes a 2160×2700 (4:5) card with the painting, the optional note, the date and a small *Sonmira* wordmark. **Make a video** records a 1080×1920 (9:16) MP4 with the original recording (up to 30 s), the painting and a quiet waveform. Both open the system share sheet (on iPhone, the native iOS sheet with Save Image, Messages, Instagram…). Everything happens on the device and nothing is uploaded. Video is offered only where the browser can record MP4. |
+| Paintings & paywall | 3 free paintings, then a quiet sheet offers **Daily Ritual** (monthly, one painting a day) or **Little Moments** (10 paintings, one-time), with *Why we charge*, renewal details, Restore purchases, Terms and Privacy. A painting is counted only when it's made. Purchases are a clearly labeled **development simulation**: nothing is charged. Settings → Paintings shows what's left. See `docs/paywall.md`. |
 | Persistence | Entries, audio and paintings are stored in IndexedDB and survive reloads. Settings are kept in localStorage. |
 
 ### Edge cases handled
@@ -43,7 +44,8 @@ If that's awkward, any HTTPS tunnel also works, e.g. `npx localtunnel --port 517
 - **Backgrounding the app mid-take** (call, lock screen) ends the take cleanly instead of losing it.
 - **Storage failure on save**: the result stays on screen and a quiet message asks you to try again. Private modes without storage show a notice on the diary.
 - **Playback the browser can't decode**: the player says so instead of failing silently.
-- **Engine missing or throwing**: the app falls back to the mock engine, or to a wash-only painting.
+- **Engine missing**: the app falls back to the mock engine.
+- **Painting fails to generate**: “The painting didn’t come through. Nothing was used.” with *Try again* on the same take. Nothing is counted for a failed or interrupted generation, or twice for a retry.
 
 ## Architecture: two tracks, one contract
 
@@ -51,6 +53,8 @@ If that's awkward, any HTTPS tunnel also works, e.g. `npx localtunnel --port 517
 src/
   app/                    Track A: screens, recorder, player, storage (no engine internals)
     share/                share card + video composition, export, system share sheet
+    billing/              products, painting wallet (reserve/commit/release), StoreKit-shaped store + dev simulation
+    paywall/              paywall sheet, purchase simulator, legal sheet, balance copy
     main.js               state + navigation
     screens/              diary, sing, detail, settings, legal
     ui/                   painting card, playback row, dom helpers, icons
@@ -94,6 +98,7 @@ ENGINE_ID=real npm test   # contract tests against the real engine
 # end-to-end in Chromium at iPhone size with a fake microphone singing tests/e2e/hum.wav
 npm i -D playwright && npx playwright install chromium
 node server.js &  npm run e2e          # SHOTS=./shots saves screenshots; ENGINE_ID=real to use the real engine
+npm run e2e:paywall                    # free tier → paywall → simulated purchases, failures, restore, reinstall
 ```
 
 The e2e test covers all 11 prototype requirements (record, stop, auto-stop at 15 s, playback, retry, note, generate, result, save, open, replay, reload), plus mic-denied, a too-short take, settings, calendar and delete.

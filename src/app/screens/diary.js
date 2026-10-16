@@ -16,7 +16,7 @@ export function mountDiary(app) {
       h('div', { style: 'display:flex;align-items:center' },
         toggle,
         h('button', { class: 'icon-btn', 'aria-label': 'Settings', onClick: () => app.navigate('settings') }, icons.dots()))));
-  const fab = h('button', { class: 'fab', 'aria-label': 'Sing a new entry', onClick: () => app.navigate('sing') }, icons.plus());
+  const fab = h('button', { class: 'fab', 'aria-label': 'Sing a new entry', onClick: () => app.startNewMemory() }, icons.plus());
   const el = h('div', { 'data-screen': 'diary' }, scroll, top, h('div', { class: 'fab-fade' }), fab);
   let paintings = [];
 

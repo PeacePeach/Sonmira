@@ -10,6 +10,9 @@ import { mountSing } from './screens/sing.js';
 import { mountDetail } from './screens/detail.js';
 import { mountSettings } from './screens/settings.js';
 import { mountLegal } from './screens/legal.js';
+import { createBilling } from './billing/index.js';
+import { askSimulator } from './paywall/simulator.js';
+import { openPaywall } from './paywall/paywall.js';
 
 const SCREENS = { diary: mountDiary, sing: mountSing, detail: mountDetail, settings: mountSettings, legal: mountLegal };
 const ENTER = { diary: 'enter-fade', sing: 'enter-modal', detail: 'enter-push', settings: 'enter-push', legal: 'enter-push' };
@@ -28,6 +31,14 @@ export const app = {
   ui: { view: 'list', selDay: null, calY: now.getFullYear(), calM: now.getMonth() },
   entries: [],
   current: null,
+  billing: null,
+  paywallOpen: null,
+
+  /** Go to Sing if a painting can be made; otherwise offer more, then go on. */
+  startNewMemory() {
+    if (this.billing.status().canCreate) return this.navigate('sing');
+    openPaywall(this, { from: 'diary', onContinue: () => this.navigate('sing') });
+  },
 
   navigate(name, params = {}) {
     const prev = this.current;
@@ -78,6 +89,12 @@ async function boot() {
   const [engine, storage] = await Promise.all([getEngine(), initStorage()]);
   app.engine = engine;
   app.storage = storage;
+  app.billing = createBilling({ ask: (req) => askSimulator(app, req) });
+  // A purchase that finishes while no paywall is open (an Ask to Buy approval).
+  app.billing.onChange((ev) => {
+    if (ev.type !== 'transaction' || !ev.product || app.paywallOpen) return;
+    app.toast(ev.product.kind === 'subscription' ? 'Approved. Your Daily Ritual has begun.' : `Approved. ${ev.product.credits} paintings were added.`);
+  });
   try { app.entries = await listEntries(); }
   catch (e) { console.warn(e); app.storage = { persistent: false, loadFailed: true }; }
   if (app.dev.preview) await seedPreview();
