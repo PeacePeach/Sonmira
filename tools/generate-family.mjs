@@ -2,7 +2,7 @@
 // Image API (edits endpoint). Runs locally or on a server; never in a client.
 //
 //   OPENAI_API_KEY=... node tools/generate-family.mjs G2 R4 R5 \
-//     [--refs DIR] [--out DIR] [--seed N] [--motif M] [--emotion E] [--dry-run]
+//     [--refs DIR] [--out DIR] [--seed N] [--motif M] [--emotion E] [--dry-run] [--no-stream]
 //
 // --refs  the reference folder with loose/, gathered/ and resolved/ inside
 //         (default $SONMIRA_REFS_DIR). The reference images are not stored
@@ -11,6 +11,11 @@
 //         <out>/<family>/<stamp>-s<seed>.jpg and a .json with the prompt,
 //         the references sent, the model settings and the API usage.
 // --dry-run prints the prompt and references without calling the API.
+// --no-stream waits for one JSON response instead of a stream. Requests are
+//         streamed by default because some proxies drop requests that
+//         return nothing for ~30 s. An API or proxy error stops the run.
+// Behind a proxy that injects the key, set OPENAI_API_KEY to a placeholder
+// and NODE_USE_ENV_PROXY=1 so Node's fetch goes through the proxy.
 // Model settings come from OPENAI_IMAGE_MODEL / _QUALITY / _SIZE /
 // _INPUT_FIDELITY (see src/engine/providers/openai.js).
 //
@@ -25,6 +30,7 @@ import { editOpenAI, openaiConfig } from '../src/engine/providers/openai.js';
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf(`--${k}`); return i >= 0 ? args.splice(i, 2)[1] : d; };
 const dry = args.includes('--dry-run') && args.splice(args.indexOf('--dry-run'), 1);
+const noStream = args.includes('--no-stream') && args.splice(args.indexOf('--no-stream'), 1);
 const refsDir = opt('refs', process.env.SONMIRA_REFS_DIR);
 const outDir = opt('out', 'qa/out/families');
 const seedArg = opt('seed');
@@ -32,8 +38,10 @@ const motifArg = opt('motif');
 const emotion = opt('emotion', 'tender');
 
 const resolveFamily = (a) => FAMILIES[a] ? a : Object.keys(FAMILIES).find((id) => id.toUpperCase().startsWith(`${a.toUpperCase()}-`));
-// Gathered stays unnamed; other tiers take the family's first matching motif.
-const motifFor = (id) => motifArg || (FAMILIES[id].tier === 'gathered' ? 'abstract' : (AFFINITY[id] || []).find((m) => SUBJECTS[id]?.[m]) || 'landscape');
+// Gathered stays unnamed; other tiers take the motif the primary reference
+// shows, else the family's first matching motif.
+const refMotif = (id, ref) => FAMILIES[id].palettes.find((p) => p.ref === ref)?.motif;
+const motifFor = (id, ref) => motifArg || (FAMILIES[id].tier === 'gathered' ? 'abstract' : [refMotif(id, ref), ...(AFFINITY[id] || [])].find((m) => m && SUBJECTS[id]?.[m]) || 'landscape');
 
 if (!args.length || !refsDir) {
   console.error('usage: node tools/generate-family.mjs <family…> --refs <dir> [--seed N] [--dry-run]');
@@ -49,9 +57,9 @@ for (const a of args) {
   if (!family) { console.error(`unknown family ${a}`); process.exitCode = 1; continue; }
   const tier = FAMILIES[family].tier;
   const seed = seedArg != null ? Number(seedArg) >>> 0 : (Math.random() * 2 ** 32) >>> 0;
-  const motif = motifFor(family);
-  const d = direct({ completeness: tier, motif, emotion, seed, family, energy: { value: 'calm' } });
   const guide = referenceGuide(family, seed);
+  const motif = motifFor(family, guide.primary);
+  const d = direct({ completeness: tier, motif, emotion, seed, family, reference: guide.primary, energy: { value: 'calm' } });
   const prompt = `${guide.text}\n${d.prompt}`;
   if (dry) { console.log(`--- ${family} (seed ${seed}, refs ${guide.refs.join(', ')})\n${prompt}\n`); continue; }
 
@@ -59,7 +67,13 @@ for (const a of args) {
     name, mime: extname(name) === '.png' ? 'image/png' : 'image/jpeg', bytes: await readFile(join(refsDir, tier, name)),
   })));
   console.log(`${family}: generating with ${guide.refs.length} reference(s)…`);
-  const g = await editOpenAI(prompt, images);
+  // Streamed, so the ~30 s proxy limit does not cut long requests. Any API or
+  // proxy error stops the run: no retries, since a failed request may still
+  // be billed.
+  const g = await editOpenAI(prompt, images, { stream: !noStream }).catch((e) => {
+    console.error(`  ✗ ${family}: ${e.message}${e.status ? ` (HTTP ${e.status})` : ''}. Stopping; nothing was retried.`);
+    process.exit(1);
+  });
   const dir = join(outDir, family);
   await mkdir(dir, { recursive: true });
   const base = join(dir, `${new Date().toISOString().replace(/[:.]/g, '-')}-s${seed}`);
@@ -67,7 +81,7 @@ for (const a of args) {
   await writeFile(`${base}.json`, JSON.stringify({
     family, tier, label: d.familyLabel, seed, motif, emotion, subject: d.subject,
     references: guide.refs, primaryReference: guide.primary,
-    model: g.model, quality: g.quality, size: g.size, endpoint: 'images/edits', ms: g.ms, usage: g.usage,
+    model: g.model, quality: g.quality, size: g.size, endpoint: 'images/edits', stream: !noStream, ms: g.ms, usage: g.usage,
     prompt, createdAt: new Date().toISOString(),
   }, null, 2));
   console.log(`  → ${base}.jpg (${g.ms} ms)`);

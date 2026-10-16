@@ -38,19 +38,41 @@ export async function generateOpenAI(direction, { env = process.env, fetchImpl =
 // Reference-guided generation through the image edits endpoint: the family's
 // reference images go in as visual input next to the prompt.
 //   images: [{ name, bytes, mime }]   prompt: the full text prompt
-export async function editOpenAI(prompt, images, { env = process.env, fetchImpl = fetch } = {}) {
+// stream: true asks for a server-sent-event response with one partial image,
+// so bytes start flowing within a second. Use it behind proxies that drop a
+// request with no response after ~30 s (several references at medium quality
+// take longer than that); the result is the same as without streaming.
+export async function editOpenAI(prompt, images, { env = process.env, fetchImpl = fetch, stream = false } = {}) {
   const cfg = openaiConfig(env);
   if (!cfg.configured) throw Object.assign(new Error('OPENAI_API_KEY is not set'), { code: 'not_configured' });
   if (!images?.length) throw Object.assign(new Error('no reference images'), { code: 'no_references' });
   const form = new FormData();
   for (const [k, v] of Object.entries({ model: cfg.model, prompt, size: cfg.size, quality: cfg.quality, output_format: 'jpeg', output_compression: '90', n: '1' })) form.append(k, v);
   if (env.OPENAI_IMAGE_INPUT_FIDELITY) form.append('input_fidelity', env.OPENAI_IMAGE_INPUT_FIDELITY);
+  if (stream) { form.append('stream', 'true'); form.append('partial_images', '1'); }
   for (const im of images) form.append('image[]', new Blob([im.bytes], { type: im.mime }), im.name);
   const t0 = Date.now();
   const res = await fetchImpl('https://api.openai.com/v1/images/edits', {
     method: 'POST', headers: { authorization: `Bearer ${env.OPENAI_API_KEY}` }, body: form,
   });
-  return readImage(res, cfg, t0);
+  return stream && res.ok ? readStream(res, cfg, t0) : readImage(res, cfg, t0);
+}
+
+// The stream's last event, image_edit.completed, carries the final image and
+// usage; partial images before it are ignored.
+async function readStream(res, cfg, t0) {
+  const events = (await res.text()).split('\n')
+    .filter((l) => l.startsWith('data: ') && l !== 'data: [DONE]')
+    .map((l) => { try { return JSON.parse(l.slice(6)); } catch { return null; } })
+    .filter(Boolean);
+  const err = events.find((e) => e.type === 'error' || e.error);
+  if (err) throw Object.assign(new Error((err.error || err).message || 'OpenAI stream error'), { code: 'provider_error' });
+  const done = events.find((e) => e.type === 'image_edit.completed');
+  if (!done?.b64_json) throw Object.assign(new Error('OpenAI stream ended without an image'), { code: 'provider_error' });
+  return {
+    provider: PROVIDER_ID, model: cfg.model, quality: cfg.quality, size: cfg.size,
+    mime: 'image/jpeg', b64: done.b64_json, ms: Date.now() - t0, usage: done.usage ?? null,
+  };
 }
 
 async function readImage(res, cfg, t0) {

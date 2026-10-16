@@ -84,11 +84,29 @@ test('no words: no people and no story at any tier', () => {
 });
 
 
-test('reference guide: R4 follows one primary reference, others send all of theirs', async () => {
+test('reference guide: every family follows one primary reference drawn by seed', async () => {
   const { referenceGuide, FAMILIES } = await import('../../src/engine/direct/index.js');
-  const r4 = referenceGuide('R4-lyrical-everyday', 7);
-  assert.equal(r4.refs.length, 1);
-  assert.ok(FAMILIES['R4-lyrical-everyday'].refs.includes(r4.primary));
-  assert.deepEqual(referenceGuide('R5-light-as-subject', 7).refs, FAMILIES['R5-light-as-subject'].refs);
-  assert.equal(referenceGuide('R5-light-as-subject', 7).primary, null);
+  for (const id of Object.keys(FAMILIES)) {
+    const g = referenceGuide(id, 7);
+    assert.deepEqual(g.refs, [g.primary]);
+    assert.ok(FAMILIES[id].refs.includes(g.primary), id);
+    assert.equal(referenceGuide(id, 7).primary, g.primary);
+  }
+  const seen = new Set(Array.from({ length: 40 }, (_, s) => referenceGuide('R4-lyrical-everyday', s).primary));
+  assert.equal(seen.size, FAMILIES['R4-lyrical-everyday'].refs.length);
+});
+
+test('a primary reference brings its own palette and light, never another reference\'s', async () => {
+  const { direct, FAMILIES } = await import('../../src/engine/direct/index.js');
+  for (const id of ['R4-lyrical-everyday', 'R5-light-as-subject']) {
+    for (const ref of FAMILIES[id].refs) {
+      const P = FAMILIES[id].palettes.find((p) => p.ref === ref);
+      assert.ok(P, `${id} ${ref}`);
+      for (const seed of [1, 2, 3]) {
+        const d = direct({ completeness: 'resolved', motif: 'water', emotion: 'tender', seed, family: id, reference: ref });
+        assert.ok(d.pigments.every((n) => [...P.colors, P.accent].some((c) => c?.name === n)), `${id} ${ref} ${d.pigments}`);
+        assert.match(d.sections.palette, new RegExp(`Light: ${P.light}`));
+      }
+    }
+  }
 });

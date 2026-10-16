@@ -38,3 +38,19 @@ test('openai edits send the reference images with the prompt', async () => {
   assert.equal(g.b64, 'QUJD');
   await assert.rejects(editOpenAI('P', [], { env: { OPENAI_API_KEY: 'k' }, fetchImpl }), { code: 'no_references' });
 });
+
+test('openai edits can stream and return the completed image', async () => {
+  const { editOpenAI } = await import('../../src/engine/providers/openai.js');
+  let sent;
+  const sse = [
+    'event: image_edit.partial_image', 'data: {"type":"image_edit.partial_image","b64_json":"UEFSVA=="}', '',
+    'event: image_edit.completed', 'data: {"type":"image_edit.completed","b64_json":"RklOQUw=","usage":{"total_tokens":9}}', '',
+  ].join('\n');
+  const fetchImpl = async (url, init) => { sent = init; return { ok: true, text: async () => sse }; };
+  const g = await editOpenAI('P', [{ name: 'a.jpg', mime: 'image/jpeg', bytes: new Uint8Array([1]) }], { env: { OPENAI_API_KEY: 'k' }, fetchImpl, stream: true });
+  assert.equal(sent.body.get('stream'), 'true');
+  assert.equal(g.b64, 'RklOQUw=');
+  assert.deepEqual(g.usage, { total_tokens: 9 });
+  const bad = async () => ({ ok: true, text: async () => 'data: {"type":"error","error":{"message":"boom"}}\n' });
+  await assert.rejects(editOpenAI('P', [{ name: 'a.jpg', mime: 'image/jpeg', bytes: new Uint8Array([1]) }], { env: { OPENAI_API_KEY: 'k' }, fetchImpl: bad, stream: true }), /boom/);
+});

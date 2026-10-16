@@ -6,8 +6,9 @@
 // `rules` turns it into generation instructions; `palettes` lists the
 // colour schemes actually seen there, dominant colours first (hex values are
 // approximate swatches for the UI). A family with several references that
-// differ in colour has one palette per reference. Nothing here describes a
-// style that is not in a reference.
+// differ in colour has one palette per reference, tagged with `ref`, the
+// `light` seen in it and the `motif` it shows, so a generation guided by that
+// one reference uses only its colours and a fitting subject. Nothing here describes a style that is not in a reference.
 //
 // The references guide treatment only. Subjects are new: they must not
 // repeat a reference's composition (no skier on a slope, no cat at a wall,
@@ -62,8 +63,8 @@ export const FAMILIES = {
     observed: 'Rich near-monochrome colour (vivid yellow-green in one, warm sepia and umber in the other) with strong value contrast. Soft, wet, glowing backgrounds and shafts of light, against crisp dry-brush, splatter and vertical drips in the darks. Forms are blocked in by light and shadow rather than drawn.',
     rules: 'Choose one rich colour family and work it from glowing light to deep dark. Keep the background wet and luminous with a shaft or haze of light, and put crisp dry-brush strokes, splatter and a few vertical drips into the darks. Block forms in with light and shadow only; no outlines, little detail.',
     palettes: [
-      { colors: [c('vivid sap green', '#6fae3a'), c('yellow-green light', '#c9df7a'), c('deep green', '#2f5a2a')], accent: null }, // gathered_03
-      { colors: [c('sepia', '#8a5a33'), c('burnt umber', '#5b3a24'), c('warm light', '#f1d9a8')], accent: null }, // gathered_04
+      { ref: 'gathered_03.jpg', colors: [c('vivid sap green', '#6fae3a'), c('yellow-green light', '#c9df7a'), c('deep green', '#2f5a2a')], accent: null },
+      { ref: 'gathered_04.jpg', colors: [c('sepia', '#8a5a33'), c('burnt umber', '#5b3a24'), c('warm light', '#f1d9a8')], accent: null },
     ],
   },
 
@@ -89,17 +90,22 @@ export const FAMILIES = {
   'R4-lyrical-everyday': {
     tier: 'resolved', label: 'Lyrical everyday', refs: ['resolved_05.jpg', 'resolved_06.jpg', 'resolved_07.jpg', 'resolved_13.jpg'], figures: true,
     observed: 'Clear, light pastel washes with smooth gradients: lavender and periwinkle skies, sea-glass blues, warm peach and golden light, fresh greens. Small people in quiet everyday moments (walking, crouching by water, talking on a street) placed low in a large, airy space. Cinematic, gentle light; clean edges; calm, illustrative but painterly. Some carry titles or watermarks (to avoid).',
-    rules: 'Use clear, light washes with smooth gradients and a calm, cinematic light. Place one to three small people in an everyday moment low in a large, airy space. Keep edges clean and the drawing simple. Warm and cool pastels in balance.',
-    palettes: [{ colors: [c('lavender', '#b9b3dc'), c('peach light', '#f2c6a8'), c('periwinkle', '#9fb2e0'), c('sea-glass blue', '#a7d1d8'), c('fresh green', '#9cc78a'), c('golden light', '#f0d58e')], accent: null }],
+    rules: 'Use clear, light, transparent washes and clean, luminous light. Place one to three small people in a fleeting everyday moment within a large, airy space, caught with a few chosen brushstrokes. Only a little recognisable detail; the surroundings stay loose and open.',
+    palettes: [
+      { ref: 'resolved_05.jpg', motif: 'garden', light: 'bright afternoon sun dappled through leaves', colors: [c('fresh leaf green', '#7fb36a'), c('sunlit yellow-green', '#c9d77e'), c('pale sunlit stone', '#ece6c8')], accent: c('small vermilion red', '#c4473a') },
+      { ref: 'resolved_06.jpg', motif: 'water', light: 'soft, pearly overcast light', colors: [c('lavender', '#b9b3dc'), c('periwinkle', '#9fb2e0'), c('pale blue-grey', '#d5dbe8')], accent: c('warm sand', '#d9b98f') },
+      { ref: 'resolved_07.jpg', motif: 'water', light: 'clear summer daylight', colors: [c('sky blue', '#8fc3e3'), c('sea-glass blue', '#a7d1d8'), c('peach cloud light', '#f2c6a8')], accent: c('small coral red', '#e0584a') },
+      { ref: 'resolved_13.jpg', light: 'hazy golden light with falling snow', colors: [c('warm ochre', '#c99a62'), c('golden haze', '#ead19a'), c('soft grey-teal', '#9fb3b0')], accent: c('small red', '#c4473a') },
+    ],
   },
   'R5-light-as-subject': {
     tier: 'resolved', label: 'Light as subject', refs: ['resolved_04.jpg', 'resolved_09.jpg', 'resolved_10.png'], figures: false,
     observed: 'The light itself is the subject: glitter on water made of white spatter and broken strokes, warm window glow under violet shadow, bokeh and raindrops on dark wet glass. Deeper values than the other families, set against sparkling or glowing highlights. Expressive, broken brushwork; cool blue, teal or violet against a warm orange or red accent.',
-    rules: 'Make the light the subject: glitter, glow or reflections against deeper values. Use broken, expressive strokes, white spatter and lifted highlights for sparkle. A cool field (blue, teal or violet) against one warm light accent. Forms stay painterly and partly lost in the light.',
+    rules: 'Make the light the subject: glitter, glow or reflections against deeper values, gathered in one limited area. Use broken, expressive strokes, white spatter and lifted highlights for sparkle only there; everywhere else forms dissolve into loose, quiet washes and open paper. Forms stay painterly and partly lost in the light.',
     palettes: [
-      { colors: [c('deep teal', '#1d4e5c'), c('blue-green', '#3f7f86'), c('slate', '#53636e')], accent: c('small red and amber lights', '#c9403a') }, // resolved_04
-      { colors: [c('cerulean', '#5aa6d4'), c('turquoise', '#55b6c4'), c('pale sand', '#e2c9a6')], accent: c('white glitter', '#fbfaf5') }, // resolved_09
-      { colors: [c('violet', '#7d6fc4'), c('periwinkle', '#9aa6e0'), c('pale lilac', '#d4cbe8')], accent: c('warm orange glow', '#e3873a') }, // resolved_10
+      { ref: 'resolved_04.jpg', motif: 'interior', light: 'night rain, lights blurred through wet glass', colors: [c('deep teal', '#1d4e5c'), c('blue-green', '#3f7f86'), c('slate', '#53636e')], accent: c('small red and amber lights', '#c9403a') },
+      { ref: 'resolved_09.jpg', motif: 'water', light: 'high sun glittering on water', colors: [c('cerulean', '#5aa6d4'), c('turquoise', '#55b6c4'), c('pale sand', '#e2c9a6')], accent: c('white glitter', '#fbfaf5') },
+      { ref: 'resolved_10.png', motif: 'landscape', light: 'winter dusk, warm windows under violet shadow', colors: [c('violet', '#7d6fc4'), c('periwinkle', '#9aa6e0'), c('pale lilac', '#d4cbe8')], accent: c('warm orange glow', '#e3873a') },
     ],
   },
   'R6-misty-monochrome': {
@@ -139,11 +145,11 @@ export const SUBJECTS = {
     landscape: 'a small white fox crossing a blue hillside', interior: 'a white teacup and steam against a burst of blue', abstract: 'a white reserved shape at the heart of a blue burst',
   },
   'R4-lyrical-everyday': {
-    water: 'a child and an older person fishing from a jetty in soft evening light', sky: 'two friends lying in a meadow looking up at drifting clouds', garden: 'someone watering plants on a sunny balcony garden',
-    landscape: 'a cyclist on a country road between fields at golden hour', interior: 'a person reading by a café window in warm afternoon light', abstract: null,
+    water: 'a child and an older person fishing from a jetty', sky: 'two friends lying in a meadow looking up at drifting clouds', garden: 'someone watering plants on a balcony garden',
+    landscape: 'a cyclist on a country road between fields', interior: 'a person reading by a café window', abstract: null,
   },
   'R5-light-as-subject': {
-    water: 'evening sun glittering across a calm harbour', sky: 'low sun burning through clouds over wet streets', garden: 'lanterns glowing in a dusk garden',
+    water: 'light glittering across a calm harbour', sky: 'light breaking through clouds over wet streets', garden: 'lanterns glowing in a dusk garden',
     landscape: 'a mountain village at dusk, windows glowing in the snow', interior: 'a rain-streaked café window at night, warm lights behind the glass', abstract: 'glittering light on dark water, nothing else',
   },
   'R6-misty-monochrome': {

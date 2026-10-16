@@ -28,10 +28,11 @@ export const DIRECTION_VERSION = 3;
 export const GLOBAL_STYLE = [
   'A genuine hand-painted watercolor on cold-press cotton paper',
   'visible brushwork and natural pigment variation',
-  'wet-on-wet diffusion, granulation, blooms, backruns and transparent layered washes',
+  'transparent layered washes, wet-on-wet diffusion, pigment granulation and natural sedimentation, colour bleeding, blooms and backruns',
   'organic, imperfect edges, intentional negative space of reserved white paper',
   'natural paper texture and selective, unfinished passages; hand-made, uneven colour transitions',
-  'generous breathing room: detail concentrated in one limited focal area, the outer areas dissolving into open washes and bare paper',
+  'restraint and breathing room: only a small part of the picture is resolved, recognisable detail concentrated in a limited focal area, the rest left atmospheric, gestural or unfinished, dissolving into transparent washes and bare paper',
+  'asymmetry and quiet areas; no forced foreground, middle ground and background',
   'one clear colour idea: a dominant colour family with at most one accent',
   'elegant and considered, beautiful enough to sit inside a refined, minimal app',
   'an original composition, not a copy of any existing artwork',
@@ -42,7 +43,9 @@ export const AVOID = [
   'cartoon, anime or comic style', 'sentimental greeting-card art', 'generic stock illustration',
   'photorealism', 'cinematic photography', 'lens blur', 'HDR lighting', 'digital airbrushing',
   'smooth artificial gradients', 'a photo-to-watercolor filter effect', 'uniform detail everywhere',
-  'digital illustration', 'excessive detail', 'a composition that fills every corner',
+  'digital illustration', 'excessive detail', 'a composition that fills every corner', 'uniformly sharp detail',
+  'equally strong contrast from edge to edge', 'airbrushed lighting', 'generic pastel sunsets', 'generic cinematic landscape compositions',
+  'a realistic image with paper texture applied',
   'glossy digital rendering', 'heavy black ink outlines',
   'text, letters, titles, signature, logo or watermark', 'a frame, border or mat', 'a photo of a painting on a table',
 ];
@@ -54,7 +57,7 @@ export const LEVELS = {
   },
   gathered: {
     label: 'semi-abstract watercolor study',
-    form: 'Semi-abstract: ambiguous, emerging forms; a mood of place may be felt but no subject is clearly identifiable, and nothing is drawn in detail. Depth is beginning to appear and one area is starting to draw the eye. Clearly a study, left unfinished in places.',
+    form: 'Semi-abstract: ambiguous, emerging forms; a mood of place may be felt but no subject is clearly identifiable, and nothing is drawn in detail. Depth is beginning to appear and one area is starting to draw the eye. No complete silhouettes, clearly identifiable objects, realistic perspective or fully formed scenery: ambiguity, not a blurred illustration. Clearly a study, left unfinished in places.',
   },
   resolved: {
     label: 'finished watercolor painting',
@@ -106,8 +109,13 @@ export function direct(spec) {
   const energy = spec.energy?.value || 'calm';
 
   // One of the family's observed colour schemes: its two dominant colours,
-  // sometimes a third, and its accent when it has one.
-  const P = F.palettes[Math.floor(r() * F.palettes.length)];
+  // sometimes a third, and its accent when it has one. When generation is
+  // guided by one primary reference (spec.reference), its own scheme is used,
+  // never one seen in another reference.
+  const drawnP = F.palettes[Math.floor(r() * F.palettes.length)];
+  const own = F.palettes.find((p) => p.ref && p.ref === spec.reference);
+  const P = own || drawnP;
+  const guided = Boolean(spec.reference);
   const chosen = P.colors.slice(0, 2);
   const rest = P.colors.slice(2);
   if (rest.length && (!P.accent || r() < 0.5)) chosen.push(rest[Math.floor(r() * rest.length)]);
@@ -117,8 +125,8 @@ export function direct(spec) {
     subject: `${/^[aeiou]/.test(LEVELS[tier].label) ? 'An' : 'A'} ${LEVELS[tier].label}${subject ? ` of ${subject}` : ''}.`,
     family: `Style — ${F.label}: ${F.rules}`,
     form: LEVELS[tier].form,
-    palette: `Colour: ${P.colors.filter((p) => chosen.includes(p)).map((p) => p.name).join(', ')}, on white or warm white paper${P.accent ? `, with ${P.accent.name} as the only accent, kept small` : ''}.`,
-    emotion: EMOTION[spec.emotion] || EMOTION.tender,
+    palette: `${guided ? `Colour, as seen in the reference${own ? '' : ' (the reference wins where it differs)'}` : 'Colour'}: ${P.colors.filter((p) => chosen.includes(p)).map((p) => p.name).join(', ')}, on white or warm white paper${P.accent ? `, with ${P.accent.name} as the only accent, kept small` : ''}.${own?.light ? ` Light: ${own.light}.` : ''}`,
+    emotion: `${guided ? 'Mood, within the reference\'s own colours and light — ' : ''}${EMOTION[spec.emotion] || EMOTION.tender}`,
     energy: ENERGY[energy],
     style: GLOBAL_STYLE,
   };
@@ -130,23 +138,19 @@ export function direct(spec) {
   };
 }
 
-// Reference-guided generation: which of the family's reference images go to
-// the model as visual input, and how the prompt tells it to use them.
-// Families listed here follow one primary reference per generation (drawn by
-// seed) instead of the blend of all their references.
-const PRIMARY_REFERENCE = new Set(['R4-lyrical-everyday']);
-
+// Reference-guided generation: every family follows ONE primary reference
+// per generation, drawn from its references by seed, so stylistically
+// different references are never blended. Only that image goes to the model,
+// and the prompt separates what it controls from what is free.
 export function referenceGuide(familyId, seed = 0) {
   const F = FAMILIES[familyId];
   if (!F) throw new Error(`unknown family ${familyId}`);
-  const primary = PRIMARY_REFERENCE.has(familyId) ? F.refs[Math.floor(rng(hashSeed(seed >>> 0, 'primary-ref'))() * F.refs.length)] : null;
-  const refs = primary ? [primary] : F.refs.slice();
+  const primary = F.refs[Math.floor(rng(hashSeed(seed >>> 0, 'primary-ref'))() * F.refs.length)];
+  const refs = [primary];
   const text = [
-    `The attached ${refs.length === 1 ? 'image is the style reference' : 'images are the style references'} for this painting.`,
-    primary
-      ? 'Follow it closely in its dominant colour atmosphere, its openness and amount of white paper, where its detail sits, its degree of finish and its watercolor handling. Where the colour list below differs from it, follow the reference.'
-      : `Follow ${refs.length === 1 ? 'it' : 'them'} closely in palette, watercolor handling, degree of finish, amount of open white paper and where detail sits.`,
-    'Paint a new, original composition and subject: do not copy, trace or recombine their compositions, figures or motifs, and do not reproduce any text, titles or watermarks in them.',
+    'The attached image is the primary style reference for this painting and the visual authority: it overrides every written description below, including colour, light and composition notes.',
+    'Controlled by the reference: (1) dominant palette: its principal colour family, saturation, temperature and supporting accents; (2) colour distribution: the balance of dominant, secondary and accent colour; (3) composition: visual weight, asymmetry, focal placement and spatial rhythm; (4) negative space: roughly how much open, lightly painted or untouched paper there is, and where; (5) detail distribution: where detail concentrates and where forms dissolve; (6) watercolor behaviour: its washes, brush marks, blooms, granulation and edges; (7) level of finish: how much is deliberately left incomplete.',
+    'Free: the subject and the exact arrangement. Paint a new, original painting in the same artistic language; do not copy or trace its composition, figures or motifs, and do not reproduce any text, titles or watermarks in it.',
   ].join(' ');
   return { refs, primary, text };
 }
