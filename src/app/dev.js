@@ -40,7 +40,7 @@ function wav(samples, sr) {
   return new Blob([buf], { type: 'audio/wav' });
 }
 
-async function seed(app) {
+export async function seed(app) {
   const sr = 22050;
   for (const [offset, note, completeness, hz, secs] of SAMPLES) {
     const samples = tone(sr, secs, hz);
