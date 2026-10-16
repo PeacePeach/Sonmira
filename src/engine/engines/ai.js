@@ -18,6 +18,7 @@ import { createRealEngine } from './real.js';
 import { planPainting } from '../plan.js';
 import { understandTake } from '../understand.js';
 import { tintWash, groundWash } from '../render/index.js';
+import { encodeWav } from '../analysis/wav.js';
 
 // A fresh seed for every generation, so each painting makes its own
 // independent choice of style family and reference (and the choices the
@@ -52,6 +53,20 @@ export async function decodeAudioBlob(blob) {
   return { samples: out, sampleRate: ab.sampleRate };
 }
 
+// The words are sent as 16 kHz mono WAV made from the recording, so the
+// transcriber never depends on the browser's container or codec (Chrome
+// records Opus inside MP4). The Playground's singing test sends the same.
+export const WORDS_SAMPLE_RATE = 16000;
+export const WORDS_MAX_SEC = 60;
+export async function wordsAudio(blob) {
+  const Ctx = globalThis.OfflineAudioContext || globalThis.webkitOfflineAudioContext;
+  if (!Ctx) return blob; // no browser decoder (Node): send the recording as it is
+  const buf = await new Ctx(1, 1, WORDS_SAMPLE_RATE).decodeAudioData(await blob.arrayBuffer());
+  const n = Math.min(buf.length, WORDS_MAX_SEC * WORDS_SAMPLE_RATE), x = new Float32Array(n);
+  for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < n; i++) x[i] += d[i] / buf.numberOfChannels; }
+  return new Blob([encodeWav(x, WORDS_SAMPLE_RATE)], { type: 'audio/wav' });
+}
+
 async function blobToBase64(blob) {
   const b = new Uint8Array(await blob.arrayBuffer());
   let s = '';
@@ -81,7 +96,7 @@ async function postJSON(fetchImpl, url, body, timeoutMs) {
 // Let the browser paint the loading state before synchronous analysis.
 const nextFrame = () => new Promise((r) => setTimeout(r, 32));
 
-export function createAIEngine({ fetchImpl = (...a) => globalThis.fetch(...a), decode = decodeAudioBlob, timeouts = TIMEOUTS } = {}) {
+export function createAIEngine({ fetchImpl = (...a) => globalThis.fetch(...a), decode = decodeAudioBlob, toWordsAudio = wordsAudio, timeouts = TIMEOUTS } = {}) {
   const real = createRealEngine();
 
   // Everything before the image: returns the understanding (diagnostics).
@@ -94,14 +109,19 @@ export function createAIEngine({ fetchImpl = (...a) => globalThis.fetch(...a), d
       }
     }
     const words = audioBlob ? async () => {
-      const { res, json } = await postJSON(fetchImpl, UNDERSTAND, { audio: await blobToBase64(audioBlob), mime: audioBlob.type || 'audio/webm' }, timeouts.understand);
+      let sent = audioBlob;
+      try { sent = await toWordsAudio(audioBlob); } catch { /* send the recording as it is */ }
+      const { res, json } = await postJSON(fetchImpl, UNDERSTAND, { audio: await blobToBase64(sent), mime: sent.type || 'audio/webm' }, timeouts.understand);
       if (!res.ok || !json?.ok) {
         const code = json?.code || `http_${res.status}`;
         throw new GenerationError(code === 'not_configured' ? 'The painting service isn’t set up on this server yet.' : 'Couldn’t listen to the words this time. Please try again.', { code, status: res.status, detail: json?.error });
       }
       return json;
     } : null;
-    return understandTake({ samples: audio?.samples ?? null, sampleRate: audio?.sampleRate ?? 0, features: analysis?.flags?.silent ? null : analysis?.features ?? null, words, forcedTier });
+    // With the decoded recording, the frame features are measured from it, as
+    // the Playground's singing test does, so the app decides exactly as the
+    // validated test did; the live features are only a fallback.
+    return understandTake({ samples: audio?.samples ?? null, sampleRate: audio?.sampleRate ?? 0, features: audio || analysis?.flags?.silent ? null : analysis?.features ?? null, words, forcedTier });
   }
 
   return {

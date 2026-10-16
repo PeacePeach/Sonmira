@@ -31,3 +31,14 @@ export function decodeWav(bytes) {
   }
   throw new Error('WAV has no data chunk');
 }
+
+// Mono samples (−1…1) → a 16-bit PCM WAV file. Used for the audio sent to
+// transcription, so the words never depend on the browser's container/codec.
+export function encodeWav(samples, sampleRate) {
+  const n = samples.length, out = new DataView(new ArrayBuffer(44 + n * 2));
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) out.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, 'RIFF'); out.setUint32(4, 36 + n * 2, true); str(8, 'WAVEfmt '); out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 1, true);
+  out.setUint32(24, sampleRate, true); out.setUint32(28, sampleRate * 2, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true); str(36, 'data'); out.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) out.setInt16(44 + i * 2, Math.max(-1, Math.min(1, samples[i])) * 32767, true);
+  return new Uint8Array(out.buffer);
+}
