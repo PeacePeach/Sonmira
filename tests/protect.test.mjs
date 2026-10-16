@@ -237,3 +237,13 @@ test('timedFetch aborts a request that runs too long, body included', async () =
   const slow = (_url, init) => new Promise((_r, rej) => init.signal.addEventListener('abort', () => rej(init.signal.reason)));
   await assert.rejects(timedFetch(30, slow)('https://example.invalid'), { code: 'timeout' });
 });
+
+test('no-cost Preview: each function has its own memory, so a valid token is enough there', async () => {
+  // /api/session ran in another function instance: this one never saw the seat.
+  const kv = memoryKV();
+  const h = paidHandler();
+  const env = { ...ENV, VERCEL: '1', VERCEL_ENV: 'preview', SONMIRA_FAKE_PROVIDER: '1' };
+  assert.equal((await call(protect('generate', h, { env, kv, now: () => T0, log: () => {} }))).statusCode, 200);
+  // Anywhere with a shared store the seat is still required.
+  assert.equal((await call(protect('generate', h, { env: ENV, kv: memoryKV(), now: () => T0, log: () => {} }))).body.code, 'invite_required');
+});

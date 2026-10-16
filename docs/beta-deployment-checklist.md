@@ -46,9 +46,30 @@ Tracked separately; it does not block Engine V1. When the beta's OpenAI key exis
    - The OpenAI usage page shows one image and one transcription.
 3. Share the invitation codes with the testers.
 
-## F. TestFlight (Han's approval: the approved commit)
+## F. TestFlight (Han's approval: upload)
 
-After Production is deployed from the approved commit, run Actions → TestFlight → Run workflow on that same commit (or push a `testflight-<n>` tag to it). The secrets and the Sandbox tester are already set up. Nothing in PR #9 runs it on its own.
+The iOS app is a native shell that opens the Production site (`native/ios.json`: hosted mode, `https://sonmira.vercel.app`). Its screens and logic come from the Production deployment and its shell from the commit the workflow builds. So both must be the approved commit:
+
+1. Production is deployed from the approved commit (section E), and its deployment page shows that commit's SHA.
+2. Push a tag to exactly that SHA, for example `git tag testflight-1 <approved sha> && git push origin testflight-1`. The workflow runs on a `testflight-*` tag only, and it checks out the tagged commit. Avoid "Run workflow" on a branch, which builds whatever that branch's head is at that moment.
+3. Leave the workflow's `app_url` input empty, so the app opens Production.
+
+The secrets and the Sandbox tester are already set up. Nothing in PR #9 runs the workflow on its own.
+
+## Testing the Preview end to end at no cost
+
+The PR's Vercel Preview is safe to test only in no-cost mode. In Vercel → Settings → Environment Variables, the **Preview** environment needs `SONMIRA_FAKE_PROVIDER=1` and must have no `SONMIRA_BILLING`. Then:
+- Painting uses the offline renderer, and no OpenAI call is made. The invitation code is `SONMIRA-PREVIEW`.
+- Purchases use the labeled development simulator in the browser. Nothing goes to Apple.
+- Sign in with Apple uses the labeled development simulator in the browser.
+
+Without that switch, a Preview never pays: unless it has its own secret, codes and store, painting answers "not configured".
+
+## Notes for testers
+
+- **Signing out never touches the diary.** Recordings, paintings and drafts stay on the device; the sign-out sheet says so.
+- **Signing out does change the device's id**, because the paintings and purchases stay with the Apple ID. To paint again, the person either signs back in with the same Apple ID (no code needed; their paintings and purchases come back) or enters an invitation code as a new guest (a new seat, with the guest's own free paintings).
+- **Deleting the account** keeps the diary too. The device becomes a guest that needs a code to paint.
 
 ## How the server enforces the Beta (server/wire.js)
 

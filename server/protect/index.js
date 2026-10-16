@@ -36,6 +36,11 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SPEND_TTL = 3 * 86400;
 const SEAT_TTL = 365 * 86400;
 const seatsOf = (invite) => `invite:${invite}:installs`;
+// Seats live in the shared store. The only store a deployment can have
+// without one is no-cost mode's in-memory store (server/dev/mode.js), where
+// each function has its own memory and nothing paid is at stake: there a
+// valid token is enough, as before seats were checked.
+const seatHeld = async (kv, env, invite, installId) => (env.VERCEL && kv.kind === 'memory') || kv.isMember(seatsOf(invite), installId);
 
 export const MESSAGES = {
   invite_required: 'An invitation code is needed to paint.',
@@ -139,7 +144,7 @@ export function protect(endpoint, handler, deps = {}) {
     let est, claimed = false, held = false;
     try {
       // A seat moved to an account or freed by deletion ends the old token.
-      if (!(await kv.isMember(seatsOf(who.invite), who.installId))) {
+      if (!(await seatHeld(kv, env, who.invite, who.installId))) {
         log({ ...base, outcome: 'no_seat' });
         return deny(401, 'invite_required');
       }
@@ -297,7 +302,7 @@ export function createAuthorize(deps = {}) {
     if (!kv || !cfg.secret || typeof id !== 'string') return false;
     const who = verifyToken(cfg.secret, bearer(req));
     if (!who || who.installId !== id || !cfg.invites.some((c) => inviteId(c) === who.invite)) return false;
-    return kv.isMember(seatsOf(who.invite), who.installId);
+    return seatHeld(kv, env, who.invite, who.installId);
   };
 }
 
