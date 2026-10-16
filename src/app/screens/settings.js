@@ -36,7 +36,8 @@ export function mountSettings(app) {
       const r = await b.restore();
       app.toast(r.subscription || r.credits ? `Restored. ${balanceLabel(b.status())}.` : 'There’s nothing to restore for this Apple ID.');
     } catch (e) {
-      if (e?.kind !== 'userCancelled') app.toast('We couldn’t reach the App Store to restore. Check your connection and try again.');
+      if (e?.kind === 'appOnly') app.toast('Purchases are made and restored in the Sonmira app for iPhone.');
+      else if (e?.kind !== 'userCancelled') app.toast('We couldn’t reach the App Store to restore. Check your connection and try again.');
     }
     paint();
   }

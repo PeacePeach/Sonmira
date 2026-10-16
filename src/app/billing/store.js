@@ -8,7 +8,7 @@
 //   currentSubscription() Transaction.currentEntitlements + renewal info
 //   onTransaction(fn)     Transaction.updates              (Ask to Buy approvals, renewals)
 //
-// Failures throw StoreError with a kind: 'network' | 'failed' | 'notAllowed'.
+// Failures throw StoreError with a kind: 'network' | 'failed' | 'notAllowed' | 'appOnly'.
 //
 // Until App Store products exist, the only store is the development
 // simulation below. It never takes money and every screen it touches says so.
@@ -109,3 +109,17 @@ export function createSimulatedStore({ ask, now = () => Date.now() }) {
 }
 
 function addMonths(t, n) { const d = new Date(t); d.setMonth(d.getMonth() + n); return d.getTime(); }
+
+/**
+ * The released website in a browser: no App Store, and the simulation would
+ * offer purchases the server never honours, so buying and restoring say
+ * they happen in the iOS app ('appOnly').
+ */
+export function createAppOnlyStore() {
+  const appOnly = async () => { throw new StoreError('appOnly'); };
+  return {
+    id: 'none', simulated: false, dev: null,
+    products: async () => [], purchase: appOnly, sync: appOnly, finish: async () => {},
+    currentSubscription: async () => null, onTransaction: () => () => {},
+  };
+}

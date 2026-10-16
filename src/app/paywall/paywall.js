@@ -18,6 +18,7 @@ const ERRORS = {
   network: 'We couldn’t reach the App Store. Check your connection and try again. Nothing was charged.',
   failed: 'The purchase didn’t go through, and nothing was charged. You can try again.',
   notAllowed: 'Purchases are turned off on this device. You can change this in Screen Time settings.',
+  appOnly: 'Purchases are made in the Sonmira app for iPhone. Nothing was charged.',
   restoreNetwork: 'We couldn’t reach the App Store to restore. Check your connection and try again.',
 };
 
@@ -142,7 +143,7 @@ export function openPaywall(app, { from = 'diary', onContinue } = {}) {
     } catch (e) {
       if (layer.closed) return;
       idle();
-      if (e?.kind !== 'userCancelled') say(ERRORS.restoreNetwork, 'error');
+      if (e?.kind !== 'userCancelled') say(e?.kind === 'appOnly' ? ERRORS.appOnly : ERRORS.restoreNetwork, 'error');
     }
   }
 

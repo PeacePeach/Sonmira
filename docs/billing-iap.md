@@ -1,7 +1,9 @@
 # Apple In-App Purchase (StoreKit 2)
 
-The iOS app sells through the App Store; web previews keep the purchase
-simulation described in `docs/paywall.md`. The paywall's design, copy and
+The iOS app sells through the App Store; web previews and local development
+keep the purchase simulation described in `docs/paywall.md`. On the released
+site (`sonmira.vercel.app`) a browser can't buy: the paywall says purchases
+are made in the iPhone app, since the server counts every painting there. The paywall's design, copy and
 states are the same in both.
 
 ## Products

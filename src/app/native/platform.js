@@ -5,6 +5,11 @@
 const cap = () => globalThis.Capacitor;
 const plugins = new Map();
 
+// The released site (native/ios.json appUrl). Vercel previews and local
+// development keep the purchase simulation; here a browser cannot buy.
+export const RELEASE_HOST = 'sonmira.vercel.app';
+export const isReleaseSite = () => !isNativeIOS() && globalThis.location?.hostname === RELEASE_HOST;
+
 export const isNativeIOS = () => !!cap()?.isNativePlatform?.() && cap().getPlatform?.() === 'ios';
 
 /** A native plugin registered by the iOS app, or null in a browser. */
