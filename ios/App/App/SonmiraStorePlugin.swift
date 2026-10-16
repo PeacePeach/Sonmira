@@ -15,6 +15,8 @@ public class SonmiraStorePlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "SonmiraStore"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "accountId", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setAccountId", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "resetAccountId", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "products", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "purchase", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "finish", returnType: CAPPluginReturnPromise),
@@ -71,6 +73,17 @@ public class SonmiraStorePlugin: CAPPlugin, CAPBridgedPlugin {
     /// appAccountToken and the server ledger's key; it identifies no one.
     @objc func accountId(_ call: CAPPluginCall) {
         call.resolve(["id": AccountKeychain.id()])
+    }
+
+    /// After signing in to an existing account, the device takes its id.
+    @objc func setAccountId(_ call: CAPPluginCall) {
+        guard let raw = call.getString("id"), let uuid = UUID(uuidString: raw) else { return call.reject("A UUID is required", "failed") }
+        call.resolve(["id": AccountKeychain.store(uuid.uuidString.lowercased())])
+    }
+
+    /// Sign-out or account deletion: the device starts again as a new guest.
+    @objc func resetAccountId(_ call: CAPPluginCall) {
+        call.resolve(["id": AccountKeychain.store(UUID().uuidString.lowercased())])
     }
 
     // MARK: - Products and purchases
@@ -230,21 +243,38 @@ enum AccountKeychain {
     private static let service = "app.sonmira.account"
     private static let account = "id"
 
-    static func id() -> String {
-        if let existing = read() { return existing }
-        let fresh = UUID().uuidString.lowercased()
-        let add: [String: Any] = [
+    /// Replace the id (the only other writer of this item is id()).
+    @discardableResult
+    static func store(_ value: String) -> String {
+        let match: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny,
+        ]
+        SecItemDelete(match as CFDictionary)
+        add(value)
+        return read() ?? value
+    }
+
+    private static func add(_ value: String) {
+        let item: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecAttrSynchronizable as String: kCFBooleanTrue as Any,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
-            kSecValueData as String: Data(fresh.utf8),
+            kSecValueData as String: Data(value.utf8),
         ]
-        let status = SecItemAdd(add as CFDictionary, nil)
-        // Another launch got there first: use theirs.
-        if status == errSecDuplicateItem, let existing = read() { return existing }
-        return fresh
+        SecItemAdd(item as CFDictionary, nil)
+    }
+
+    static func id() -> String {
+        if let existing = read() { return existing }
+        let fresh = UUID().uuidString.lowercased()
+        add(fresh)
+        // Another launch (or device, through iCloud) got there first: use theirs.
+        return read() ?? fresh
     }
 
     private static func read() -> String? {

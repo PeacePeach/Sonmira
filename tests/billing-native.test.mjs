@@ -20,7 +20,10 @@ function fakePlugin() {
   const listeners = [];
   const p = {
     finished: [], purchases: [], next: { status: 'success' }, past: [], sub: null, syncError: null,
-    accountId: async () => ({ id: ACCOUNT }),
+    id: ACCOUNT,
+    accountId: async () => ({ id: p.id }),
+    setAccountId: async ({ id }) => ({ id: (p.id = id) }),
+    resetAccountId: async () => ({ id: (p.id = '11111111-2222-4333-8444-555555555555') }),
     products: async ({ ids }) => ({ products: ids.map((id) => ({ id, displayPrice: id === PACK ? '¥450' : '¥750' })) }),
     async purchase({ productId, appAccountToken }) {
       p.purchases.push({ productId, appAccountToken });
@@ -171,6 +174,13 @@ test('a new account after sign-in: purchases carry it and the wallet follows its
   await b.purchase(PACK);
   assert.equal(plugin.purchases.at(-1).appAccountToken, other);
   assert.equal(server.sent.at(-1).account, other);
+
+  // Sign-out: a fresh guest id, kept in the Keychain and used from then on.
+  const guest = await b.resetAccountId();
+  assert.equal(guest, plugin.id);
+  assert.equal(await b.accountId(), guest);
+  assert.equal(await b.setAccountId(other), other);
+  assert.equal(plugin.id, other);
 });
 
 test('in a browser the simulator stays', async () => {

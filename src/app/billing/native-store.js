@@ -23,6 +23,10 @@ export function createNativeStore(plugin) {
     simulated: false,
     /** A random id kept in iCloud Keychain: StoreKit's appAccountToken and the server ledger's key. */
     accountId,
+    /** Sign-in to an existing account: the device takes its id. */
+    async setAccountId(id) { return (account = String((await plugin.setAccountId({ id })).id).toLowerCase()); },
+    /** Sign-out or deletion: a fresh guest id. */
+    async resetAccountId() { return (account = String((await plugin.resetAccountId()).id).toLowerCase()); },
 
     async products() {
       try { return (await plugin.products({ ids: PRODUCTS.map((p) => p.id) })).products ?? []; }

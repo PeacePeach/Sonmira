@@ -120,6 +120,10 @@ export function createBilling({ ask, native, server }) {
     accountId: () => account,
     /** Sign-in, sign-out or deletion changed the device's account: follow it. */
     useAccount(id) { account = Promise.resolve(id); return refresh(); },
+    /** iOS: store this account id in the Keychain and follow it. → the id, or null in a browser. */
+    async setAccountId(id) { if (!native) return null; const v = await native.setAccountId(id); await this.useAccount(v); return v; },
+    /** iOS: sign-out or deletion; a fresh guest id, followed at once. → the id, or null in a browser. */
+    async resetAccountId() { if (!native) return null; const v = await native.resetAccountId(); await this.useAccount(v); return v; },
     ready: refresh(),
     /** Ask the store (and, in the app, the server) again. */
     refresh: () => refresh(),

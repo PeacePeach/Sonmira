@@ -105,7 +105,10 @@ The guard lives on the Production Readiness branch. When it merges:
 - `createApiClient({ installId: await app.billing.accountId() })` in the iOS
   app, so the guard and the ledger share the id;
 - the Account thread calls `ledger.merge(guestId, accountId)` on sign-in and
-  `ledger.erase(accountId)` on deletion, then `app.billing.useAccount(id)`;
+  `ledger.erase(accountId)` on deletion; on the device,
+  `app.billing.setAccountId(id)` after a returning sign-in and
+  `app.billing.resetAccountId()` on sign-out or deletion (the Keychain item
+  has one writer: the StoreKit plugin);
 - `402 no_paintings` from `/api/generate` opens the paywall, with the take
   kept;
 - in the bundled build, the guard answers CORS for `capacitor://localhost`,
