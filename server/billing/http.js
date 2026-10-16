@@ -20,11 +20,13 @@ const defaultLog = (e) => { try { console.log(JSON.stringify({ evt: 'sonmira.bil
 export function billingFromEnv(env = process.env) {
   const kv = kvFromEnv(env);
   const bundleId = env.SONMIRA_BUNDLE_ID || 'app.sonmira';
+  // Sonmira's numeric Apple ID (App Store Connect → App Information). Not a secret.
+  const appAppleId = env.SONMIRA_APPLE_APP_ID || (bundleId === 'app.sonmira' ? '6823759268' : undefined);
   return {
     ledger: kv ? createLedger({ kv }) : null,
     verifier: createAppleVerifier({
       bundleId,
-      appAppleId: env.SONMIRA_APPLE_APP_ID,
+      appAppleId,
       allowXcode: env.VERCEL_ENV !== 'production' && env.SONMIRA_ALLOW_XCODE_STOREKIT === '1',
     }),
   };

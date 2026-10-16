@@ -59,7 +59,7 @@ opens again, so moving the clock gains at most one early painting, once.
 | Variable | Value |
 | --- | --- |
 | `KV_REST_API_URL`, `KV_REST_API_TOKEN` | The same Upstash store as the generation guard. Without it, billing answers `503 not_configured`. |
-| `SONMIRA_APPLE_APP_ID` | The app's numeric Apple ID (App Store Connect → App Information). Needed only for Production purchases; Sandbox works without it. |
+| `SONMIRA_APPLE_APP_ID` | Optional, default `6823759268`, Sonmira's numeric Apple ID (App Store Connect → App Information). Production purchases are checked against it. |
 | `SONMIRA_BUNDLE_ID` | Optional, default `app.sonmira`. |
 | `SONMIRA_BILLING` | `on` (default in Production, which TestFlight and App Review also use): every install is counted, whatever id it registers. `off` (default elsewhere): web previews keep their simulated wallet. |
 | `SONMIRA_ALLOW_XCODE_STOREKIT=1` | Optional, never in Production: accept Xcode's locally signed test transactions. |
