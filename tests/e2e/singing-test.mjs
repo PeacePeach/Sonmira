@@ -43,13 +43,14 @@ await ctx.grantPermissions(['microphone', 'clipboard-read', 'clipboard-write'], 
 const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
-page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+page.on('console', (m) => m.type() === 'error' && !/status of 502/.test(m.text()) && errors.push(m.text()));
 let posts = 0, nextWords = 'line';
 await page.route('**/api/understand', async (route) => {
   if (route.request().method() === 'GET') return route.fulfill({ json: { configured: true, transcribeModel: 'stub-transcribe', textModel: 'stub-text' } });
   posts++;
   const body = route.request().postDataJSON();
-  assert.ok(body.audio.length > 1000 && body.mime, 'audio is sent');
+  assert.ok(body.audio.length > 1000 && body.mime === 'audio/wav', 'audio is sent as WAV');
+  if (nextWords === 'fail') return route.fulfill({ status: 502, json: { ok: false, code: 'error', error: 'Invalid file format.' } });
   return route.fulfill({ json: nextWords === 'line' ? { ok: true, transcript, lyrics } : { ok: true, transcript: empty, lyrics: null } });
 });
 
@@ -81,18 +82,32 @@ assert.match(t1, /Loose/);
 assert.match(t1, /Words were heard/);
 assert.equal(posts, 2);
 
+// Take 2: transcription fails → an error, no tier; Re-analyse tries the words again.
+nextWords = 'fail';
+const t2 = await record(2, 3);
+assert.match(t2, /Transcription failed .*Invalid file format/);
+assert.equal(await page.evaluate(() => window.__singingTest.view.get(2).u), undefined);
+assert.match(await page.innerText('#stSummary'), /error/);
+const failedJson = JSON.parse(await page.evaluate(() => window.__singingTest.resultsJson())).takes.find((t) => t.slot === 2);
+assert.equal(failedJson.state, 'error'); assert.match(failedJson.error, /Invalid file format/);
+nextWords = 'line';
+await page.click('#take-2 .rerun');
+await page.waitForFunction(() => window.__singingTest.view.get(2)?.u);
+assert.equal(posts, 4, 'the failed words are fetched again');
+posts = 2; // the counts below are about take 7 and 1 again
+
 // Labels: judge take 7 one tier off and see the disagreement explained.
 const engine7 = await page.evaluate(() => window.__singingTest.view.get(7).u.tier);
 const other = engine7 === 'resolved' ? 'gathered' : 'resolved';
 await page.selectOption('#take-7 .judged', other);
 assert.match(await page.innerText('#take-7 .out'), /than your judgement/);
-assert.match(await page.innerText('#stSummary'), /2 of 9 recorded/);
+assert.match(await page.innerText('#stSummary'), /3 of 9 recorded/);
 assert.ok(await page.$('#stCalib table.calib'), 'calibration table');
 await page.screenshot({ path: `${S}/1-singing.png`, fullPage: true });
 
 // Reload: takes, labels and audio come back and are re-measured for free.
 await page.reload();
-await page.waitForFunction(() => window.__singingTest?.view.get(7)?.u && window.__singingTest.view.get(1)?.u, null, { timeout: 60000 });
+await page.waitForFunction(() => [1, 2, 7].every((n) => window.__singingTest?.view.get(n)?.u), null, { timeout: 60000 });
 assert.equal(posts, 2, 'no transcription on reload');
 assert.equal(await page.$eval('#take-7 .judged', (s) => s.value), other);
 assert.equal(await page.evaluate(() => window.__singingTest.view.get(7).u.tier), engine7, 'same decision from the saved reading');

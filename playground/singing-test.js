@@ -96,6 +96,21 @@ async function decode(blob) {
   for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < n; i++) mono[i] += d[i] / buf.numberOfChannels; }
   return { samples: mono, sampleRate: buf.sampleRate, durationSec: n / buf.sampleRate };
 }
+// The words are sent as 16 kHz mono WAV made from the decoded take, so the
+// transcriber never depends on what container or codec the browser recorded
+// (Chrome records Opus inside MP4, which a transcriber may not accept).
+async function wavFor(blob) {
+  const Ctx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const buf = await new Ctx(1, 1, 16000).decodeAudioData(await blob.arrayBuffer());
+  const n = Math.min(buf.length, MAX_SEC * 16000), x = new Float32Array(n);
+  for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < n; i++) x[i] += d[i] / buf.numberOfChannels; }
+  const out = new DataView(new ArrayBuffer(44 + n * 2));
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) out.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, 'RIFF'); out.setUint32(4, 36 + n * 2, true); str(8, 'WAVEfmt '); out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 1, true);
+  out.setUint32(24, 16000, true); out.setUint32(28, 32000, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true); str(36, 'data'); out.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) out.setInt16(44 + i * 2, Math.max(-1, Math.min(1, x[i])) * 32767, true);
+  return new Blob([out.buffer], { type: 'audio/wav' });
+}
 async function toBase64(blob) {
   const b = new Uint8Array(await blob.arrayBuffer());
   let s = '';
@@ -159,9 +174,9 @@ async function stopRecording() {
   const card = $(`take-${r.slot}`);
   card.querySelector('.meter > div').style.width = '0';
   const t = state.get(r.slot);
-  Object.assign(t, { blob, mime: blob.type, bytes: blob.size, recordedSec: Math.min(MAX_SEC, recordedSec), words: null, recordedAt: new Date().toISOString(), judged: '' });
+  Object.assign(t, { wordsSkipped: false, blob, mime: blob.type, bytes: blob.size, recordedSec: Math.min(MAX_SEC, recordedSec), words: null, recordedAt: new Date().toISOString(), judged: '' });
   await saveTake(t);
-  await analyse(r.slot, { fetchWords: true });
+  await analyse(r.slot);
 }
 function syncRecButtons() {
   for (const { slot } of TAKES) {
@@ -175,34 +190,41 @@ function syncRecButtons() {
 }
 
 // ---------- the decision ----------
-// fetchWords: ask the server for the words (one transcription, plus one short
-// text call when there are real words). Otherwise the saved reading is reused
-// and nothing is billed.
-async function analyse(slot, { fetchWords = false } = {}) {
+// The words are fetched once per recording (one transcription, plus one short
+// text call when there are real words) and saved with the take; afterwards
+// re-analysis reuses them and nothing is billed. A failed transcription is
+// shown as such and tried again on the next analysis, never read as "no words".
+async function analyse(slot) {
   const t = state.get(slot);
   if (!t?.blob) return;
+  const fetchWords = !t.words && !t.wordsSkipped;
   view.set(slot, { busy: fetchWords ? 'Listening to the words and measuring the singing…' : 'Measuring the singing…' });
   renderTake(slot);
+  renderSummary();
   try {
     const audio = await decode(t.blob);
-    let words = null;
-    if (fetchWords) {
-      words = async () => {
-        const r = await fetch('/api/understand', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ audio: await toBase64(t.blob), mime: t.blob.type || 'audio/webm' }) });
+    let wordsError = null;
+    const words = !fetchWords ? (t.words ? async () => t.words : null) : async () => {
+      try {
+        const wav = await wavFor(t.blob);
+        const r = await fetch('/api/understand', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ audio: await toBase64(wav), mime: 'audio/wav' }) });
         const j = await r.json().catch(() => null);
-        if (!r.ok || !j?.ok) throw new Error(j?.code === 'not_configured' ? 'The server has no OpenAI key for transcription.' : `Transcription failed (${j?.code || `HTTP ${r.status}`}).`);
+        if (!r.ok || !j?.ok) throw new Error(j?.code === 'not_configured' ? 'the server has no OpenAI key for transcription' : `${j?.code || `HTTP ${r.status}`}${j?.error ? `: ${j.error}` : ''}`);
         t.words = { transcript: j.transcript, lyrics: j.lyrics };
         return t.words;
-      };
-    } else if (t.words) {
-      words = async () => t.words;
-    }
+      } catch (e) {
+        wordsError = e.message || String(e);
+        return null;
+      }
+    };
     const u = await understandTake({ samples: audio.samples, sampleRate: audio.sampleRate, words });
-    if (fetchWords && !u.wordsRequested) t.words = null; // too little sound: no call was made
+    if (fetchWords && !u.wordsRequested) t.wordsSkipped = true; // too little sound: no call was made
     await saveTake(t);
-    view.set(slot, { u, track: pitchTrack(audio.samples, audio.sampleRate), durationSec: audio.durationSec });
+    view.set(slot, wordsError
+      ? { error: `Transcription failed (${wordsError}), so no tier was decided. Press “Re-analyse” to try the words again.`, wordsError }
+      : { u, track: pitchTrack(audio.samples, audio.sampleRate), durationSec: audio.durationSec });
   } catch (err) {
-    view.set(slot, { error: err.message || String(err) });
+    view.set(slot, { error: `This take couldn’t be analysed (${err.message || err}).` });
   }
   renderTake(slot);
   renderSummary();
@@ -336,11 +358,14 @@ function renderTake(slot) {
 }
 
 function renderSummary() {
+  const busy = TAKES.filter(({ slot }) => view.get(slot)?.busy).length, failed = TAKES.filter(({ slot }) => view.get(slot)?.error).length;
+  if ($('stCopy')) { $('stCopy').disabled = busy > 0; $('stCopy').textContent = busy ? `Analysing… ${busy} left` : 'Copy results for Claude'; }
+  if ($('stProgress')) $('stProgress').textContent = busy ? `Analysing your takes: ${busy} left.` : failed ? `${failed} take${failed > 1 ? 's' : ''} couldn’t be analysed; see the red message on ${failed > 1 ? 'those cards' : 'that card'}.` : '';
   const rows = TAKES.map(({ slot, title }) => {
     const t = state.get(slot), u = view.get(slot)?.u;
     const ref = t.judged || t.expected;
     const agree = !u ? '' : !ref ? '' : ref === u.tier ? '<span class="ok">agrees</span>' : '<span class="no">differs</span>';
-    return `<tr><td>${slot}</td><td>${esc(title)}</td><td>${pill(t.expected)}</td><td>${u ? pill(u.tier) : t.blob ? '…' : '<span class="hint">not recorded</span>'}</td><td>${t.judged ? pill(t.judged) : '<span class="hint">—</span>'}</td><td>${agree}</td></tr>`;
+    return `<tr><td>${slot}</td><td>${esc(title)}</td><td>${pill(t.expected)}</td><td>${u ? pill(u.tier) : view.get(slot)?.error ? '<span class="no">error</span>' : t.blob ? '…' : '<span class="hint">not recorded</span>'}</td><td>${t.judged ? pill(t.judged) : '<span class="hint">—</span>'}</td><td>${agree}</td></tr>`;
   }).join('');
   const done = TAKES.filter(({ slot }) => view.get(slot)?.u);
   const agreeN = done.filter(({ slot }) => { const t = state.get(slot); return (t.judged || t.expected) === view.get(slot).u.tier; }).length;
@@ -373,7 +398,8 @@ function renderCalibration() {
 function resultsJson() {
   const takes = TAKES.map(({ slot, title }) => {
     const t = state.get(slot), u = view.get(slot)?.u;
-    if (!u) return { slot, title, expected: t.expected, recorded: Boolean(t.blob) };
+    const v = view.get(slot) ?? {};
+    if (!u || v.error) return { slot, title, expected: t.expected, judged: t.judged || null, recorded: Boolean(t.blob), mime: t.mime ?? null, bytes: t.bytes ?? null, recordedSec: t.recordedSec ?? null, state: v.busy ? 'still analysing' : v.error ? 'error' : 'not analysed', error: v.error ?? null };
     const q = u.singing?.quality, C = q?.components ?? {}, P = C.performance ?? {};
     return {
       slot, title, expected: t.expected, judged: t.judged || null, comment: t.comment || null,
@@ -399,6 +425,8 @@ function resultsJson() {
 }
 
 async function copyResults() {
+  const busy = TAKES.filter(({ slot }) => view.get(slot)?.busy).length;
+  if (busy) { $('stCopyHint').textContent = `${busy} take${busy > 1 ? 's are' : ' is'} still being analysed. Wait until every card shows a result, then copy.`; return; }
   const text = resultsJson(), box = $('stCopyBox');
   try {
     await navigator.clipboard.writeText(text);
