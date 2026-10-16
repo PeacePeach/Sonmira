@@ -20,11 +20,17 @@ import { FAMILIES, SUBJECTS, AFFINITY, familiesOfTier } from './families.js';
 export { FAMILIES, REFERENCES, LIBRARY_VERSION } from './families.js';
 export const DIRECTION_VERSION = 3;
 
-// Global Sonmira constraints: true for every family. Colour intensity is
-// left to the family, because the references range from pale to saturated.
+// Global Sonmira constraints: true for every family and every tier.
+// Materiality is independent of abstraction: Loose, Gathered and Resolved all
+// keep strong watercolor behaviour; only how recognisable the subject is
+// changes. Colour intensity is left to the family, because the references
+// range from pale to saturated.
 export const GLOBAL_STYLE = [
   'A genuine hand-painted watercolor on cold-press cotton paper',
-  'visible paper texture, transparent layered pigment and real watercolor behaviour (blooms, granulation, soft and hard edges)',
+  'visible brushwork and natural pigment variation',
+  'wet-on-wet diffusion, granulation, blooms, backruns and transparent layered washes',
+  'organic, imperfect edges, intentional negative space of reserved white paper',
+  'natural paper texture and selective, unfinished passages; hand-made, uneven colour transitions',
   'one clear colour idea: a dominant colour family with at most one accent',
   'elegant and considered, beautiful enough to sit inside a refined, minimal app',
   'an original composition, not a copy of any existing artwork',
@@ -33,7 +39,9 @@ export const GLOBAL_STYLE = [
 export const AVOID = [
   'neon or fluorescent colour', 'muddy or overworked colour', 'many unrelated colours',
   'cartoon, anime or comic style', 'sentimental greeting-card art', 'generic stock illustration',
-  'photorealism', 'glossy digital rendering', 'heavy black ink outlines',
+  'photorealism', 'cinematic photography', 'lens blur', 'HDR lighting', 'digital airbrushing',
+  'smooth artificial gradients', 'a photo-to-watercolor filter effect', 'uniform detail everywhere',
+  'glossy digital rendering', 'heavy black ink outlines',
   'text, letters, titles, signature, logo or watermark', 'a frame, border or mat', 'a photo of a painting on a table',
 ];
 
@@ -44,11 +52,11 @@ export const LEVELS = {
   },
   gathered: {
     label: 'semi-abstract watercolor study',
-    form: 'Semi-abstract: the kind of place can be recognised, but forms are only suggested and never drawn in detail. Depth is beginning to appear and one area is starting to draw the eye. Clearly a study, left unfinished in places.',
+    form: 'Semi-abstract: ambiguous, emerging forms; a mood of place may be felt but no subject is clearly identifiable, and nothing is drawn in detail. Depth is beginning to appear and one area is starting to draw the eye. Clearly a study, left unfinished in places.',
   },
   resolved: {
     label: 'finished watercolor painting',
-    form: 'Finished and fully considered: a clear focal subject, a deliberate composition and a complete sense of space, with the finest detail and sharpest edges kept for the focus.',
+    form: 'Finished and fully considered: a clear, recognisable focal subject, a deliberate composition and a complete sense of space, rendered entirely through watercolor technique, never as a realistic image. Fine detail and the sharpest edges only at the focus; secondary elements simplified into painterly gestures.',
   },
 };
 
