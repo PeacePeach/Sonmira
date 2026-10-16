@@ -9,15 +9,15 @@ Merging code and deploying Production are separate steps, each with its own appr
 - [x] Fake provider only by `SONMIRA_FAKE_PROVIDER=1`, never in Production. A Preview without it fails closed.
 - [x] `SONMIRA_PROTECT=off` ignored on every deployment.
 - [x] Unit tests, readiness e2e (reloads, interruptions, quota), Paywall, flow, loading and dev diagnostics all pass.
-- [x] Trial merge with Payments (PR #6), Account (PR #8) and the brand icons (PR #7) is clean apart from additive conflicts and one privacy-text conflict. All tests pass.
-- [ ] Open items with PR #6 and PR #8 settled (section F).
+- [x] Payments (PR #6, iOS shell, StoreKit, ledger, TestFlight workflow) and Account (PR #8) merged into PR #9 and wired to the guard: one id per device, paintings counted by the server only when made, billing and sign-in answer only to the holder of the id (section F).
+- [x] Unit tests, readiness e2e (now with server-counted quota), Paywall, Account, flow, loading and diagnostics pass; screens match main apart from the new Account row in Settings.
 - [ ] PR #9 marked ready for review, then Han approves the merge.
 
 ## B. Code merge (Han's approval: merge)
 
 1. Merge PR #9 into main. Nothing is deployed.
 2. PR #2 is closed as merged through PR #9.
-3. Payments (PR #6) and Account (PR #8) merge after it, each on Han's approval, with their wiring into the guard (section F).
+3. PR #6 and PR #8 are closed as merged through PR #9 (their commits are in it).
 
 ## C. Production setup in Vercel (Han, no code)
 
@@ -27,8 +27,11 @@ Following `docs/beta-vercel-config.md`:
 2. Add `OPENAI_API_KEY` from a dedicated beta OpenAI project with a monthly budget and alerts.
 3. Add `SONMIRA_TOKEN_SECRET`, `SONMIRA_INVITE_CODES` and `SONMIRA_DAILY_CAP_USD=3`.
 4. Confirm the Blob store (`BLOB_READ_WRITE_TOKEN`) is connected to Production.
-5. Confirm `SONMIRA_FAKE_PROVIDER`, `SONMIRA_PROTECT` and `SONMIRA_REFERENCE_VIEW` are not set in Production.
-6. Turn Deployment Protection on for Previews.
+5. Accounts: `SONMIRA_ACCOUNT_SECRET` (32+ random characters, different from the token secret) and the Sign in with Apple key `APPLE_TEAM_ID`, `APPLE_SIGNIN_KEY_ID`, `APPLE_SIGNIN_PRIVATE_KEY`. Without them `/api/account/*` answers `not_configured` (Production refuses to run accounts without the key, so deletion can revoke Apple's tokens).
+6. Purchases: `SONMIRA_BILLING` stays unset (counting is on in Production). In App Store Connect, set the App Store Server Notifications V2 URL (Production and Sandbox) to `https://<production domain>/api/billing/apple-notifications`.
+7. Native beta: raise `SONMIRA_LIMIT_IP_HOUR` and `SONMIRA_LIMIT_SESSION_IP_HOUR` (for example to 200 and 50) because testers on one carrier can share an address.
+8. Confirm `SONMIRA_FAKE_PROVIDER`, `SONMIRA_PROTECT`, `SONMIRA_REFERENCE_VIEW` and `SONMIRA_ALLOW_XCODE_STOREKIT` are not set in Production.
+9. Turn Deployment Protection on for Previews.
 
 ## D. Beta setup task: transcription check (Engine)
 
@@ -43,12 +46,16 @@ Tracked separately; it does not block Engine V1. When the beta's OpenAI key exis
    - The OpenAI usage page shows one image and one transcription.
 3. Share the invitation codes with the testers.
 
-## F. Open items before calling the whole Beta app ready
+## F. TestFlight (Han's approval: the approved commit)
 
-- Payments (PR #6): billing endpoints take the account id from the request without proof of ownership, and have no rate limit. Its ledger is not yet called by the guard (`deps.charge` in `protect()`).
-- Account (PR #8): privacy text to reconcile ("Nothing is uploaded" is no longer true). The guard is not yet wired for `verifyAccount`, `adoptSeat`, `eraseAccount`, or a seat check on every request.
-- App: `createApiClient({ installId, storage })` fed by the native account id.
-- Native beta: raise the per-address limits (`SONMIRA_LIMIT_IP_HOUR`, `SONMIRA_LIMIT_SESSION_IP_HOUR`) for carrier networks that share one address.
+After Production is deployed from the approved commit, run Actions → TestFlight → Run workflow on that same commit (or push a `testflight-<n>` tag to it). The secrets and the Sandbox tester are already set up. Nothing in PR #9 runs it on its own.
+
+## How the server enforces the Beta (server/wire.js)
+
+- One id per device: the Keychain UUID in the iOS app (StoreKit's appAccountToken), the account id, the guard's install id and the ledger key are the same value.
+- `/api/generate` sets one painting aside (Daily Ritual, then free, then pack credits) before any paid call, counts it only when the painting is made, and hands it back on any failure. One take key is counted once, however often it is retried. None left: `402 no_paintings`, no paid call.
+- `/api/billing/*` and `/api/account/apple` answer only to a request carrying the install token of the id they name, on a live invitation with its seat held.
+- Signing in moves the guest's seat and ledger to the account only when the device proves it holds the guest id; deleting the account erases the ledger, frees the seat and removes stored results.
 
 ## If something goes wrong
 

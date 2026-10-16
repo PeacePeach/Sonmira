@@ -17,10 +17,12 @@ Without it, Production refuses paid requests (`503 not_configured`); the in-memo
 | `SONMIRA_INVITE_CODES` | `CODE-ONE,CODE-TWO`: one code per group of testers, 5 devices each | Paid endpoints refuse (`not_configured`) |
 | `SONMIRA_DAILY_CAP_USD` | `3` | Defaults to 3 |
 | `BLOB_READ_WRITE_TOKEN` | Set by connecting the Engine's private Blob store (references) | Painting answers `no_reference`; nothing is charged |
+| `SONMIRA_ACCOUNT_SECRET` | 32+ random characters, not the token secret | Sign in with Apple answers `not_configured` |
+| `APPLE_TEAM_ID`, `APPLE_SIGNIN_KEY_ID`, `APPLE_SIGNIN_PRIVATE_KEY` | The Sign in with Apple key (developer portal) | Accounts refuse in Production (deletion must revoke Apple's tokens) |
 
 Nothing else is required. Optional later: `SONMIRA_COST_IMAGE_USD` once the real per-image price is known from OpenAI usage, and `SONMIRA_LIMIT_<NAME>` to tune a limit (`GENERATE_HOUR`, `GENERATE_DAY`, `UNDERSTAND_HOUR`, `UNDERSTAND_DAY`, `INVITE_GENERATE_DAY`, `INSTALLS_PER_INVITE`, `IP_HOUR`, `SESSION_IP_HOUR`).
 
-Never set in Production: `SONMIRA_FAKE_PROVIDER` and `SONMIRA_PROTECT` (both are ignored there anyway), `SONMIRA_REFERENCE_VIEW`.
+Paintings are counted on the server in Production (`SONMIRA_BILLING` defaults to `on` there; leave it unset). Never set in Production: `SONMIRA_FAKE_PROVIDER` and `SONMIRA_PROTECT` (both are ignored there anyway), `SONMIRA_REFERENCE_VIEW`, `SONMIRA_ALLOW_XCODE_STOREKIT`.
 
 Kill switch, no deploy needed: set `SONMIRA_DAILY_CAP_USD` to `0` (every paid request is refused with `spend_cap`), or remove a code from `SONMIRA_INVITE_CODES` (its devices lose access). Vercel applies environment changes on the next deployment, so redeploy the current Production deployment after changing them.
 
