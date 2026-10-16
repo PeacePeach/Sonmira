@@ -475,3 +475,36 @@ test('dev lyrics evaluation: 16 cases through the text model, stops at an unreac
   const prod = await call(understandHandler({ env: { OPENAI_API_KEY: 'k', VERCEL_ENV: 'production' }, fetchImpl }), { method: 'POST', body: { mode: 'eval' } });
   assert.equal(prod.code, 404);
 });
+
+// ── Regression: stopping the recording right after singing is not Loose ────
+// Real take: sung, sustained 0.597, ending { trailingQuietSec 0,
+// lastNoteHeldSec null, clean false }, and stage 1 failed only on the ending.
+test('an immediate stop after a complete sung phrase passes stage 1; the ending only informs stage 2', () => {
+  const full = singers.strong();
+  // Stop inside a note change, with no quiet after the voice: as abrupt as an ending gets.
+  let cut = null;
+  for (let sec = 7.3; sec < 9.5 && !cut; sec += 0.01) {
+    const m = measure(full.subarray(0, Math.round(sec * SR)));
+    if (!m.singing.vocal.ending.clean && m.singing.vocal.ending.trailingQuietSec === 0) cut = m;
+  }
+  assert.ok(cut, 'found an abrupt ending');
+  assert.equal(cut.singing.vocal.sung, true);
+  const r = decide(confident(LINE), reading(), cut);
+  assert.equal(r.gate.pass, true, JSON.stringify(r.gate.failed));
+  assert.ok(!r.gate.checks.some((c) => c.id === 'clean_ending'));
+  assert.equal(r.stage, 2);
+  assert.equal(cut.singing.quality.components.ending.clean, false);
+  assert.equal(cut.singing.quality.components.ending.scored, false);
+  // The abrupt ending does not lower the tier: same decision as the clean take.
+  const clean = measure(full);
+  assert.equal(clean.singing.vocal.ending.clean, true);
+  assert.equal(decide(confident(LINE), reading(), clean).tier, r.tier);
+});
+
+test('a phrase truncated mid-sentence still fails stage 1, on the words', () => {
+  const abrupt = measure(singers.strong().subarray(0, Math.round(7.33 * SR)));
+  const truncated = reading({ structure: 'fragment', unfinished: true, linked: true, missing: 'the end of the sentence', phraseComplete: false, completionConfidence: 0.9 });
+  const r = decide(confident('I will wait for you by the'), truncated, abrupt);
+  assert.equal(r.tier, 'loose');
+  assert.deepEqual(r.gate.failed, ['phrase_complete']);
+});

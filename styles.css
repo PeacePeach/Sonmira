@@ -164,6 +164,25 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .stop-square { width: 22px; height: 22px; border-radius: 4px; background: #fff; }
 .drying { flex: 1; display: flex; align-items: center; justify-content: center; padding: 0 32px; text-align: center; }
 .drying .line { font-size: 26px; color: var(--secondary); transition: opacity .5s; }
+/* One watercolour, from voice to painting: while recording the take's wash
+   swells and deepens a little with the voice (setVoice → scale/opacity,
+   eased); while the painting is made the same wash slows into a long
+   diffusion (.developing, transform only, so it keeps moving while the page
+   works); a hairline shows activity without a percentage. */
+.drying-inner { width: 100%; }
+.develop-track { position: relative; width: 112px; height: 1px; margin: 22px auto 0; background: var(--hairline); overflow: hidden; transition: opacity .8s ease; }
+.develop-run { position: absolute; inset: 0 auto 0 0; width: 45%; background: linear-gradient(90deg, transparent, var(--secondary), transparent); animation: developRun 3.2s cubic-bezier(.45, 0, .55, 1) infinite; }
+.develop-track.done { opacity: 0; }
+@keyframes developRun { from { transform: translateX(-100%); } to { transform: translateX(225%); } }
+.painting .wash { transition: scale .5s cubic-bezier(.2, .6, .3, 1), opacity .5s ease-out; }
+.painting.developing .wash { opacity: .9; transition: scale 1.6s ease-out, opacity 2.4s ease-in-out; animation: washDevelop 11s ease-in-out infinite alternate; }
+.painting.resting .wash { animation-play-state: paused; }
+@keyframes washDevelop { 0% { transform: none; } 50% { transform: scale(1.03) rotate(.35deg) translate(.5%, -.4%); } 100% { transform: scale(1.055) rotate(-.25deg) translate(-.4%, .3%); } }
+@media (prefers-reduced-motion: reduce) {
+  .painting .wash, .painting.developing .wash { animation: none; scale: none !important; transition: opacity .8s ease-out; }
+  .develop-run { width: 100%; transform: none; background: var(--muted); animation: developBreathe 2.4s ease-in-out infinite alternate; }
+}
+@keyframes developBreathe { from { opacity: .2; } to { opacity: .6; } }
 .caption-input { width: 100%; margin-top: 12px; border: 0; border-bottom: 1px solid var(--underline); border-radius: 0; background: transparent; font-family: var(--serif); font-weight: 600; letter-spacing: -0.015em; font-size: 24px; color: var(--ink); padding: 8px 0 12px; outline: none; -webkit-appearance: none; }
 .caption-input:focus { border-bottom-color: var(--secondary); }
 .actions { display: flex; flex-direction: column; gap: 6px; padding-top: 22px; }

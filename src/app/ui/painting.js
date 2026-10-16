@@ -31,23 +31,37 @@ export function createPainting({ ratio = '32', strokes = [], artwork = null, use
   }
   function setStrokes(list) { wash.textContent = ''; (list || []).forEach((s) => addStroke(s)); }
 
+  // Voice → the wash breathes with it (recording): level 0..1, smoothed here
+  // and eased by CSS (.painting .wash transition). 0 lets it settle.
+  let voice = 0;
+  function setVoice(level) {
+    voice = level <= 0 ? 0 : voice + (Math.min(1, level) - voice) * 0.3;
+    wash.style.scale = (1 + voice * 0.035).toFixed(4);
+    wash.style.opacity = (0.86 + voice * 0.14).toFixed(3);
+    if (level <= 0) { wash.style.scale = ''; wash.style.opacity = ''; }
+  }
+
+  // Resolves once the artwork is decoded and on its way in (fade), so a
+  // caller can keep its loading state until then.
   function setArtwork(a, { fade = false } = {}) {
     if (art) { art.remove(); art = null; }
-    if (!a) return;
+    if (!a) return Promise.resolve();
     let src = a.src;
     if (a.kind === 'image' && a.blob) { src = URL.createObjectURL(a.blob); urls.push(src); }
-    if (!src) return;
+    if (!src) return Promise.resolve();
     art = h('img', { class: 'art' + (fade ? ' hidden' : ''), alt: '', src, decoding: 'async', loading: lazy ? 'lazy' : 'eager' });
     if (useFocus && a.focus) art.style.objectPosition = a.focus;
     el.insertBefore(art, grain);
-    if (fade) {
-      const show = () => requestAnimationFrame(() => requestAnimationFrame(() => art && art.classList.remove('hidden')));
-      art.complete ? show() : art.addEventListener('load', show, { once: true });
-      art.addEventListener('error', show, { once: true });
-    }
+    const img = art;
+    return new Promise((resolve) => {
+      const show = () => requestAnimationFrame(() => requestAnimationFrame(() => { img.classList.remove('hidden'); resolve(); }));
+      if (!fade) { resolve(); return; }
+      img.complete ? show() : img.addEventListener('load', show, { once: true });
+      img.addEventListener('error', show, { once: true });
+    });
   }
 
   setStrokes(strokes);
   setArtwork(artwork);
-  return { el, addStroke, setStrokes, setArtwork, destroy() { urls.forEach((u) => URL.revokeObjectURL(u)); urls = []; } };
+  return { el, addStroke, setStrokes, setArtwork, setVoice, destroy() { urls.forEach((u) => URL.revokeObjectURL(u)); urls = []; } };
 }

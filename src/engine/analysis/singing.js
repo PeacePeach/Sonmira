@@ -46,8 +46,8 @@ export const SINGING_CALIBRATION = {
   // syllables, ~0.15–0.28 s, about 0.28). Provisional until real recordings.
   sung: { sustainedRatio: 0.3, voicedSec: 1.5 },
   // A take "ends cleanly" when the voice stops before the recording does, or
-  // the last sound is a held note; a voice still moving at the very end was
-  // most likely cut off mid-phrase.
+  // the last sound is a held note. Diagnostic only (see C.ending): an abrupt
+  // end usually just means the user stopped recording straight away.
   ending: { quietSec: 0.2, heldSec: 0.3 },
 };
 
@@ -265,6 +265,11 @@ export function singingAnalysis(track, features = null, cal = SINGING_CALIBRATIO
   const score = wsum ? keys.reduce((a, k) => a + W[k] * C[k].score, 0) / wsum : null;
   const clarity = notes.length ? mean(notes.flatMap((n) => n.clarity)) : 0;
   const confidence = clamp01(noteSec / 4) * clamp01(notes.length / 6) * clamp01((clarity - 0.6) / 0.3) * (C.intonation ? 1 : 0.6);
+  // Ending: reported for stage 2, not scored. Stopping the recording right
+  // after singing is a recording action, not a singing fault, so it never
+  // lowers the score or the tier.
+  C.ending = { scored: false, ...vocal.ending };
+
   const S = cal.strong;
   const strong = score != null && score >= S.score && confidence >= S.confidence
     && (C.stability?.score ?? 0) >= S.stability && (C.intonation?.score ?? 0) >= S.intonation

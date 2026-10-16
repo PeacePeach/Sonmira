@@ -48,22 +48,34 @@ async function blobToBase64(blob) {
   return btoa(s);
 }
 
-async function postJSON(fetchImpl, url, body) {
+// Generous ceilings: transcription + reading, and one streamed image.
+export const TIMEOUTS = { understand: 60_000, generate: 150_000 };
+
+async function postJSON(fetchImpl, url, body, timeoutMs) {
   let res, json;
+  const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = ctl && timeoutMs ? setTimeout(() => ctl.abort(), timeoutMs) : null;
   try {
-    res = await fetchImpl(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    res = await fetchImpl(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: ctl?.signal });
     json = await res.json().catch(() => null);
   } catch (e) {
+    if (ctl?.signal.aborted) throw new GenerationError('This is taking much longer than usual. Please try again.', { code: 'timeout', cause: e });
     throw new GenerationError('Couldn’t reach the painting service. Check your connection and try again.', { code: 'network', cause: e });
+  } finally {
+    if (timer) clearTimeout(timer);
   }
   return { res, json };
 }
 
-export function createAIEngine({ fetchImpl = (...a) => globalThis.fetch(...a), decode = decodeAudioBlob } = {}) {
+// Let the browser paint the loading state before synchronous analysis.
+const nextFrame = () => new Promise((r) => setTimeout(r, 32));
+
+export function createAIEngine({ fetchImpl = (...a) => globalThis.fetch(...a), decode = decodeAudioBlob, timeouts = TIMEOUTS } = {}) {
   const real = createRealEngine();
 
   // Everything before the image: returns the understanding (diagnostics).
   async function understand({ analysis, audioBlob, forcedTier }) {
+    await nextFrame();
     let audio = null;
     if (audioBlob && !analysis?.flags?.silent) {
       try { audio = await decode(audioBlob); } catch (e) {
@@ -71,7 +83,7 @@ export function createAIEngine({ fetchImpl = (...a) => globalThis.fetch(...a), d
       }
     }
     const words = audioBlob ? async () => {
-      const { res, json } = await postJSON(fetchImpl, UNDERSTAND, { audio: await blobToBase64(audioBlob), mime: audioBlob.type || 'audio/webm' });
+      const { res, json } = await postJSON(fetchImpl, UNDERSTAND, { audio: await blobToBase64(audioBlob), mime: audioBlob.type || 'audio/webm' }, timeouts.understand);
       if (!res.ok || !json?.ok) {
         const code = json?.code || `http_${res.status}`;
         throw new GenerationError(code === 'not_configured' ? 'The painting service isn’t set up on this server yet.' : 'Couldn’t listen to the words this time. Please try again.', { code, status: res.status, detail: json?.error });
@@ -88,7 +100,13 @@ export function createAIEngine({ fetchImpl = (...a) => globalThis.fetch(...a), d
     paid: true,
     createLiveSession: real.createLiveSession,
     understand,
-    async generate({ analysis, note = '', audioBlob = null, overrides = {} } = {}) {
+    // onStage(stage, info): the real processing steps, for the loading screen.
+    //   'listening' {words}  decoding, voice analysis, transcription and reading
+    //   'feeling'   {tier}   understanding done: tier, concept and spec decided
+    //   'painting'           the image request is in flight
+    async generate({ analysis, note = '', audioBlob = null, overrides = {}, onStage = () => {} } = {}) {
+      const stage = (...a) => { try { onStage(...a); } catch { /* display only */ } };
+      stage('listening', { words: Boolean(audioBlob) });
       const features = analysis?.features ?? null;
       const silent = analysis?.flags?.silent ?? !features;
       const forced = COMPLETENESS.includes(overrides?.completeness) ? overrides.completeness : null;
@@ -112,11 +130,13 @@ export function createAIEngine({ fetchImpl = (...a) => globalThis.fetch(...a), d
         concept: sem.concept, soundOnly: !sem.concept && spec.completeness === 'loose', expression: u.expression,
       } };
       const understanding = { ...u, emotion: { value: it.emotion, source: sem.mood ? 'lyrics' : it.sources.emotion }, motif: { value: it.motif, source: sem.motif ? 'lyrics' : it.sources.motif }, plannedFamily: plan.direction.family };
+      stage('feeling', { tier: u.tier });
       if (overrides?.analyzeOnly) {
         throw new GenerationError('Analysis only: no painting was made (dev).', { code: 'analyze_only', understanding });
       }
 
-      const { res, json } = await postJSON(fetchImpl, ENDPOINT, body);
+      stage('painting');
+      const { res, json } = await postJSON(fetchImpl, ENDPOINT, body, timeouts.generate);
       if (!res.ok || !json?.ok || !json.image) {
         const code = json?.code || `http_${res.status}`;
         const message = code === 'not_configured' ? 'The painting service isn’t set up on this server yet.'

@@ -13,7 +13,7 @@
 // sung correctly or completely (nothing here recognises songs).
 // Every threshold is provisional and needs calibration on real recordings.
 
-export const LYRICS_VERSION = 2;
+export const LYRICS_VERSION = 3;
 
 export const GATE_CALIBRATION = {
   minLexicalWords: 3,
@@ -122,7 +122,10 @@ export function completionGate({ transcript = null, lyrics = null, singing = nul
   add('phrase_complete', verdict.complete && (lyrics?.completionConfidence ?? 0) >= needCompletion,
     lyrics ? `model ${Boolean(lyrics.phraseComplete)} (${lyrics.completionConfidence ?? '?'}), structure ${lyrics.structure ?? '—'}, unfinished ${Boolean(lyrics.unfinished)}, linked ${Boolean(lyrics.linked)}${verdict.reasons.length ? ` → incomplete: ${verdict.reasons.join('; ')}` : ''}` : '—',
     `a clause or bound image, not unfinished, parts joined; confidence ≥ ${needCompletion}`);
-  add('clean_ending', sung?.ending?.clean, sung?.ending ? `quiet ${sung.ending.trailingQuietSec}s, held ${sung.ending.lastNoteHeldSec ?? 0}s` : '—', 'the voice ends, not cut off');
+  // How the take ends is not a lyrics question: a user who stops recording
+  // right after the last word looks the same as one cut off mid-phrase.
+  // Whether the words were finished is judged by phrase_complete; the ending
+  // is reported with the singing (stage 2) and decides nothing.
 
   const pass = checks.every((c) => c.ok);
   const failed = checks.filter((c) => !c.ok).map((c) => c.id);

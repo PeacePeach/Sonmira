@@ -42,3 +42,12 @@ test('a failed generation throws a clear error instead of returning a substitute
   const offline = async () => { throw new TypeError('Failed to fetch'); };
   await assert.rejects(createAIEngine({ fetchImpl: offline }).generate({ analysis: { durationSec: 3, flags: { silent: true, tooShort: false }, wash: [] } }), { code: 'network' });
 });
+
+test('a request that never answers ends in a timeout error, and stages are reported in order', async () => {
+  const stages = [];
+  const hang = (url, init) => new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError'))));
+  const engine = createAIEngine({ fetchImpl: hang, timeouts: { understand: 50, generate: 50 } });
+  await assert.rejects(engine.generate({ analysis: { durationSec: 3, flags: { silent: true, tooShort: false }, wash: [] }, onStage: (s) => stages.push(s) }),
+    (e) => e.name === 'GenerationError' && e.code === 'timeout');
+  assert.deepEqual(stages, ['listening', 'feeling', 'painting']);
+});
