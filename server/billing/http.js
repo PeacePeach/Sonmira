@@ -50,7 +50,9 @@ function body(req) {
 }
 const deny = (res, status, code) => res.status(status).json({ ok: false, code });
 
-const LIMITS = { transactions: 30, status: 120 }; // per address per minute
+// Per address per minute. Apple's notifications get room for bursts, and a
+// 429 is simply retried by Apple; it stops unsigned spam costing checks.
+const LIMITS = { transactions: 30, status: 120, notifications: 600 };
 const address = (req) => String(req.headers?.['x-real-ip'] || req.headers?.['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim() || 'unknown';
 function perAddress(kv) {
   return async (req, name) => {
@@ -134,8 +136,9 @@ export function createNotificationsHandler(deps) {
   const get = lazy(deps);
   return async function notifications(req, res) {
     if (req.method !== 'POST') return deny(res, 405, 'method');
-    const { ledger, verifier, log } = get();
+    const { ledger, verifier, log, limit } = get();
     if (!ledger) return deny(res, 503, 'not_configured');
+    if (!(await limit(req, 'notifications'))) return deny(res, 429, 'rate_limited');
     const b = body(req);
     let n;
     try { n = await verifier.notification(b?.signedPayload); }
