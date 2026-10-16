@@ -105,7 +105,8 @@ function suite(name, makeKV) {
       const ta = (await s.join(a)).token, tb = (await s.join(b)).token;
       assert.equal((await s.status(null, a)).statusCode, 401);
       assert.equal((await s.status(tb, a)).statusCode, 401); // someone else's token
-      assert.equal((await s.status(ta.slice(0, -1) + (ta.endsWith('x') ? 'y' : 'x'), a)).statusCode, 401); // forged
+      const [v, body, sig] = ta.split('.'); // forged: the signature's first byte changed
+      assert.equal((await s.status(`${v}.${body}.${sig[0] === 'A' ? 'B' : 'A'}${sig.slice(1)}`, a)).statusCode, 401);
       assert.equal((await s.status(ta, a)).statusCode, 200);
       // A purchase can't be posted, read or restored for another account.
       assert.equal((await s.buy(tb, a, s.tx(a))).statusCode, 401);
