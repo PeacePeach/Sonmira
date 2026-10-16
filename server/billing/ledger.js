@@ -7,6 +7,7 @@
 //   bill:acct:<id>    the wallet state (JSON)
 //   bill:subs:<id>    Daily Ritual transactions seen: expiry, refunds, renewal
 //   bill:otid:<otid>  which account an Apple subscription belongs to
+//   bill:txid:<txid>  which account a pack belongs to (one account, ever)
 //   bill:alias:<id>   a ledger that Restore Purchases merged into another
 //   bill:hold:<key>   which account a take's painting is held on
 //   bill:lock:<id>    short lock while one request changes the account
@@ -119,11 +120,17 @@ export function createLedger({ kv, now = Date.now, holdTtlMs = 180_000, sleep = 
     const product = productById(tx.productId);
     if (!product) return { ignored: 'unknown_product' };
     let owner = normalizeAccount(tx.appAccountToken);
+    const txId = String(tx.transactionId);
     if (!owner && tx.originalTransactionId) owner = await kv.get(`bill:otid:${tx.originalTransactionId}`);
+    if (!owner && product.kind === 'consumable') owner = await kv.get(`bill:txid:${txId}`);
     owner ??= normalizeAccount(fallback);
     if (!owner) return { ignored: 'no_account' };
+    // A pack is granted to one account only, whoever sends it later.
+    if (product.kind === 'consumable' && !(await kv.claim(`bill:txid:${txId}`, owner, KEEP))) {
+      const first = await kv.get(`bill:txid:${txId}`);
+      if (first && (await resolve(first)) !== (await resolve(owner))) return { ignored: 'other_account' };
+    }
     const id = await resolve(owner);
-    const txId = String(tx.transactionId);
     return withAccount(id, null, async (a) => {
       let effect;
       if (product.kind === 'consumable') {

@@ -10,9 +10,9 @@ const json = async (res) => {
 export function createBillingServer({ fetchImpl = (...a) => globalThis.fetch(...a) } = {}) {
   return {
     /** → { results, status } */
-    send: ({ account, transactions = [], renewals = [], restore = false, day }) => fetchImpl('/api/billing/transactions', {
+    send: ({ account, transactions = [], renewals = [], restore = false, day, device = null }) => fetchImpl('/api/billing/transactions', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ account, transactions, renewals, restore, day }),
+      body: JSON.stringify({ account, transactions, renewals, restore, day, device }),
     }).then(json),
     /** → status, with .wallet to adopt */
     status: (account, day) => fetchImpl(`/api/billing/status?account=${encodeURIComponent(account)}&day=${encodeURIComponent(day)}`).then(json).then((b) => b.status),

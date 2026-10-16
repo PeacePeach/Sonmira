@@ -17,12 +17,15 @@ export function createNativeStore(plugin) {
   const subscription = PRODUCTS.find((p) => p.kind === 'subscription');
   let account = null;
   const accountId = async () => (account ??= String((await plugin.accountId()).id).toLowerCase());
+  let device = null;
 
   return {
     id: 'appstore',
     simulated: false,
     /** A random id kept in iCloud Keychain: StoreKit's appAccountToken and the server ledger's key. */
     accountId,
+    /** StoreKit's device verification id: proves to the server that a signed transaction is this device's. */
+    async deviceId() { return (device ??= (await plugin.deviceId?.())?.id ?? null); },
     /** Sign-in to an existing account: the device takes its id. */
     async setAccountId(id) { return (account = String((await plugin.setAccountId({ id })).id).toLowerCase()); },
     /** Sign-out or deletion: a fresh guest id. */

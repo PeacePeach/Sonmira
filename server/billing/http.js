@@ -1,18 +1,26 @@
 // HTTP handlers for /api/billing/*. Each is a factory so tests can pass a
 // store, a verifier and a clock.
 //
-//   POST /api/billing/transactions { account, transactions: [jws], renewals?: [jws], restore?: true }
+//   POST /api/billing/transactions { account, transactions: [jws], renewals?: [jws], restore?: true, device? }
 //        The app sends every signed transaction it sees (purchase, Ask to Buy
 //        approval, renewal, restore). Each is verified and applied once.
 //   GET  /api/billing/status?account=<id>&day=YYYY-MM-DD
 //   POST /api/billing/apple-notifications { signedPayload }   (App Store Server Notifications V2)
 //
-// Transactions need no other proof: Apple's signature names the account
-// (appAccountToken) that the purchase belongs to.
+// A purchase always goes to the account Apple signed it for
+// (appAccountToken), whoever sends it, and a pack to one account only. Moving
+// a ledger (Restore Purchases) or claiming a purchase that names no account
+// also needs the transaction to be signed for the sending device (`device`,
+// StoreKit's device verification id), so a signed transaction copied from a
+// log or a screenshot moves nothing.
+//
+// deps.authorize(req, account) → boolean proves the caller holds the account
+// (the generation guard's install token, wired where the guard lives);
+// deps.limit caps requests per address.
 
 import { kvFromEnv } from './kv.js';
 import { createLedger, normalizeAccount, clientDay } from './ledger.js';
-import { createAppleVerifier } from './apple.js';
+import { createAppleVerifier, onDevice } from './apple.js';
 
 const MAX_JWS = 300;
 const defaultLog = (e) => { try { console.log(JSON.stringify({ evt: 'sonmira.billing', ...e })); } catch {} };
@@ -23,6 +31,7 @@ export function billingFromEnv(env = process.env) {
   // Sonmira's numeric Apple ID (App Store Connect → App Information). Not a secret.
   const appAppleId = env.SONMIRA_APPLE_APP_ID || (bundleId === 'app.sonmira' ? '6823759268' : undefined);
   return {
+    kv,
     ledger: kv ? createLedger({ kv }) : null,
     verifier: createAppleVerifier({
       bundleId,
@@ -38,9 +47,24 @@ function body(req) {
 }
 const deny = (res, status, code) => res.status(status).json({ ok: false, code });
 
+const LIMITS = { transactions: 30, status: 120 }; // per address per minute
+const address = (req) => String(req.headers?.['x-real-ip'] || req.headers?.['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim() || 'unknown';
+function perAddress(kv) {
+  return async (req, name) => {
+    if (!kv?.hit) return true;
+    try { return (await kv.hit(`bill:rate:${name}:${address(req)}:${Math.floor(Date.now() / 60_000)}`, 90)) <= LIMITS[name]; }
+    catch { return true; }
+  };
+}
+
 function lazy(deps) {
   let d = null;
-  return () => (d ??= { log: defaultLog, ...(deps ?? billingFromEnv()) });
+  return () => {
+    if (d) return d;
+    d = { log: defaultLog, authorize: async () => true, ...(deps ?? billingFromEnv()) };
+    d.limit ??= perAddress(d.kv);
+    return d;
+  };
 }
 
 export function createTransactionsHandler(deps) {
@@ -48,11 +72,13 @@ export function createTransactionsHandler(deps) {
   return async function transactions(req, res) {
     res.setHeader?.('cache-control', 'no-store');
     if (req.method !== 'POST') return deny(res, 405, 'method');
-    const { ledger, verifier, log } = get();
+    const { ledger, verifier, log, authorize, limit } = get();
     if (!ledger) return deny(res, 503, 'not_configured');
+    if (!(await limit(req, 'transactions'))) return deny(res, 429, 'rate_limited');
     const b = body(req);
     const account = normalizeAccount(b?.account);
     if (!account) return deny(res, 400, 'bad_account');
+    if (!(await authorize(req, account))) return deny(res, 401, 'unauthorized');
     const list = Array.isArray(b.transactions) ? b.transactions.slice(0, MAX_JWS) : [];
     const renewals = Array.isArray(b.renewals) ? b.renewals.slice(0, 10) : [];
     const results = [];
@@ -61,10 +87,12 @@ export function createTransactionsHandler(deps) {
         let tx;
         try { tx = await verifier.transaction(jws); } catch (e) { results.push({ ok: false, code: e.code || 'invalid' }); log({ outcome: 'rejected', code: e.code }); continue; }
         // Restore: a purchase made under another id (an earlier install
-        // without iCloud Keychain) brings that ledger here.
+        // without iCloud Keychain) brings that ledger here, if this device
+        // holds it.
+        const mine = onDevice(tx, b.device);
         const owner = normalizeAccount(tx.appAccountToken);
-        if (b.restore && owner && owner !== account) await ledger.merge(owner, account);
-        const r = await ledger.applyTransaction(tx, { fallback: account, source: 'app' });
+        if (b.restore && mine && owner && owner !== account) await ledger.merge(owner, account);
+        const r = await ledger.applyTransaction(tx, { fallback: mine ? account : null, source: 'app' });
         results.push({ ok: !r.ignored, id: String(tx.transactionId), productId: tx.productId, effect: r.effect ?? r.ignored });
         log({ outcome: r.effect ?? r.ignored, env: tx.environment, product: tx.productId, tx: String(tx.transactionId), account: account.slice(0, 8) });
       }
@@ -85,11 +113,13 @@ export function createStatusHandler(deps) {
   return async function status(req, res) {
     res.setHeader?.('cache-control', 'no-store');
     if (req.method !== 'GET') return deny(res, 405, 'method');
-    const { ledger } = get();
+    const { ledger, authorize, limit } = get();
     if (!ledger) return deny(res, 503, 'not_configured');
+    if (!(await limit(req, 'status'))) return deny(res, 429, 'rate_limited');
     const q = req.query ?? Object.fromEntries(new URL(req.url, 'http://x').searchParams);
     const account = normalizeAccount(q.account);
     if (!account) return deny(res, 400, 'bad_account');
+    if (!(await authorize(req, account))) return deny(res, 401, 'unauthorized');
     try { return res.status(200).json({ ok: true, status: await ledger.status(account, clientDay(q.day)) }); }
     catch { return deny(res, 503, 'unavailable'); }
   };

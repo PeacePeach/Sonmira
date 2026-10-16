@@ -15,6 +15,7 @@ public class SonmiraStorePlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "SonmiraStore"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "accountId", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "deviceId", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setAccountId", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "resetAccountId", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "products", returnType: CAPPluginReturnPromise),
@@ -73,6 +74,13 @@ public class SonmiraStorePlugin: CAPPlugin, CAPBridgedPlugin {
     /// appAccountToken and the server ledger's key; it identifies no one.
     @objc func accountId(_ call: CAPPluginCall) {
         call.resolve(["id": AccountKeychain.id()])
+    }
+
+    /// StoreKit's device verification id. Every transaction delivered on this
+    /// device is signed with a hash of it, so the server can tell that a
+    /// signed transaction came from the device that sent it.
+    @objc func deviceId(_ call: CAPPluginCall) {
+        call.resolve(["id": AppStore.deviceVerificationID?.uuidString.lowercased() as Any])
     }
 
     /// After signing in to an existing account, the device takes its id.

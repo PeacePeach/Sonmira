@@ -4,6 +4,7 @@
 // signing chain stands in for Apple's. Run: npm test
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash, randomUUID } from 'node:crypto';
 import { testAppleChain } from './helpers/apple-sign.mjs';
 import { memoryKV } from '../server/billing/kv.js';
 import { createLedger } from '../server/billing/ledger.js';
@@ -17,6 +18,11 @@ const SUB = 'app.sonmira.daily_ritual.monthly';
 const A = '0e1c6a4e-2b8a-4a8e-9b1d-3f0b0f8f8f8f';
 const B = '7d3f1b52-91c4-4f0e-8a77-2c9e5d1a6b30';
 const DAY = 24 * 3600_000;
+// Two phones' StoreKit device verification ids.
+const PHONE = '5b6f8c1e-3d2a-4c7b-9e0f-1a2b3c4d5e6f';
+const OTHER_PHONE = '9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d';
+// What StoreKit adds to a transaction delivered on a device.
+const on = (device, t) => { const nonce = randomUUID(); return { ...t, deviceVerificationNonce: nonce, deviceVerification: createHash('sha384').update(nonce + device).digest('base64') }; };
 // The test chain's certificates start now, so the clock starts now too.
 const START = Date.now();
 const dayAt = (n) => new Date(START + n * DAY).toISOString().slice(0, 10);
@@ -27,7 +33,7 @@ function setup({ allowXcode = false } = {}) {
   const kv = memoryKV({ now });
   const ledger = createLedger({ kv, now, sleep: async () => {} });
   const verifier = createAppleVerifier({ bundleId: 'app.sonmira', roots: [chain.rootFingerprint], allowXcode });
-  const deps = { ledger, verifier, log: () => {} };
+  const deps = { ledger, verifier, log: () => {}, limit: async () => true };
   const call = async (handler, req) => {
     const res = { code: 0, body: null, headers: {}, setHeader(k, v) { this.headers[k] = v; }, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; } };
     await handler({ headers: {}, ...req }, res);
@@ -218,7 +224,12 @@ test('Restore Purchases on a new install brings credits back, never the free pai
 
   // Reinstalled without iCloud Keychain: a new id, B, with three "new" free paintings.
   assert.equal((await s.status(B)).free, 3);
-  const r = await s.post({ account: B, transactions: [chain.sign(pack)], restore: true });
+  // A transaction copied from somewhere else moves nothing.
+  const copied = await s.post({ account: B, transactions: [chain.sign(on(OTHER_PHONE, pack))], restore: true, device: PHONE });
+  assert.equal(copied.body.status.credits, 0);
+  assert.equal((await s.status(A)).credits, 9);
+  // The same Apple ID on the new install: StoreKit signs it for this phone.
+  const r = await s.post({ account: B, transactions: [chain.sign(on(PHONE, pack))], restore: true, device: PHONE });
   assert.equal(r.body.status.credits, 9);
   assert.equal(r.body.status.free, 0);
   // The old id now leads to the same ledger.
@@ -250,4 +261,48 @@ test('bad requests', async () => {
   const res = { status(c) { this.code = c; return this; }, json() { return this; }, setHeader() {} };
   await h({ method: 'POST', body: { account: A } }, res);
   assert.equal(res.code, 503, 'no store, no ledger');
+});
+
+test('a pack that names no account goes to one account, and only from the phone it was bought on', async () => {
+  const s = setup();
+  const pack = s.tx({ appAccountToken: undefined });
+  // Someone holding the signed transaction, from another phone or with no proof: nothing.
+  assert.equal((await s.post({ account: B, transactions: [chain.sign(on(PHONE, pack))] })).body.results[0].effect, 'no_account');
+  assert.equal((await s.post({ account: B, transactions: [chain.sign(on(PHONE, pack))], device: OTHER_PHONE })).body.results[0].effect, 'no_account');
+  // The phone it was delivered on claims it.
+  assert.equal((await s.post({ account: A, transactions: [chain.sign(on(PHONE, pack))], device: PHONE })).body.results[0].effect, 'granted');
+  // Once claimed, it stays there, even sent again from that phone under another id.
+  const again = await s.post({ account: B, transactions: [chain.sign(on(PHONE, pack))], device: PHONE });
+  assert.equal(again.body.results[0].effect, 'already_granted');
+  assert.equal((await s.status(A)).credits, 10);
+  assert.equal((await s.status(B)).credits, 0);
+});
+
+test('callers must hold the account, and each address is rate limited', async () => {
+  const s = setup();
+  const t = chain.sign(s.tx());
+  const call = () => createTransactionsHandler({ ledger: s.ledger, verifier: s.verifier, log: () => {}, authorize: async (req, a) => req.headers.authorization === `Bearer ${a}`, limit: async (req) => req.headers['x-real-ip'] !== '203.0.113.9' });
+  const res = () => ({ code: 0, body: null, setHeader() {}, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; } });
+  const h = call();
+  let out = res(); await h({ method: 'POST', headers: {}, body: { account: A, transactions: [t] } }, out);
+  assert.equal(out.code, 401);
+  out = res(); await h({ method: 'POST', headers: { authorization: `Bearer ${A}`, 'x-real-ip': '203.0.113.9' }, body: { account: A, transactions: [t] } }, out);
+  assert.equal(out.code, 429);
+  out = res(); await h({ method: 'POST', headers: { authorization: `Bearer ${A}` }, body: { account: A, transactions: [t] } }, out);
+  assert.equal(out.code, 200);
+  const st = res(); await createStatusHandler({ ledger: s.ledger, log: () => {}, authorize: async () => false, limit: async () => true })({ method: 'GET', headers: {}, query: { account: A } }, st);
+  assert.equal(st.code, 401);
+});
+
+test('the per-address limit counts in one-minute windows', async () => {
+  const kv = memoryKV();
+  const h = createStatusHandler({ ledger: createLedger({ kv }), kv, log: () => {} });
+  const codes = [];
+  for (let i = 0; i < 122; i++) {
+    const res = { code: 0, setHeader() {}, status(c) { this.code = c; return this; }, json() { return this; } };
+    await h({ method: 'GET', headers: { 'x-forwarded-for': '198.51.100.7, 10.0.0.1' }, query: { account: A } }, res);
+    codes.push(res.code);
+  }
+  assert.ok(codes.slice(0, 100).every((c) => c === 200));
+  assert.equal(codes.at(-1), 429);
 });

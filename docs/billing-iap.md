@@ -43,6 +43,10 @@ diary, recordings, playback and sharing never need a purchase.
    the Apple ID (consumables included on iOS 18, `SKIncludeConsumableInAppPurchaseHistory`)
    goes to the server with `restore: true`. A ledger left under an earlier
    install's id is merged into this one; free paintings never come back.
+   A ledger moves only when the transaction is signed for the phone sending
+   it (StoreKit's device verification), so a signed transaction copied from a
+   log or a screenshot moves nothing, and a pack is granted to one account,
+   ever.
 6. **The app's wallet** is a copy of the server's ledger, so the paywall and
    Settings answer instantly. Settings → Daily Ritual opens Apple's
    subscription settings.
@@ -111,5 +115,8 @@ The guard lives on the Production Readiness branch. When it merges:
   has one writer: the StoreKit plugin);
 - `402 no_paintings` from `/api/generate` opens the paywall, with the take
   kept;
+- `/api/billing/transactions` and `/status` take `authorize(req, account)`:
+  the guard's install token, with `account === token.installId`. Until then
+  they rely on the rules above and a per-address limit;
 - in the bundled build, the guard answers CORS for `capacitor://localhost`,
   including the `x-sonmira-day` header.

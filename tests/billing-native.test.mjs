@@ -22,6 +22,7 @@ function fakePlugin() {
     finished: [], purchases: [], next: { status: 'success' }, past: [], sub: null, syncError: null,
     id: ACCOUNT,
     accountId: async () => ({ id: p.id }),
+    deviceId: async () => ({ id: '5b6f8c1e-3d2a-4c7b-9e0f-1a2b3c4d5e6f' }),
     setAccountId: async ({ id }) => ({ id: (p.id = id) }),
     resetAccountId: async () => ({ id: (p.id = '11111111-2222-4333-8444-555555555555') }),
     products: async ({ ids }) => ({ products: ids.map((id) => ({ id, displayPrice: id === PACK ? '¥450' : '¥750' })) }),
@@ -145,6 +146,7 @@ test('Restore Purchases sends the whole history to the server', async () => {
   assert.deepEqual(r, { subscription: true, credits: 10 });
   const req = server.sent.at(-1);
   assert.equal(req.restore, true);
+  assert.equal(req.device, '5b6f8c1e-3d2a-4c7b-9e0f-1a2b3c4d5e6f', 'proves the history is this phone’s');
   assert.deepEqual(req.transactions, plugin.past);
 
   plugin.syncError = 'userCancelled';

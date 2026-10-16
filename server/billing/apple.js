@@ -69,3 +69,16 @@ export function createAppleVerifier({ bundleId, appAppleId, allowXcode = false, 
     }),
   };
 }
+
+/**
+ * Whether a verified StoreKit transaction was signed for the device whose
+ * StoreKit device verification id (AppStore.deviceVerificationID) is given:
+ * base64(SHA-384(nonce + id)), both lowercased, as Apple documents. A signed
+ * transaction copied off someone else's device (a log, a screenshot) fails.
+ */
+export function onDevice(tx, deviceId) {
+  const id = String(deviceId ?? '').toLowerCase();
+  if (!/^[0-9a-f-]{36}$/.test(id) || !tx?.deviceVerification || !tx?.deviceVerificationNonce) return false;
+  const want = createHash('sha384').update(String(tx.deviceVerificationNonce).toLowerCase() + id).digest('base64');
+  return want === tx.deviceVerification;
+}

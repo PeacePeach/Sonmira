@@ -4,6 +4,7 @@
 // takes the guard's store and this file goes.
 //
 //   get(key) / set(key, value, ttlSec) / claim(key, value, ttlSec) / del(...keys)
+//   hit(key, ttlSec) → the count in this window
 
 export function memoryKV({ now = Date.now } = {}) {
   const m = new Map();
@@ -15,6 +16,7 @@ export function memoryKV({ now = Date.now } = {}) {
     async set(k, v, ttl) { put(k, v, ttl); },
     async claim(k, v, ttl) { if (live(k)) return false; put(k, v, ttl); return true; },
     async del(...ks) { ks.forEach((k) => m.delete(k)); },
+    async hit(k, ttl) { const e = live(k); const n = (e ? Number(e.v) : 0) + 1; m.set(k, { v: String(n), exp: e?.exp || now() + ttl * 1000 }); return n; },
   };
 }
 
@@ -34,6 +36,11 @@ export function upstashKV({ url, token, fetchImpl = fetch, prefix = 'sonmira:' }
     async set(key, v, ttl) { await exec(['SET', k(key), String(v), 'EX', String(ttl)]); },
     async claim(key, v, ttl) { return (await exec(['SET', k(key), String(v), 'NX', 'EX', String(ttl)])) === 'OK'; },
     async del(...keys) { if (keys.length) await exec(['DEL', ...keys.map(k)]); },
+    async hit(key, ttl) {
+      const n = Number(await exec(['INCR', k(key)]));
+      if (n === 1) await exec(['EXPIRE', k(key), String(ttl)]);
+      return n;
+    },
   };
 }
 

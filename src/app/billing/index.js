@@ -38,6 +38,11 @@ const forget = (...ks) => { try { ks.forEach((k) => localStorage.removeItem(k));
 export function createBilling({ ask, native, server }) {
   if (native === undefined) { const plugin = nativePlugin('SonmiraStore'); native = plugin ? createNativeStore(plugin) : null; }
   if (server === undefined) server = native ? createBillingServer() : null;
+  // Every request carries the device's StoreKit verification id (see server/billing/http.js).
+  if (server && native?.deviceId) {
+    const base = server;
+    server = { ...base, send: async (req) => base.send({ ...req, device: await native.deviceId().catch(() => null) }) };
+  }
   const store = native ?? createSimulatedStore({ ask });
   let account = native ? native.accountId().catch((e) => { console.warn('[sonmira] no account id', e); return null; }) : Promise.resolve(null);
   const today = () => { const d = new Date(); if (!native) d.setDate(d.getDate() + (Number(readJSON(DAY_SHIFT)) || 0)); return dayKey(d); };
