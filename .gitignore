@@ -2,3 +2,5 @@ node_modules/
 .cert/
 shots/
 qa/out/
+.vercel/
+.env*.local

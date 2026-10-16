@@ -1,5 +1,6 @@
 // Manage the production reference library in private Vercel Blob storage.
-// Needs BLOB_READ_WRITE_TOKEN in this shell (e.g. `vercel env pull`), and
+// Needs BLOB_READ_WRITE_TOKEN, e.g. `vercel env pull .env.local` and then
+// `node --env-file=.env.local tools/references.mjs …`; `add` also needs
 // python3 with Pillow for palette measurement. Never commit the token.
 //
 //   node tools/references.mjs add <image> <FAMILY> [--id ID] [--light TEXT] [--motif M]
@@ -9,6 +10,9 @@
 //   node tools/references.mjs enable <id>
 //   node tools/references.mjs remove <id>     delete the image and its entry
 //   node tools/references.mjs list
+//   node tools/references.mjs verify
+//        read the registry and every active image back through the same
+//        code the server uses, and report counts and sizes
 //   node tools/references.mjs sync <refs_root>
 //        setup: upload every reference in the bundled registry
 //        (src/engine/direct/references.js) from a local folder that is not
@@ -53,6 +57,21 @@ if (cmd === 'add') {
   const entries = await store.loadRegistry({ fresh: true });
   for (const e of entries) console.log(`${e.active ? ' ' : 'x'} ${e.id.padEnd(16)} ${String(e.family).padEnd(22)} ${e.path}`);
   console.log(`library version ${createLibrary(entries).version}`);
+} else if (cmd === 'verify') {
+  const entries = await store.loadRegistry({ fresh: true });
+  const active = entries.filter((e) => e.active);
+  let ok = 0;
+  for (const e of active) {
+    try {
+      const img = await store.loadImage(e);
+      console.log(`ok   ${e.id.padEnd(16)} ${String(img.bytes.length).padStart(8)} bytes  ${img.mime}`);
+      ok++;
+    } catch (err) {
+      console.log(`FAIL ${e.id.padEnd(16)} ${err.code || err.message}`);
+    }
+  }
+  console.log(`registry: ${entries.length} entries, ${active.length} active, version ${createLibrary(entries).version}; images readable: ${ok}/${active.length}`);
+  if (ok !== active.length) process.exitCode = 1;
 } else if (cmd === 'sync') {
   const [root] = rest;
   if (!root) { console.error('usage: sync <refs_root>'); process.exit(2); }
@@ -69,6 +88,6 @@ if (cmd === 'add') {
   await store.saveRegistry(merged);
   console.log(`registry written: ${merged.length} entries, version ${createLibrary(merged).version}`);
 } else {
-  console.error('commands: add, disable, enable, remove, list, sync (see the header of this file)');
+  console.error('commands: add, disable, enable, remove, list, verify, sync (see the header of this file)');
   process.exit(2);
 }
