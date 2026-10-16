@@ -20,6 +20,8 @@ Without it, Production refuses paid requests (`503 not_configured`); the in-memo
 
 Nothing else is required. Optional later: `SONMIRA_COST_IMAGE_USD` once the real per-image price is known from OpenAI usage, and `SONMIRA_LIMIT_<NAME>` to tune a limit (`GENERATE_HOUR`, `GENERATE_DAY`, `UNDERSTAND_HOUR`, `UNDERSTAND_DAY`, `INVITE_GENERATE_DAY`, `INSTALLS_PER_INVITE`, `IP_HOUR`, `SESSION_IP_HOUR`).
 
+Transcription check before the merge: when `OPENAI_API_KEY` is added for the beta, also add it for the Preview of `engine/procedural-watercolor` (PR #2), so the Playground Singing test can be re-run once (about $0.04, transcription only, no images). That branch has no guard, so keep Deployment Protection on its Preview and remove the key from Preview once the check is done.
+
 Never set in Production: `SONMIRA_FAKE_PROVIDER` and `SONMIRA_PROTECT` (both are ignored there anyway), `SONMIRA_REFERENCE_VIEW`.
 
 ## 3. Project settings
