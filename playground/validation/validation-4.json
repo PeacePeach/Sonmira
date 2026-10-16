@@ -1218,5 +1218,10 @@
     "at": 1792173889230
    }
   }
+ ],
+ "limitations": [
+  "Intense emotion is weakly expressed. \"mountain road at dusk\" was set to intense, but all three images came out pale and calm (drip curtain, sepia slope, misty monochrome). The emotion is carried only as a colour and value lean within the reference's own range, so a quiet reference keeps it quiet.",
+  "Gathered can be too legible. In \"mountain road at dusk\" the winding road reads clearly, while Gathered should stay ambiguous.",
+  "Two-part subjects can lose a part. \"morning clouds over the rooftops\" shows the clouds but not the rooftops."
  ]
 }

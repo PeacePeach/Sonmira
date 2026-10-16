@@ -371,7 +371,7 @@ function settingsList(r) {
     <dt>Tier</dt><dd>${esc(st.tier ?? m.tier)}</dd>
     <dt>Emotion · motif</dt><dd>${esc(st.emotion ?? m.emotion)} · ${esc(st.motif ?? m.motif)}</dd>
     <dt>Energy</dt><dd>${esc(st.energy ?? m.energy ?? '—')}${x ? ` · ${esc([x.range, x.flow, x.dynamics, x.vibrato ? 'vibrato' : null].filter(Boolean).join(' / '))}` : ''}</dd>
-    <dt>Subject from</dt><dd>${esc(SUBJECT_FROM[m.subjectSource] ?? m.subjectSource ?? '—')}${m.subject ? `<div class="hint">${esc(m.subject)}</div>` : ''}</dd>
+    <dt>Subject</dt><dd><b>${esc(m.subject ?? '—')}</b><div class="hint">from ${esc(SUBJECT_FROM[m.subjectSource] ?? m.subjectSource ?? '—')}</div></dd>
     <dt>Composition</dt><dd>${m.composition ? esc(`${m.composition.viewpoint}; focus ${m.composition.placement}; ${m.composition.scale}; ${m.composition.staging}`) : '—'}</dd>
     <dt>Seed</dt><dd>${m.seed}</dd>
     <dt>Model</dt><dd>${esc(m.model ?? '—')} · ${esc(m.quality ?? '—')} · ${esc(m.size ?? '—')}</dd>
@@ -390,7 +390,7 @@ function pairView(r, canvas = null) {
   const out = document.createElement('figure');
   let art = canvas;
   if (!art) { art = document.createElement('img'); const u = URL.createObjectURL(r.png); urls.push(u); art.src = u; }
-  out.append(art, Object.assign(document.createElement('figcaption'), { textContent: `Generated · ${r.result.tier}` }));
+  out.append(art, Object.assign(document.createElement('figcaption'), { textContent: `Generated · ${r.result.tier} · ${r.result.familyLabel ?? r.result.family}` }));
   const meta = document.createElement('div');
   meta.className = 'pairmeta';
   meta.innerHTML = settingsList(r);
@@ -665,7 +665,13 @@ async function loadValidation() {
       const grid = document.createElement('div');
       grid.className = 'compare paired';
       grid.replaceChildren(...runs.map((r) => pairView(r)));
-      sec.append(h, ...(v.strips ?? []).map((st) => tierStrip(st, runs)), grid);
+      if (v.limitations?.length) {
+        const lim = document.createElement('div');
+        lim.className = 'limitations';
+        lim.innerHTML = `<h3>Known limitations</h3><ul>${v.limitations.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>`;
+        sec.append(h, lim);
+      } else sec.append(h);
+      sec.append(...(v.strips ?? []).map((st) => tierStrip(st, runs)), grid);
       return sec;
     }));
     box.replaceChildren(...shown);
