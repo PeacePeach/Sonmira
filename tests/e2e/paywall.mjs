@@ -1,7 +1,7 @@
 // End-to-end check of the paywall with the development purchase simulator,
 // in Chromium at iPhone size with the fake microphone from flow.mjs.
 //
-//   node server.js &  then  npm run e2e:paywall      (SHOTS=dir saves screenshots)
+//   node server.js &  then  node tests/e2e/paywall.mjs      (SHOTS=dir saves screenshots)
 
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';
@@ -143,7 +143,7 @@ async function run() {
   assert.equal((await status(page)).credits, 10);
   await page.click('[data-paywall-done] .pill'); // Sing a moment
 
-  // F. a failed generation uses nothing; the retry uses one
+  // F. a failed generation uses nothing (the app shows its usual wash-only fallback)
   await record(page);
   assert.equal(await page.textContent('[data-uses]'), 'Uses 1 of your 10 paintings');
   await page.evaluate(() => {
@@ -151,13 +151,15 @@ async function run() {
     eng.generate = async () => { eng.generate = real; throw new Error('simulated engine failure'); };
   });
   await page.click('text=Create painting');
-  await page.waitForSelector('[data-phase=gen-error]');
+  await page.waitForSelector('[data-phase=result]', { timeout: 8000 });
   await settle(page);
   await shot(page, 'p09-generation-failed');
   assert.equal((await status(page)).credits, 10, 'failure uses nothing');
-  await page.click('[data-phase=gen-error] .pill');
+  await page.click('text=Sing again');
+  await record(page);
+  await page.click('text=Create painting');
   await page.waitForSelector('[data-phase=result]', { timeout: 8000 });
-  assert.equal((await status(page)).credits, 9);
+  assert.equal((await status(page)).credits, 9, 'a made painting uses one');
   await page.click('text=Keep it');
   await page.waitForSelector('[data-screen=diary]');
 

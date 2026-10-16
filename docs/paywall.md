@@ -39,14 +39,20 @@ with only Little Moments offered.
 `src/app/billing/wallet.js` keeps the books. Each take gets a generation key.
 
 1. **reserve(key)** when *Create painting* is tapped: one painting is set aside.
-2. **commit(key)** when the engine returns a painting: it's counted.
-3. **release(key)** if the engine fails, or the screen closes before the
-   painting arrives: it's handed back.
+2. **commit(key)** when the painting is shown: it's counted.
+3. **release(key)** if the engine fails (the app shows its wash-only
+   fallback, which isn't counted), or the screen closes before the painting
+   is shown: it's handed back.
 
 All three are idempotent per key, so retrying a take never counts twice.
 After a restart every leftover hold is released, because generation runs in
-the app and can't still be going. A failed generation shows *The painting
-didn't come through. Nothing was used.* with *Try again* on the same take.
+the app and can't still be going.
+
+The metering lives at the edges of `sing.js` (reserve before the engine is
+called, commit or release when the result is shown or the screen closes), so
+the engine call and its error handling are untouched. A dedicated failure
+screen with *Try again* belongs with the engine work and can count on the
+same key: release on error, reserve again on retry.
 
 ## Purchases (StoreKit 2)
 
@@ -129,10 +135,10 @@ device's local date until the service checks it.
 | Case | Behaviour |
 | --- | --- |
 | Free paintings used up | + opens the paywall; the diary, playback and sharing all keep working. |
-| Generation fails | Nothing used, take kept, *Try again*. |
+| Generation fails | Nothing used; the usual wash-only fallback is shown. |
 | Sing closed while painting | Nothing used. |
 | App restarts while painting | Hold released on launch. |
-| Retry of the same take | Counted at most once (per-take key). |
+| Same take generated again | Counted at most once (per-take key). |
 | Painting made, then *Sing again* or close without *Keep it* | Counted: the painting was made. |
 | Subscriber used today's painting | Paywall offers Little Moments only; tomorrow's painting comes on its own. |
 | Subscription cancelled | Stays active to the end of the period, then ends. |
@@ -150,6 +156,6 @@ device's local date until the service checks it.
 | `drops` | Empty diary, paintings added, purchases restored, Daily Ritual begins |
 | `mic-off` | Microphone off, missing or busy |
 
-The failed-painting and today's-painting-made states have no illustration.
+The today's-painting-made state has no illustration.
 Both were generated with OpenAI's image model and flattened so the paper is
 white and multiplies cleanly onto any surface.

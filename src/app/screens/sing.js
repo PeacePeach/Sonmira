@@ -13,7 +13,6 @@ import { usesLabel } from '../paywall/copy.js';
 
 const SINGING_LINES = ['Keep going…', 'Let it out.', 'Softly, softly.', 'That’s it.'];
 const FINDING = 'Finding the shape of your song…';
-const newKey = () => `g${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
 const MIC_COPY = {
   denied: ['The microphone is off.', 'Sonmira needs to hear you to paint. Allow microphone access for this page in your browser settings, then try again.'],
@@ -130,7 +129,7 @@ export function mountSing(app) {
       return ready();
     }
     // key: one per take, so a retried generation is never counted twice.
-    take = { key: newKey(), audio: rec.blob, durationSec: Math.round(rec.durationSec * 10) / 10, analysis };
+    take = { key: app.billing.newKey(), audio: rec.blob, durationSec: Math.round(rec.durationSec * 10) / 10, analysis };
     preview();
   }
 
@@ -183,13 +182,9 @@ export function mountSing(app) {
       });
     } catch (e) {
       console.warn('[sonmira] engine generate failed', e);
-      app.billing.release(take.key);
-      if (phase === 'generating') generationFailed();
-      return;
+      result = { engineId: 'fallback', contractVersion: 1, completeness: 'loose', emotion: { label: 'tender', source: 'default' }, motif: { label: 'abstract', source: 'default' }, artwork: null, wash: take.analysis.wash, interpretation: { voiceLabel: '', summary: 'colour, still moving', dryingLine: 'Letting it dry…' } };
     }
-    // Closed while painting: nothing was shown, so nothing is counted.
-    if (phase !== 'generating') { app.billing.release(take.key); return; }
-    app.billing.commit(take.key);
+    if (phase !== 'generating') return;
     const wait = Math.max(0, 1300 - (performance.now() - started));
     later(() => {
       line.style.opacity = '0';
@@ -204,6 +199,9 @@ export function mountSing(app) {
   function showResult() {
     if (phase !== 'generating') return;
     phase = 'result';
+    // The painting is here: count it. A wash-only fallback isn't a painting.
+    if (result.engineId === 'fallback') app.billing.release(take.key);
+    else app.billing.commit(take.key);
     const it = result.interpretation;
     const right = it.voiceLabel ? `${clock(take.durationSec)} · ${it.voiceLabel}` : clock(take.durationSec);
     const p = createPlayer({ blob: take.audio, durationSec: take.durationSec, right });
@@ -256,19 +254,6 @@ export function mountSing(app) {
       h('div', { class: 'actions', style: 'width:100%' },
         h('button', { class: 'pill', onClick: () => ready() }, 'Try again'),
         h('button', { class: 'quiet-btn', onClick: close }, 'Back to diary'))));
-  }
-
-  // The painting didn't come through. Nothing was counted and the take is kept.
-  function generationFailed() {
-    phase = 'gen-error';
-    painting.setArtwork(null);
-    show(h('div', { class: 'phase centered', 'data-phase': 'gen-error' },
-      h('div', { class: 'error-copy' },
-        h('h1', { class: 'serif', style: 'font-size:30px' }, 'The painting didn’t come through.'),
-        h('div', { class: 'lede' }, 'Nothing was used. Your song is still here, so you can try again.')),
-      h('div', { class: 'actions', style: 'width:100%' },
-        h('button', { class: 'pill', onClick: () => { phase = 'preview'; generate(); } }, 'Try again'),
-        h('button', { class: 'quiet-btn', onClick: preview }, 'Back to my song'))));
   }
 
   function singAgain() {

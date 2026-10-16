@@ -5,7 +5,6 @@
   "scripts": {
     "start": "node server.js",
     "test": "node --test tests/*.test.mjs test/engine/*.test.mjs",
-    "e2e": "node tests/e2e/flow.mjs",
-    "e2e:paywall": "node tests/e2e/paywall.mjs"
+    "e2e": "node tests/e2e/flow.mjs"
   }
 }

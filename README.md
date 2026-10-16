@@ -44,8 +44,7 @@ If that's awkward, any HTTPS tunnel also works, e.g. `npx localtunnel --port 517
 - **Backgrounding the app mid-take** (call, lock screen) ends the take cleanly instead of losing it.
 - **Storage failure on save**: the result stays on screen and a quiet message asks you to try again. Private modes without storage show a notice on the diary.
 - **Playback the browser can't decode**: the player says so instead of failing silently.
-- **Engine missing**: the app falls back to the mock engine.
-- **Painting fails to generate**: “The painting didn’t come through. Nothing was used.” with *Try again* on the same take. Nothing is counted for a failed or interrupted generation, or twice for a retry.
+- **Engine missing or throwing**: the app falls back to the mock engine, or to a wash-only painting. Neither a failed nor an interrupted generation is counted as a painting, and a take is never counted twice.
 
 ## Architecture: two tracks, one contract
 
@@ -98,7 +97,7 @@ ENGINE_ID=real npm test   # contract tests against the real engine
 # end-to-end in Chromium at iPhone size with a fake microphone singing tests/e2e/hum.wav
 npm i -D playwright && npx playwright install chromium
 node server.js &  npm run e2e          # SHOTS=./shots saves screenshots; ENGINE_ID=real to use the real engine
-npm run e2e:paywall                    # free tier → paywall → simulated purchases, failures, restore, reinstall
+node tests/e2e/paywall.mjs             # free tier → paywall → simulated purchases, failures, restore, reinstall
 ```
 
 The e2e test covers all 11 prototype requirements (record, stop, auto-stop at 15 s, playback, retry, note, generate, result, save, open, replay, reload), plus mic-denied, a too-short take, settings, calendar and delete.

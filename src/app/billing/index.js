@@ -69,6 +69,8 @@ export function createBilling({ ask }) {
     ready: refresh(),
     price: (id) => prices[id],
     status: () => wallet.status(),
+    /** A new generation key, one per take. */
+    newKey: () => `g${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
     reserve: (key) => wallet.reserve(key),
     commit: (key) => { const r = wallet.commit(key); emit({ type: 'spent' }); return r; },
     release: (key) => wallet.release(key),
