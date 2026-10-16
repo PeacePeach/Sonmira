@@ -13,6 +13,7 @@ import { understandTake } from '../src/engine/understand.js';
 import { pitchTrack } from '../src/engine/analysis/pitchtrack.js';
 import { SINGING_CALIBRATION } from '../src/engine/analysis/singing.js';
 import { GATE_CALIBRATION } from '../src/engine/interpret/lyrics.js';
+import { wordsAudio } from '../src/engine/engines/ai.js';
 
 const MAX_SEC = 30;
 const TIERS = ['loose', 'gathered', 'resolved'];
@@ -96,21 +97,7 @@ async function decode(blob) {
   for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < n; i++) mono[i] += d[i] / buf.numberOfChannels; }
   return { samples: mono, sampleRate: buf.sampleRate, durationSec: n / buf.sampleRate };
 }
-// The words are sent as 16 kHz mono WAV made from the decoded take, so the
-// transcriber never depends on what container or codec the browser recorded
-// (Chrome records Opus inside MP4, which a transcriber may not accept).
-async function wavFor(blob) {
-  const Ctx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-  const buf = await new Ctx(1, 1, 16000).decodeAudioData(await blob.arrayBuffer());
-  const n = Math.min(buf.length, MAX_SEC * 16000), x = new Float32Array(n);
-  for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < n; i++) x[i] += d[i] / buf.numberOfChannels; }
-  const out = new DataView(new ArrayBuffer(44 + n * 2));
-  const str = (o, s) => { for (let i = 0; i < s.length; i++) out.setUint8(o + i, s.charCodeAt(i)); };
-  str(0, 'RIFF'); out.setUint32(4, 36 + n * 2, true); str(8, 'WAVEfmt '); out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 1, true);
-  out.setUint32(24, 16000, true); out.setUint32(28, 32000, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true); str(36, 'data'); out.setUint32(40, n * 2, true);
-  for (let i = 0; i < n; i++) out.setInt16(44 + i * 2, Math.max(-1, Math.min(1, x[i])) * 32767, true);
-  return new Blob([out.buffer], { type: 'audio/wav' });
-}
+// The words are sent exactly as the app sends them (16 kHz mono WAV, wordsAudio).
 async function toBase64(blob) {
   const b = new Uint8Array(await blob.arrayBuffer());
   let s = '';
@@ -207,7 +194,7 @@ async function analyse(slot) {
     let wordsError = null;
     const words = !fetchWords ? (t.words ? async () => t.words : null) : async () => {
       try {
-        const wav = await wavFor(t.blob);
+        const wav = await wordsAudio(t.blob);
         const r = await fetch('/api/understand', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ audio: await toBase64(wav), mime: 'audio/wav' }) });
         const j = await r.json().catch(() => null);
         if (!r.ok || !j?.ok) throw new Error(j?.code === 'not_configured' ? 'the server has no OpenAI key for transcription' : `${j?.code || `HTTP ${r.status}`}${j?.error ? `: ${j.error}` : ''}`);

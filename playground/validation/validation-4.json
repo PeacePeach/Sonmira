@@ -1,0 +1,1227 @@
+{
+ "kind": "sonmira-validation",
+ "id": "validation-4",
+ "title": "Validation 4: three tiers and new subjects (notes as the subject)",
+ "made": "2026-10-16T18:05Z",
+ "strips": [
+  {
+   "title": "雨后的花园 · melancholic · seed 2 · Loose → Gathered → Resolved",
+   "runs": [
+    "validation-4-S1-loose",
+    "validation-4-S1-gathered",
+    "validation-4-S1-resolved"
+   ]
+  },
+  {
+   "title": "mountain road at dusk · intense · seed 3 · Loose → Gathered → Resolved",
+   "runs": [
+    "validation-4-S3-loose",
+    "validation-4-S3-gathered",
+    "validation-4-S3-resolved"
+   ]
+  }
+ ],
+ "runs": [
+  {
+   "id": "validation-4-S1-loose",
+   "createdAt": 1792173900000,
+   "groupId": "validation-4",
+   "label": "validation 4 · S1-loose",
+   "clip": null,
+   "note": "雨后的花园",
+   "overrides": {
+    "tier": "loose",
+    "emotion": "melancholic",
+    "motif": "garden",
+    "seed": 2
+   },
+   "features": null,
+   "ms": {
+    "provider": 33907
+   },
+   "engine": "ai:openai/gpt-image-2",
+   "image": "validation/S1-loose-validation-4.jpg",
+   "result": {
+    "tier": "loose",
+    "emotion": "melancholic",
+    "motif": "garden",
+    "seed": 2,
+    "energy": "calm",
+    "stylePosition": null,
+    "controlScore": null,
+    "controlConfidence": null,
+    "interpretation": {
+     "sources": {
+      "completeness": "override",
+      "emotion": "override",
+      "motif": "override"
+     },
+     "controlScore": null,
+     "signals": null
+    },
+    "method": "ai:openai/gpt-image-2",
+    "provider": "openai",
+    "providerLabel": "OpenAI gpt-image-2 (medium)",
+    "model": "gpt-image-2",
+    "quality": "medium",
+    "size": "1024x1536",
+    "family": "L2-bloom-field",
+    "familyLabel": "Bloom field",
+    "familyRefs": [
+     "loose_02.jpg"
+    ],
+    "swatches": [
+     {
+      "name": "teal",
+      "hex": "#61c1d1",
+      "share": 0.592
+     },
+     {
+      "name": "light teal",
+      "hex": "#b0dbe1",
+      "share": 0.368
+     }
+    ],
+    "prompt": "The attached image is the primary style reference for this painting and the visual authority: it overrides every written description below, including colour, light and composition notes. Controlled by the reference: (1) medium and technique: whether it reads as transparent washes, flat graphic colour, ink-like wash or dry-brush, and its paint behaviour, brush marks, texture, granulation and edges, including whether it has blooms and wet-in-wet at all; (2) dominant palette: its principal colour family, saturation, temperature and supporting accents; (3) colour distribution: the balance of dominant, secondary and accent colour; (4) composition language: visual weight, viewpoint, asymmetry, focal placement and spatial rhythm; (5) negative space: roughly how much open, lightly painted or untouched paper there is, and where; (6) detail distribution: where detail concentrates and where forms dissolve; (7) degree of stylisation and level of finish. Free: the subject and the exact arrangement. Paint a new, original painting in the same artistic language; do not copy or trace its composition, figures or motifs, and do not reproduce any text, titles or watermarks in it. Content never comes from the reference: its subjects, objects, figures, places and setting are not part of its style. Paint only the subject the text below asks for, even when it is unlike anything in the reference, and keep the reference's palette and light while doing so.\nAn abstract painting. It depicts nothing; its marks carry the feeling of the note written for this moment: 雨后的花园\nStyle — Bloom field: Fill most of the sheet with overlapping wet-in-wet washes that bloom into one another. Let granulation and salt-like speckle show. Darken toward the edges, keep a paler, breathing centre. No drawn lines, no shapes that read as things. This describes only how it is painted, never what is depicted.\nContent: paint only what the subject above names, in its own setting, and add no objects, scenery or story that it does not ask for. No people anywhere: no human figures, silhouettes, faces or body parts, however small or distant. When the words tell of love, loss or company, carry that through place, light, weather and the traces left behind.\nAbstract: nothing is deliberately depicted and there is no picture space to step into; the reference's own marks, colour and texture are the painting.\nVertical 4:5 format.\nColour hierarchy, measured from the reference: dominant teal (#61c1d1, about 59% of the picture), secondary light teal (#b0dbe1, about 37% of the picture); no separate accent colour. Overall mid-toned, saturated, cool in temperature; about 1% open or near-white paper and almost no deep darks. Keep these proportions: vary the colour only within this hierarchy, never introduce an unrelated palette.\nMood: melancholic, leaning toward the cooler, quieter end of the reference's own colour and value range.\nPace of the marks, in the reference's own technique: slow and settled.\nGesture, from how the voice moved, made only with the reference's own kind of marks: marks that rise and fall a little; one connected flow; even pressure throughout.\nA hand-made painting in the artistic language of the attached reference: its medium, technique, texture, brushwork, colour treatment, composition language and degree of stylisation. An original composition, not a copy of the reference or of any existing artwork.\nAvoid: text, letters, titles, signature, logo or watermark, a frame, border or mat, a photo of a painting on a table, photorealism or a photograph, a photo-to-painting filter effect, glossy digital or 3D rendering, people, human figures, silhouettes or faces, a centred, symmetrical composition.",
+    "usage": {
+     "input_tokens": 2334,
+     "input_tokens_details": {
+      "image_tokens": 1536,
+      "text_tokens": 798
+     },
+     "output_tokens": 1462,
+     "output_tokens_details": {
+      "image_tokens": 1462,
+      "text_tokens": 0
+     },
+     "total_tokens": 3796
+    },
+    "reference": "loose_02",
+    "referenceSent": true,
+    "subjectSource": "note",
+    "subject": "雨后的花园",
+    "composition": null,
+    "settings": {
+     "tier": "loose",
+     "emotion": "melancholic",
+     "motif": "garden",
+     "energy": "calm",
+     "expression": {
+      "range": "moderate",
+      "flow": "connected",
+      "dynamics": "even",
+      "vibrato": false
+     }
+    },
+    "promptCheck": {
+     "verdict": "ok",
+     "people": [],
+     "leaks": [],
+     "unrequested": [],
+     "inventory": [],
+     "from": "loose_02"
+    }
+   },
+   "review": {
+    "depicted": "an all-over abstract field of turquoise, blue and soft green washes with salt-like blooms and pale lighter passages; no forms or objects",
+    "verdict": "ok",
+    "people": [],
+    "leaks": [],
+    "unrequested": [],
+    "at": 1792173889218
+   }
+  },
+  {
+   "id": "validation-4-S1-gathered",
+   "createdAt": 1792173930000,
+   "groupId": "validation-4",
+   "label": "validation 4 · S1-gathered",
+   "clip": null,
+   "note": "雨后的花园",
+   "overrides": {
+    "tier": "gathered",
+    "emotion": "melancholic",
+    "motif": "garden",
+    "seed": 2
+   },
+   "features": null,
+   "ms": {
+    "provider": 31968
+   },
+   "engine": "ai:openai/gpt-image-2",
+   "image": "validation/S1-gathered-validation-4.jpg",
+   "result": {
+    "tier": "gathered",
+    "emotion": "melancholic",
+    "motif": "garden",
+    "seed": 2,
+    "energy": "calm",
+    "stylePosition": null,
+    "controlScore": null,
+    "controlConfidence": null,
+    "interpretation": {
+     "sources": {
+      "completeness": "override",
+      "emotion": "override",
+      "motif": "override"
+     },
+     "controlScore": null,
+     "signals": null
+    },
+    "method": "ai:openai/gpt-image-2",
+    "provider": "openai",
+    "providerLabel": "OpenAI gpt-image-2 (medium)",
+    "model": "gpt-image-2",
+    "quality": "medium",
+    "size": "1024x1536",
+    "family": "G2-splash-wash",
+    "familyLabel": "Splash and blot",
+    "familyRefs": [
+     "gathered_02.jpg"
+    ],
+    "swatches": [
+     {
+      "name": "light warm grey",
+      "hex": "#d2d2cf",
+      "share": 0.189
+     },
+     {
+      "name": "muted yellow",
+      "hex": "#a5a58d",
+      "share": 0.103
+     }
+    ],
+    "prompt": "The attached image is the primary style reference for this painting and the visual authority: it overrides every written description below, including colour, light and composition notes. Controlled by the reference: (1) medium and technique: whether it reads as transparent washes, flat graphic colour, ink-like wash or dry-brush, and its paint behaviour, brush marks, texture, granulation and edges, including whether it has blooms and wet-in-wet at all; (2) dominant palette: its principal colour family, saturation, temperature and supporting accents; (3) colour distribution: the balance of dominant, secondary and accent colour; (4) composition language: visual weight, viewpoint, asymmetry, focal placement and spatial rhythm; (5) negative space: roughly how much open, lightly painted or untouched paper there is, and where; (6) detail distribution: where detail concentrates and where forms dissolve; (7) degree of stylisation and level of finish. Free: the subject and the exact arrangement. Paint a new, original painting in the same artistic language; do not copy or trace its composition, figures or motifs, and do not reproduce any text, titles or watermarks in it. Content never comes from the reference: its subjects, objects, figures, places and setting are not part of its style. Paint only the subject the text below asks for, even when it is unlike anything in the reference, and keep the reference's palette and light while doing so.\nA semi-abstract painting, only suggesting, never spelling out: 雨后的花园\nStyle — Splash and blot: Drop a few large grey and blue-grey blots and let their edges dry into tide-marks, then throw fast olive splashes, flicks and dragged strokes across the lower part. Keep at least half of the sheet white. The place is implied by the gathering of marks, never drawn. This describes only how it is painted, never what is depicted.\nContent: paint only what the subject above names, in its own setting, and add no objects, scenery or story that it does not ask for. No people anywhere: no human figures, silhouettes, faces or body parts, however small or distant. When the words tell of love, loss or company, carry that through place, light, weather and the traces left behind.\nSemi-abstract: ambiguous, emerging forms; a mood of place may be felt but no subject is clearly identifiable. No complete silhouettes, clearly identifiable objects or fully formed scenery: ambiguity, not a blurred illustration. Less resolved than the reference itself, in its own technique.\nComposition, in the reference's own language: Marks gather in one lower corner and thin out diagonally across the sheet; weight is lopsided and at least half of the sheet stays open paper. This painting: a level view; the focus along the lower edge, heavier on the right, a dense cluster against a wide empty field, shown mostly through its light, reflection or shadow. Do not place the focus in the centre or on the vertical centre line, and avoid symmetrical layouts.\nVertical 4:5 format.\nColour hierarchy, measured from the reference: dominant light warm grey (#d2d2cf, about 19% of the picture), secondary muted yellow (#a5a58d, about 10% of the picture); no separate accent colour. Overall high-key and light, soft, low saturation, warm in temperature; about 56% open or near-white paper and almost no deep darks. Keep these proportions: vary the colour only within this hierarchy, never introduce an unrelated palette.\nMood: melancholic, leaning toward the cooler, quieter end of the reference's own colour and value range.\nPace of the marks, in the reference's own technique: slow and settled.\nGesture, from how the voice moved, made only with the reference's own kind of marks: marks that rise and fall a little; one connected flow; even pressure throughout.\nA hand-made painting in the artistic language of the attached reference: its medium, technique, texture, brushwork, colour treatment, composition language and degree of stylisation. An original composition, not a copy of the reference or of any existing artwork.\nAvoid: text, letters, titles, signature, logo or watermark, a frame, border or mat, a photo of a painting on a table, photorealism or a photograph, a photo-to-painting filter effect, glossy digital or 3D rendering, people, human figures, silhouettes or faces, a centred, symmetrical composition.",
+    "usage": {
+     "input_tokens": 1850,
+     "input_tokens_details": {
+      "image_tokens": 925,
+      "text_tokens": 925
+     },
+     "output_tokens": 1462,
+     "output_tokens_details": {
+      "image_tokens": 1462,
+      "text_tokens": 0
+     },
+     "total_tokens": 3312
+    },
+    "reference": "gathered_02",
+    "referenceSent": true,
+    "subjectSource": "note",
+    "subject": "雨后的花园",
+    "composition": {
+     "principles": "Marks gather in one lower corner and thin out diagonally across the sheet; weight is lopsided and at least half of the sheet stays open paper.",
+     "viewpoint": "a level view",
+     "placement": "along the lower edge, heavier on the right",
+     "scale": "a dense cluster against a wide empty field",
+     "staging": "shown mostly through its light, reflection or shadow"
+    },
+    "settings": {
+     "tier": "gathered",
+     "emotion": "melancholic",
+     "motif": "garden",
+     "energy": "calm",
+     "expression": {
+      "range": "moderate",
+      "flow": "connected",
+      "dynamics": "even",
+      "vibrato": false
+     }
+    },
+    "promptCheck": {
+     "verdict": "ok",
+     "people": [],
+     "leaks": [],
+     "unrequested": [],
+     "inventory": [],
+     "from": "gathered_02"
+    }
+   },
+   "review": {
+    "depicted": "soft grey-blue blooms rising on the right over loose olive-green stems and splatter low in the picture; a large area of bare white paper above; suggests plants after rain without clear flowers",
+    "verdict": "ok",
+    "people": [],
+    "leaks": [],
+    "unrequested": [],
+    "at": 1792173889220
+   }
+  },
+  {
+   "id": "validation-4-S1-resolved",
+   "createdAt": 1792173960000,
+   "groupId": "validation-4",
+   "label": "validation 4 · S1-resolved",
+   "clip": null,
+   "note": "雨后的花园",
+   "overrides": {
+    "tier": "resolved",
+    "emotion": "melancholic",
+    "motif": "garden",
+    "seed": 2
+   },
+   "features": null,
+   "ms": {
+    "provider": 28622
+   },
+   "engine": "ai:openai/gpt-image-2",
+   "image": "validation/S1-resolved-validation-4.jpg",
+   "result": {
+    "tier": "resolved",
+    "emotion": "melancholic",
+    "motif": "garden",
+    "seed": 2,
+    "energy": "calm",
+    "stylePosition": null,
+    "controlScore": null,
+    "controlConfidence": null,
+    "interpretation": {
+     "sources": {
+      "completeness": "override",
+      "emotion": "override",
+      "motif": "override"
+     },
+     "controlScore": null,
+     "signals": null
+    },
+    "method": "ai:openai/gpt-image-2",
+    "provider": "openai",
+    "providerLabel": "OpenAI gpt-image-2 (medium)",
+    "model": "gpt-image-2",
+    "quality": "medium",
+    "size": "1024x1536",
+    "family": "R4-lyrical-everyday",
+    "familyLabel": "Lyrical light washes",
+    "familyRefs": [
+     "resolved_05.jpg",
+     "resolved_06.jpg",
+     "resolved_07.jpg",
+     "resolved_13.jpg"
+    ],
+    "swatches": [
+     {
+      "name": "orange",
+      "hex": "#b49b7c",
+      "share": 0.565
+     },
+     {
+      "name": "pale yellow-green",
+      "hex": "#dfe8cf",
+      "share": 0.162
+     },
+     {
+      "name": "pale yellow",
+      "hex": "#eae8c9",
+      "share": 0.133
+     }
+    ],
+    "prompt": "The attached image is the primary style reference for this painting and the visual authority: it overrides every written description below, including colour, light and composition notes. Controlled by the reference: (1) medium and technique: whether it reads as transparent washes, flat graphic colour, ink-like wash or dry-brush, and its paint behaviour, brush marks, texture, granulation and edges, including whether it has blooms and wet-in-wet at all; (2) dominant palette: its principal colour family, saturation, temperature and supporting accents; (3) colour distribution: the balance of dominant, secondary and accent colour; (4) composition language: visual weight, viewpoint, asymmetry, focal placement and spatial rhythm; (5) negative space: roughly how much open, lightly painted or untouched paper there is, and where; (6) detail distribution: where detail concentrates and where forms dissolve; (7) degree of stylisation and level of finish. Free: the subject and the exact arrangement. Paint a new, original painting in the same artistic language; do not copy or trace its composition, figures or motifs, and do not reproduce any text, titles or watermarks in it. Content never comes from the reference: its subjects, objects, figures, places and setting are not part of its style. Paint only the subject the text below asks for, even when it is unlike anything in the reference, and keep the reference's palette and light while doing so.\nA finished painting of: 雨后的花园\nStyle — Lyrical light washes: Use clear, light, transparent washes with smooth gradients and clean, luminous light. Keep the subject small and low within a large, airy space, caught with a few chosen brushstrokes, as a quiet, fleeting moment. Only a little recognisable detail; the surroundings stay loose and open. This describes only how it is painted, never what is depicted.\nContent: paint only what the subject above names, in its own setting, and add no objects, scenery or story that it does not ask for. No people anywhere: no human figures, silhouettes, faces or body parts, however small or distant. When the words tell of love, loss or company, carry that through place, light, weather and the traces left behind.\nFinished and fully considered: a clear, recognisable subject, carried as far and as richly as the reference carries its own, with the reference's own finish, edges, detail distribution and composition language. Never a realistic image.\nComposition, in the reference's own language: Atmospheric depth: a very low or very high horizon and layered recession from warmer near passages to cooler far ones; delicate gradients and nuanced warm and cool relationships; the focus small and placed off-centre, while expressive negative space of open sky, air or mist takes most of the sheet. This painting: a slightly raised view with a high horizon; the focus small, near the lower-right edge, a quiet accent in a large field of air, shown mostly through its light, reflection or shadow. Do not place the focus in the centre or on the vertical centre line, and avoid symmetrical layouts. Compose with real intent, as a painter would: a clear spatial hierarchy of one dominant shape, a few secondary ones and many small ones; asymmetry and one strong directional movement; varied scale and edges; the subject staged with purpose through viewpoint, cropping and partial reveal. Translate the reference's structural principles into a new, original arrangement; never copy its layout.\nVertical 4:5 format.\nColour hierarchy, measured from the reference: dominant orange (#b49b7c, about 56% of the picture), secondary pale yellow-green (#dfe8cf, about 16% of the picture), supporting pale yellow (#eae8c9, about 13% of the picture); no separate accent colour. Overall mid-toned, moderate saturation, warm in temperature; about 7% open or near-white paper and almost no deep darks. Light: the reference's own quality and direction of light, carried onto the new subject. Keep these proportions: vary the colour only within this hierarchy, never introduce an unrelated palette.\nMood: melancholic, leaning toward the cooler, quieter end of the reference's own colour and value range.\nPace of the marks, in the reference's own technique: slow and settled.\nGesture, from how the voice moved, made only with the reference's own kind of marks: marks that rise and fall a little; one connected flow; even pressure throughout.\nA hand-made painting in the artistic language of the attached reference: its medium, technique, texture, brushwork, colour treatment, composition language and degree of stylisation. An original composition, not a copy of the reference or of any existing artwork.\nAvoid: text, letters, titles, signature, logo or watermark, a frame, border or mat, a photo of a painting on a table, photorealism or a photograph, a photo-to-painting filter effect, glossy digital or 3D rendering, people, human figures, silhouettes or faces, a centred, symmetrical composition.",
+    "usage": {
+     "input_tokens": 2303,
+     "input_tokens_details": {
+      "image_tokens": 1260,
+      "text_tokens": 1043
+     },
+     "output_tokens": 1462,
+     "output_tokens_details": {
+      "image_tokens": 1462,
+      "text_tokens": 0
+     },
+     "total_tokens": 3765
+    },
+    "reference": "resolved_13",
+    "referenceSent": true,
+    "subjectSource": "note",
+    "subject": "雨后的花园",
+    "composition": {
+     "principles": "Atmospheric depth: a very low or very high horizon and layered recession from warmer near passages to cooler far ones; delicate gradients and nuanced warm and cool relationships; the focus small and placed off-centre, while expressive negative space of open sky, air or mist takes most of the sheet.",
+     "viewpoint": "a slightly raised view with a high horizon",
+     "placement": "small, near the lower-right edge",
+     "scale": "a quiet accent in a large field of air",
+     "staging": "shown mostly through its light, reflection or shadow"
+    },
+    "settings": {
+     "tier": "resolved",
+     "emotion": "melancholic",
+     "motif": "garden",
+     "energy": "calm",
+     "expression": {
+      "range": "moderate",
+      "flow": "connected",
+      "dynamics": "even",
+      "vibrato": false
+     }
+    },
+    "promptCheck": {
+     "verdict": "ok",
+     "people": [],
+     "leaks": [],
+     "unrequested": [],
+     "inventory": [
+      "person",
+      "building",
+      "lamp",
+      "car",
+      "snow"
+     ],
+     "from": "resolved_13"
+    }
+   },
+   "review": {
+    "depicted": "a rain-soaked garden: low stone-edged flower beds with pale yellow roses and green shrubs on the right, a wet paved path with reflections and puddles lower left, misty bushes beyond, warm ochre clouds breaking into light above",
+    "verdict": "ok",
+    "people": [],
+    "leaks": [],
+    "unrequested": [],
+    "at": 1792173889221
+   }
+  },
+  {
+   "id": "validation-4-S3-loose",
+   "createdAt": 1792173990000,
+   "groupId": "validation-4",
+   "label": "validation 4 · S3-loose",
+   "clip": null,
+   "note": "mountain road at dusk",
+   "overrides": {
+    "tier": "loose",
+    "emotion": "intense",
+    "motif": "landscape",
+    "seed": 3
+   },
+   "features": null,
+   "ms": {
+    "provider": 27857
+   },
+   "engine": "ai:openai/gpt-image-2",
+   "image": "validation/S3-loose-validation-4.jpg",
+   "result": {
+    "tier": "loose",
+    "emotion": "intense",
+    "motif": "landscape",
+    "seed": 3,
+    "energy": "calm",
+    "stylePosition": null,
+    "controlScore": null,
+    "controlConfidence": null,
+    "interpretation": {
+     "sources": {
+      "completeness": "override",
+      "emotion": "override",
+      "motif": "override"
+     },
+     "controlScore": null,
+     "signals": null
+    },
+    "method": "ai:openai/gpt-image-2",
+    "provider": "openai",
+    "providerLabel": "OpenAI gpt-image-2 (medium)",
+    "model": "gpt-image-2",
+    "quality": "medium",
+    "size": "1024x1536",
+    "family": "L3-drip-curtain",
+    "familyLabel": "Drip curtain",
+    "familyRefs": [
+     "loose_03.jpg"
+    ],
+    "swatches": [
+     {
+      "name": "light muted yellow",
+      "hex": "#dfddcb",
+      "share": 0.262
+     },
+     {
+      "name": "yellow",
+      "hex": "#bfb970",
+      "share": 0.1
+     },
+     {
+      "name": "light warm grey",
+      "hex": "#c8c9c3",
+      "share": 0.074
+     }
+    ],
+    "prompt": "The attached image is the primary style reference for this painting and the visual authority: it overrides every written description below, including colour, light and composition notes. Controlled by the reference: (1) medium and technique: whether it reads as transparent washes, flat graphic colour, ink-like wash or dry-brush, and its paint behaviour, brush marks, texture, granulation and edges, including whether it has blooms and wet-in-wet at all; (2) dominant palette: its principal colour family, saturation, temperature and supporting accents; (3) colour distribution: the balance of dominant, secondary and accent colour; (4) composition language: visual weight, viewpoint, asymmetry, focal placement and spatial rhythm; (5) negative space: roughly how much open, lightly painted or untouched paper there is, and where; (6) detail distribution: where detail concentrates and where forms dissolve; (7) degree of stylisation and level of finish. Free: the subject and the exact arrangement. Paint a new, original painting in the same artistic language; do not copy or trace its composition, figures or motifs, and do not reproduce any text, titles or watermarks in it. Content never comes from the reference: its subjects, objects, figures, places and setting are not part of its style. Paint only the subject the text below asks for, even when it is unlike anything in the reference, and keep the reference's palette and light while doing so.\nAn abstract painting. It depicts nothing; its marks carry the feeling of the note written for this moment: mountain road at dusk\nStyle — Drip curtain: Charge a wet band of colour near the top edge and let it run straight down in long, uneven drips of different widths, some reaching the bottom and pooling into soft tide-marks. Keep clear paper between the runs. The drips are the whole painting; nothing is drawn. This describes only how it is painted, never what is depicted.\nContent: paint only what the subject above names, in its own setting, and add no objects, scenery or story that it does not ask for. No people anywhere: no human figures, silhouettes, faces or body parts, however small or distant. When the words tell of love, loss or company, carry that through place, light, weather and the traces left behind.\nAbstract: nothing is deliberately depicted and there is no picture space to step into; the reference's own marks, colour and texture are the painting.\nVertical 4:5 format.\nColour hierarchy, measured from the reference: dominant light muted yellow (#dfddcb, about 26% of the picture), secondary yellow (#bfb970, about 10% of the picture), supporting light warm grey (#c8c9c3, about 7% of the picture); no separate accent colour. Overall high-key and light, soft, low saturation, warm in temperature; about 37% open or near-white paper and almost no deep darks. Keep these proportions: vary the colour only within this hierarchy, never introduce an unrelated palette.\nMood: intense, leaning toward the deeper, richer end of the reference's own colour and value range.\nPace of the marks, in the reference's own technique: slow and settled.\nGesture, from how the voice moved, made only with the reference's own kind of marks: marks that rise and fall a little; one connected flow; even pressure throughout.\nA hand-made painting in the artistic language of the attached reference: its medium, technique, texture, brushwork, colour treatment, composition language and degree of stylisation. An original composition, not a copy of the reference or of any existing artwork.\nAvoid: text, letters, titles, signature, logo or watermark, a frame, border or mat, a photo of a painting on a table, photorealism or a photograph, a photo-to-painting filter effect, glossy digital or 3D rendering, people, human figures, silhouettes or faces, a centred, symmetrical composition.",
+    "usage": {
+     "input_tokens": 1977,
+     "input_tokens_details": {
+      "image_tokens": 1156,
+      "text_tokens": 821
+     },
+     "output_tokens": 1462,
+     "output_tokens_details": {
+      "image_tokens": 1462,
+      "text_tokens": 0
+     },
+     "total_tokens": 3439
+    },
+    "reference": "loose_03",
+    "referenceSent": true,
+    "subjectSource": "note",
+    "subject": "mountain road at dusk",
+    "composition": null,
+    "settings": {
+     "tier": "loose",
+     "emotion": "intense",
+     "motif": "landscape",
+     "energy": "calm",
+     "expression": {
+      "range": "moderate",
+      "flow": "connected",
+      "dynamics": "even",
+      "vibrato": false
+     }
+    },
+    "promptCheck": {
+     "verdict": "ok",
+     "people": [],
+     "leaks": [],
+     "unrequested": [],
+     "inventory": [],
+     "from": "loose_03"
+    }
+   },
+   "review": {
+    "depicted": "vertical drips of yellow, grey and pale ochre running down from a band of wash at the top; abstract, though the verticals faintly suggest tall stems; pale and soft rather than intense",
+    "verdict": "ok",
+    "people": [],
+    "leaks": [],
+    "unrequested": [],
+    "at": 1792173889221
+   }
+  },
+  {
+   "id": "validation-4-S3-gathered",
+   "createdAt": 1792174020000,
+   "groupId": "validation-4",
+   "label": "validation 4 · S3-gathered",
+   "clip": null,
+   "note": "mountain road at dusk",
+   "overrides": {
+    "tier": "gathered",
+    "emotion": "intense",
+    "motif": "landscape",
+    "seed": 3
+   },
+   "features": null,
+   "ms": {
+    "provider": 33693
+   },
+   "engine": "ai:openai/gpt-image-2",
+   "image": "validation/S3-gathered-validation-4.jpg",
+   "result": {
+    "tier": "gathered",
+    "emotion": "intense",
+    "motif": "landscape",
+    "seed": 3,
+    "energy": "calm",
+    "stylePosition": null,
+    "controlScore": null,
+    "controlConfidence": null,
+    "interpretation": {
+     "sources": {
+      "completeness": "override",
+      "emotion": "override",
+      "motif": "override"
+     },
+     "controlScore": null,
+     "signals": null
+    },
+    "method": "ai:openai/gpt-image-2",
+    "provider": "openai",
+    "providerLabel": "OpenAI gpt-image-2 (medium)",
+    "model": "gpt-image-2",
+    "quality": "medium",
+    "size": "1024x1536",
+    "family": "G3-luminous-contrast",
+    "familyLabel": "Luminous contrast",
+    "familyRefs": [
+     "gathered_03.jpg",
+     "gathered_04.jpg"
+    ],
+    "swatches": [
+     {
+      "name": "orange",
+      "hex": "#b08963",
+      "share": 0.453
+     },
+     {
+      "name": "deep brown",
+      "hex": "#64462e",
+      "share": 0.376
+     },
+     {
+      "name": "light orange",
+      "hex": "#ecd1af",
+      "share": 0.141
+     }
+    ],
+    "prompt": "The attached image is the primary style reference for this painting and the visual authority: it overrides every written description below, including colour, light and composition notes. Controlled by the reference: (1) medium and technique: whether it reads as transparent washes, flat graphic colour, ink-like wash or dry-brush, and its paint behaviour, brush marks, texture, granulation and edges, including whether it has blooms and wet-in-wet at all; (2) dominant palette: its principal colour family, saturation, temperature and supporting accents; (3) colour distribution: the balance of dominant, secondary and accent colour; (4) composition language: visual weight, viewpoint, asymmetry, focal placement and spatial rhythm; (5) negative space: roughly how much open, lightly painted or untouched paper there is, and where; (6) detail distribution: where detail concentrates and where forms dissolve; (7) degree of stylisation and level of finish. Free: the subject and the exact arrangement. Paint a new, original painting in the same artistic language; do not copy or trace its composition, figures or motifs, and do not reproduce any text, titles or watermarks in it. Content never comes from the reference: its subjects, objects, figures, places and setting are not part of its style. Paint only the subject the text below asks for, even when it is unlike anything in the reference, and keep the reference's palette and light while doing so.\nA semi-abstract painting, only suggesting, never spelling out: mountain road at dusk\nStyle — Luminous contrast: Choose one rich colour family and work it from glowing light to deep dark. Keep the background wet and luminous with a shaft or haze of light, and put crisp dry-brush strokes, splatter and a few vertical drips into the darks. Block forms in with light and shadow only; no outlines, little detail. This describes only how it is painted, never what is depicted.\nContent: paint only what the subject above names, in its own setting, and add no objects, scenery or story that it does not ask for. No people anywhere: no human figures, silhouettes, faces or body parts, however small or distant. When the words tell of love, loss or company, carry that through place, light, weather and the traces left behind.\nSemi-abstract: ambiguous, emerging forms; a mood of place may be felt but no subject is clearly identifiable. No complete silhouettes, clearly identifiable objects or fully formed scenery: ambiguity, not a blurred illustration. Less resolved than the reference itself, in its own technique.\nComposition, in the reference's own language: A strong light-to-dark structure: a shaft or haze of light crosses the picture diagonally from an upper corner, darks mass along one side, and depth is built by value rather than line. This painting: a level view into deep space; the focus low on the right, at the end of the light, small against tall masses of dark, partly cropped by the frame. Do not place the focus in the centre or on the vertical centre line, and avoid symmetrical layouts.\nVertical 4:5 format.\nColour hierarchy, measured from the reference: dominant orange (#b08963, about 45% of the picture), secondary deep brown (#64462e, about 38% of the picture), supporting light orange (#ecd1af, about 14% of the picture); no separate accent colour. Overall low-key, with deep values, moderate saturation, warm in temperature; about 1% open or near-white paper and about 11% deep darks. Keep these proportions: vary the colour only within this hierarchy, never introduce an unrelated palette.\nMood: intense, leaning toward the deeper, richer end of the reference's own colour and value range.\nPace of the marks, in the reference's own technique: slow and settled.\nGesture, from how the voice moved, made only with the reference's own kind of marks: marks that rise and fall a little; one connected flow; even pressure throughout.\nA hand-made painting in the artistic language of the attached reference: its medium, technique, texture, brushwork, colour treatment, composition language and degree of stylisation. An original composition, not a copy of the reference or of any existing artwork.\nAvoid: text, letters, titles, signature, logo or watermark, a frame, border or mat, a photo of a painting on a table, photorealism or a photograph, a photo-to-painting filter effect, glossy digital or 3D rendering, people, human figures, silhouettes or faces, a centred, symmetrical composition.",
+    "usage": {
+     "input_tokens": 1894,
+     "input_tokens_details": {
+      "image_tokens": 945,
+      "text_tokens": 949
+     },
+     "output_tokens": 1462,
+     "output_tokens_details": {
+      "image_tokens": 1462,
+      "text_tokens": 0
+     },
+     "total_tokens": 3356
+    },
+    "reference": "gathered_04",
+    "referenceSent": true,
+    "subjectSource": "note",
+    "subject": "mountain road at dusk",
+    "composition": {
+     "principles": "A strong light-to-dark structure: a shaft or haze of light crosses the picture diagonally from an upper corner, darks mass along one side, and depth is built by value rather than line.",
+     "viewpoint": "a level view into deep space",
+     "placement": "low on the right, at the end of the light",
+     "scale": "small against tall masses of dark",
+     "staging": "partly cropped by the frame"
+    },
+    "settings": {
+     "tier": "gathered",
+     "emotion": "intense",
+     "motif": "landscape",
+     "energy": "calm",
+     "expression": {
+      "range": "moderate",
+      "flow": "connected",
+      "dynamics": "even",
+      "vibrato": false
+     }
+    },
+    "promptCheck": {
+     "verdict": "ok",
+     "people": [],
+     "leaks": [],
+     "unrequested": [],
+     "inventory": [
+      "cafe",
+      "building"
+     ],
+     "from": "gathered_04"
+    }
+   },
+   "review": {
+    "depicted": "sepia and umber: a dark mass of cliff or slope on the left with vertical drips, a shaft of warm light from the top, and a pale winding road or stream low on the right; more legible than ambiguous",
+    "verdict": "ok",
+    "people": [],
+    "leaks": [],
+    "unrequested": [],
+    "at": 1792173889222
+   }
+  },
+  {
+   "id": "validation-4-S3-resolved",
+   "createdAt": 1792174050000,
+   "groupId": "validation-4",
+   "label": "validation 4 · S3-resolved",
+   "clip": null,
+   "note": "mountain road at dusk",
+   "overrides": {
+    "tier": "resolved",
+    "emotion": "intense",
+    "motif": "landscape",
+    "seed": 3
+   },
+   "features": null,
+   "ms": {
+    "provider": 24457
+   },
+   "engine": "ai:openai/gpt-image-2",
+   "image": "validation/S3-resolved-validation-4.jpg",
+   "result": {
+    "tier": "resolved",
+    "emotion": "intense",
+    "motif": "landscape",
+    "seed": 3,
+    "energy": "calm",
+    "stylePosition": null,
+    "controlScore": null,
+    "controlConfidence": null,
+    "interpretation": {
+     "sources": {
+      "completeness": "override",
+      "emotion": "override",
+      "motif": "override"
+     },
+     "controlScore": null,
+     "signals": null
+    },
+    "method": "ai:openai/gpt-image-2",
+    "provider": "openai",
+    "providerLabel": "OpenAI gpt-image-2 (medium)",
+    "model": "gpt-image-2",
+    "quality": "medium",
+    "size": "1024x1536",
+    "family": "R6-misty-monochrome",
+    "familyLabel": "Misty monochrome",
+    "familyRefs": [
+     "resolved_11.jpg"
+    ],
+    "swatches": [
+     {
+      "name": "muted sea green",
+      "hex": "#8baa9b",
+      "share": 0.352
+     },
+     {
+      "name": "light cool grey",
+      "hex": "#ced9d4",
+      "share": 0.339
+     },
+     {
+      "name": "light cool grey",
+      "hex": "#c1d0c9",
+      "share": 0.194
+     }
+    ],
+    "prompt": "The attached image is the primary style reference for this painting and the visual authority: it overrides every written description below, including colour, light and composition notes. Controlled by the reference: (1) medium and technique: whether it reads as transparent washes, flat graphic colour, ink-like wash or dry-brush, and its paint behaviour, brush marks, texture, granulation and edges, including whether it has blooms and wet-in-wet at all; (2) dominant palette: its principal colour family, saturation, temperature and supporting accents; (3) colour distribution: the balance of dominant, secondary and accent colour; (4) composition language: visual weight, viewpoint, asymmetry, focal placement and spatial rhythm; (5) negative space: roughly how much open, lightly painted or untouched paper there is, and where; (6) detail distribution: where detail concentrates and where forms dissolve; (7) degree of stylisation and level of finish. Free: the subject and the exact arrangement. Paint a new, original painting in the same artistic language; do not copy or trace its composition, figures or motifs, and do not reproduce any text, titles or watermarks in it. Content never comes from the reference: its subjects, objects, figures, places and setting are not part of its style. Paint only the subject the text below asks for, even when it is unlike anything in the reference, and keep the reference's palette and light while doing so.\nA finished painting of: mountain road at dusk\nStyle — Misty monochrome: Work in one colour family only, mostly pale. Draw a single elegant form with a few fine contours and let it dissolve into soft fog washes, with a few darker pooled blooms at its base. Large, pale, empty ground and very smooth gradations. This describes only how it is painted, never what is depicted.\nContent: paint only what the subject above names, in its own setting, and add no objects, scenery or story that it does not ask for. No people anywhere: no human figures, silhouettes, faces or body parts, however small or distant. When the words tell of love, loss or company, carry that through place, light, weather and the traces left behind.\nFinished and fully considered: a clear, recognisable subject, carried as far and as richly as the reference carries its own, with the reference's own finish, edges, detail distribution and composition language. Never a realistic image.\nComposition, in the reference's own language: One form placed far to one side, dissolving downward into mist; a vast, pale, empty ground on the other side; vertical elegance with asymmetric balance. This painting: a slightly low view; the focus high on the right, dissolving downward, tall and slender in a vast pale field, partly cropped by the frame. Do not place the focus in the centre or on the vertical centre line, and avoid symmetrical layouts. Compose with real intent, as a painter would: a clear spatial hierarchy of one dominant shape, a few secondary ones and many small ones; asymmetry and one strong directional movement; varied scale and edges; the subject staged with purpose through viewpoint, cropping and partial reveal. Translate the reference's structural principles into a new, original arrangement; never copy its layout.\nVertical 4:5 format.\nColour hierarchy, measured from the reference: dominant muted sea green (#8baa9b, about 35% of the picture), secondary light cool grey (#ced9d4, about 34% of the picture), supporting light cool grey (#c1d0c9, about 19% of the picture); no separate accent colour. Overall mid-toned, soft, low saturation, cool in temperature; about 1% open or near-white paper and about 4% deep darks. Keep these proportions: vary the colour only within this hierarchy, never introduce an unrelated palette.\nMood: intense, leaning toward the deeper, richer end of the reference's own colour and value range.\nPace of the marks, in the reference's own technique: slow and settled.\nGesture, from how the voice moved, made only with the reference's own kind of marks: marks that rise and fall a little; one connected flow; even pressure throughout.\nA hand-made painting in the artistic language of the attached reference: its medium, technique, texture, brushwork, colour treatment, composition language and degree of stylisation. An original composition, not a copy of the reference or of any existing artwork.\nAvoid: text, letters, titles, signature, logo or watermark, a frame, border or mat, a photo of a painting on a table, photorealism or a photograph, a photo-to-painting filter effect, glossy digital or 3D rendering, people, human figures, silhouettes or faces, a centred, symmetrical composition.",
+    "usage": {
+     "input_tokens": 2119,
+     "input_tokens_details": {
+      "image_tokens": 1131,
+      "text_tokens": 988
+     },
+     "output_tokens": 1462,
+     "output_tokens_details": {
+      "image_tokens": 1462,
+      "text_tokens": 0
+     },
+     "total_tokens": 3581
+    },
+    "reference": "resolved_11",
+    "referenceSent": true,
+    "subjectSource": "note",
+    "subject": "mountain road at dusk",
+    "composition": {
+     "principles": "One form placed far to one side, dissolving downward into mist; a vast, pale, empty ground on the other side; vertical elegance with asymmetric balance.",
+     "viewpoint": "a slightly low view",
+     "placement": "high on the right, dissolving downward",
+     "scale": "tall and slender in a vast pale field",
+     "staging": "partly cropped by the frame"
+    },
+    "settings": {
+     "tier": "resolved",
+     "emotion": "intense",
+     "motif": "landscape",
+     "energy": "calm",
+     "expression": {
+      "range": "moderate",
+      "flow": "connected",
+      "dynamics": "even",
+      "vibrato": false
+     }
+    },
+    "promptCheck": {
+     "verdict": "ok",
+     "people": [],
+     "leaks": [],
+     "unrequested": [],
+     "inventory": [
+      "person",
+      "dress"
+     ],
+     "from": "resolved_11"
+    }
+   },
+   "review": {
+    "depicted": "misty green-grey monochrome: a steep mountainside on the right with a road winding up along it with a low wall, dark green foliage dissolving at the bottom, a vast pale field of mist on the left; calm rather than intense, no visible dusk light",
+    "verdict": "ok",
+    "people": [],
+    "leaks": [],
+    "unrequested": [],
+    "at": 1792173889224
+   }
+  },
+  {
+   "id": "validation-4-S2-resolved",
+   "createdAt": 1792174080000,
+   "groupId": "validation-4",
+   "label": "validation 4 · S2-resolved",
+   "clip": null,
+   "note": "morning clouds over the rooftops",
+   "overrides": {
+    "tier": "resolved",
+    "emotion": "bright",
+    "motif": "sky",
+    "seed": 5
+   },
+   "features": null,
+   "ms": {
+    "provider": 30615
+   },
+   "engine": "ai:openai/gpt-image-2",
+   "image": "validation/S2-resolved-validation-4.jpg",
+   "result": {
+    "tier": "resolved",
+    "emotion": "bright",
+    "motif": "sky",
+    "seed": 5,
+    "energy": "calm",
+    "stylePosition": null,
+    "controlScore": null,
+    "controlConfidence": null,
+    "interpretation": {
+     "sources": {
+      "completeness": "override",
+      "emotion": "override",
+      "motif": "override"
+     },
+     "controlScore": null,
+     "signals": null
+    },
+    "method": "ai:openai/gpt-image-2",
+    "provider": "openai",
+    "providerLabel": "OpenAI gpt-image-2 (medium)",
+    "model": "gpt-image-2",
+    "quality": "medium",
+    "size": "1024x1536",
+    "family": "R3-vivid-wash-focal",
+    "familyLabel": "Vivid wash, crisp subject",
+    "familyRefs": [
+     "resolved_02.jpg",
+     "resolved_03.jpg"
+    ],
+    "swatches": [
+     {
+      "name": "teal",
+      "hex": "#74b0bb",
+      "share": 0.33
+     },
+     {
+      "name": "light teal",
+      "hex": "#bbd8d8",
+      "share": 0.166
+     },
+     {
+      "name": "light orange",
+      "hex": "#eacc9f",
+      "share": 0.004
+     }
+    ],
+    "prompt": "The attached image is the primary style reference for this painting and the visual authority: it overrides every written description below, including colour, light and composition notes. Controlled by the reference: (1) medium and technique: whether it reads as transparent washes, flat graphic colour, ink-like wash or dry-brush, and its paint behaviour, brush marks, texture, granulation and edges, including whether it has blooms and wet-in-wet at all; (2) dominant palette: its principal colour family, saturation, temperature and supporting accents; (3) colour distribution: the balance of dominant, secondary and accent colour; (4) composition language: visual weight, viewpoint, asymmetry, focal placement and spatial rhythm; (5) negative space: roughly how much open, lightly painted or untouched paper there is, and where; (6) detail distribution: where detail concentrates and where forms dissolve; (7) degree of stylisation and level of finish. Free: the subject and the exact arrangement. Paint a new, original painting in the same artistic language; do not copy or trace its composition, figures or motifs, and do not reproduce any text, titles or watermarks in it. Content never comes from the reference: its subjects, objects, figures, places and setting are not part of its style. Paint only the subject the text below asks for, even when it is unlike anything in the reference, and keep the reference's palette and light while doing so.\nA finished painting of: morning clouds over the rooftops\nStyle — Vivid wash, crisp subject: Surround the subject with bold, saturated blue and teal washes that bloom, splash and tear open into white paper. Reserve the subject in white or paint it with fine, careful brushwork so it is crisp against the wild wash. One small warm accent. The contrast between loose wash and precise subject is the point. This describes only how it is painted, never what is depicted.\nContent: paint only what the subject above names, in its own setting, and add no objects, scenery or story that it does not ask for. No people anywhere: no human figures, silhouettes, faces or body parts, however small or distant. When the words tell of love, loss or company, carry that through place, light, weather and the traces left behind.\nFinished and fully considered: a clear, recognisable subject, carried as far and as richly as the reference carries its own, with the reference's own finish, edges, detail distribution and composition language. Never a realistic image.\nComposition, in the reference's own language: A crisp focus reserved against an explosive field: the burst radiates from one side, the focus sits off-axis close to an edge, and large torn openings of white paper balance it. This painting: a close, level view; the focus high on the right, partly cropped, mid-sized, with a much larger burst around it, shown mostly through its light, reflection or shadow. Do not place the focus in the centre or on the vertical centre line, and avoid symmetrical layouts. Compose with real intent, as a painter would: a clear spatial hierarchy of one dominant shape, a few secondary ones and many small ones; asymmetry and one strong directional movement; varied scale and edges; the subject staged with purpose through viewpoint, cropping and partial reveal. Translate the reference's structural principles into a new, original arrangement; never copy its layout.\nVertical 4:5 format.\nColour hierarchy, measured from the reference: dominant teal (#74b0bb, about 33% of the picture), secondary light teal (#bbd8d8, about 17% of the picture); accent light orange (#eacc9f), kept to about 1%. Overall high-key and light, moderate saturation, cool in temperature; about 31% open or near-white paper and almost no deep darks. Keep these proportions: vary the colour only within this hierarchy, never introduce an unrelated palette.\nMood: bright, leaning toward the warmer, clearer end of the reference's own colour and value range.\nPace of the marks, in the reference's own technique: slow and settled.\nGesture, from how the voice moved, made only with the reference's own kind of marks: marks that rise and fall a little; one connected flow; even pressure throughout.\nA hand-made painting in the artistic language of the attached reference: its medium, technique, texture, brushwork, colour treatment, composition language and degree of stylisation. An original composition, not a copy of the reference or of any existing artwork.\nAvoid: text, letters, titles, signature, logo or watermark, a frame, border or mat, a photo of a painting on a table, photorealism or a photograph, a photo-to-painting filter effect, glossy digital or 3D rendering, people, human figures, silhouettes or faces, a centred, symmetrical composition.",
+    "usage": {
+     "input_tokens": 2130,
+     "input_tokens_details": {
+      "image_tokens": 1131,
+      "text_tokens": 999
+     },
+     "output_tokens": 1462,
+     "output_tokens_details": {
+      "image_tokens": 1462,
+      "text_tokens": 0
+     },
+     "total_tokens": 3592
+    },
+    "reference": "resolved_02",
+    "referenceSent": true,
+    "subjectSource": "note",
+    "subject": "morning clouds over the rooftops",
+    "composition": {
+     "principles": "A crisp focus reserved against an explosive field: the burst radiates from one side, the focus sits off-axis close to an edge, and large torn openings of white paper balance it.",
+     "viewpoint": "a close, level view",
+     "placement": "high on the right, partly cropped",
+     "scale": "mid-sized, with a much larger burst around it",
+     "staging": "shown mostly through its light, reflection or shadow"
+    },
+    "settings": {
+     "tier": "resolved",
+     "emotion": "bright",
+     "motif": "sky",
+     "energy": "calm",
+     "expression": {
+      "range": "moderate",
+      "flow": "connected",
+      "dynamics": "even",
+      "vibrato": false
+     }
+    },
+    "promptCheck": {
+     "verdict": "ok",
+     "people": [],
+     "leaks": [],
+     "unrequested": [],
+     "inventory": [
+      "wave",
+      "person",
+      "animal"
+     ],
+     "from": "resolved_02"
+    }
+   },
+   "review": {
+    "depicted": "billowing white morning clouds with warm peach light on their edges, in a bright turquoise-blue field of diagonal sweeping strokes and splatter; open white paper upper left; the rooftops in the note are missing",
+    "verdict": "ok",
+    "people": [],
+    "leaks": [],
+    "unrequested": [],
+    "at": 1792173889224
+   }
+  },
+  {
+   "id": "validation-4-S4-resolved",
+   "createdAt": 1792174110000,
+   "groupId": "validation-4",
+   "label": "validation 4 · S4-resolved",
+   "clip": null,
+   "note": "tea by the window",
+   "overrides": {
+    "tier": "resolved",
+    "emotion": "tender",
+    "motif": "interior",
+    "seed": 7
+   },
+   "features": null,
+   "ms": {
+    "provider": 23137
+   },
+   "engine": "ai:openai/gpt-image-2",
+   "image": "validation/S4-resolved-validation-4.jpg",
+   "result": {
+    "tier": "resolved",
+    "emotion": "tender",
+    "motif": "interior",
+    "seed": 7,
+    "energy": "calm",
+    "stylePosition": null,
+    "controlScore": null,
+    "controlConfidence": null,
+    "interpretation": {
+     "sources": {
+      "completeness": "override",
+      "emotion": "override",
+      "motif": "override"
+     },
+     "controlScore": null,
+     "signals": null
+    },
+    "method": "ai:openai/gpt-image-2",
+    "provider": "openai",
+    "providerLabel": "OpenAI gpt-image-2 (medium)",
+    "model": "gpt-image-2",
+    "quality": "medium",
+    "size": "1024x1536",
+    "family": "R1-graphic-snow",
+    "familyLabel": "Graphic two-tone",
+    "familyRefs": [
+     "resolved_01.jpg",
+     "resolved_14.jpg"
+    ],
+    "swatches": [
+     {
+      "name": "blue",
+      "hex": "#5486b6",
+      "share": 0.393
+     },
+     {
+      "name": "pale blue",
+      "hex": "#d5e3eb",
+      "share": 0.168
+     }
+    ],
+    "prompt": "The attached image is the primary style reference for this painting and the visual authority: it overrides every written description below, including colour, light and composition notes. Controlled by the reference: (1) medium and technique: whether it reads as transparent washes, flat graphic colour, ink-like wash or dry-brush, and its paint behaviour, brush marks, texture, granulation and edges, including whether it has blooms and wet-in-wet at all; (2) dominant palette: its principal colour family, saturation, temperature and supporting accents; (3) colour distribution: the balance of dominant, secondary and accent colour; (4) composition language: visual weight, viewpoint, asymmetry, focal placement and spatial rhythm; (5) negative space: roughly how much open, lightly painted or untouched paper there is, and where; (6) detail distribution: where detail concentrates and where forms dissolve; (7) degree of stylisation and level of finish. Free: the subject and the exact arrangement. Paint a new, original painting in the same artistic language; do not copy or trace its composition, figures or motifs, and do not reproduce any text, titles or watermarks in it. Content never comes from the reference: its subjects, objects, figures, places and setting are not part of its style. Paint only the subject the text below asks for, even when it is unlike anything in the reference, and keep the reference's palette and light while doing so.\nA finished painting of: tea by the window\nStyle — Graphic two-tone: Design the painting with flat, clean shapes in one blue and the white of the paper, seen from a high vantage. Use long, diagonal cast shadows and a fine stippled dry-brush grain for texture. Simplify every form of the subject to a flat silhouette. Place one very small warm accent as the focal point. Painted in watercolor with flat washes and dry-brush stipple. This describes only how it is painted, never what is depicted.\nContent: paint only what the subject above names, in its own setting, and add no objects, scenery or story that it does not ask for. No people anywhere: no human figures, silhouettes, faces or body parts, however small or distant. When the words tell of love, loss or company, carry that through place, light, weather and the traces left behind.\nFinished and fully considered: a clear, recognisable subject, carried as far and as richly as the reference carries its own, with the reference's own finish, edges, detail distribution and composition language. Never a realistic image.\nComposition, in the reference's own language: Strong directional geometry: the picture is built on long parallel diagonals that cross the whole sheet, and light and shadow become sharp graphic bands in a steady rhythm; graphic spatial relationships of small sharp forms against one vast plane; nothing sits on the vertical centre line. This painting: a high vantage looking steeply down; the focus in the lower-left, where two diagonals cross, a repeated small form in a stepped diagonal rhythm, shown whole. Do not place the focus in the centre or on the vertical centre line, and avoid symmetrical layouts. Compose with real intent, as a painter would: a clear spatial hierarchy of one dominant shape, a few secondary ones and many small ones; asymmetry and one strong directional movement; varied scale and edges; the subject staged with purpose through viewpoint, cropping and partial reveal. Translate the reference's structural principles into a new, original arrangement; never copy its layout.\nVertical 4:5 format.\nColour hierarchy, measured from the reference: dominant blue (#5486b6, about 39% of the picture), secondary pale blue (#d5e3eb, about 17% of the picture); no separate accent colour. Overall high-key and light, moderate saturation, cool in temperature; about 39% open or near-white paper and almost no deep darks. Keep these proportions: vary the colour only within this hierarchy, never introduce an unrelated palette.\nMood: tender, leaning toward the softer, gentler end of the reference's own colour and value range.\nPace of the marks, in the reference's own technique: slow and settled.\nGesture, from how the voice moved, made only with the reference's own kind of marks: marks that rise and fall a little; one connected flow; even pressure throughout.\nA hand-made painting in the artistic language of the attached reference: its medium, technique, texture, brushwork, colour treatment, composition language and degree of stylisation. An original composition, not a copy of the reference or of any existing artwork.\nAvoid: text, letters, titles, signature, logo or watermark, a frame, border or mat, a photo of a painting on a table, photorealism or a photograph, a photo-to-painting filter effect, glossy digital or 3D rendering, people, human figures, silhouettes or faces, a centred, symmetrical composition.",
+    "usage": {
+     "input_tokens": 2475,
+     "input_tokens_details": {
+      "image_tokens": 1462,
+      "text_tokens": 1013
+     },
+     "output_tokens": 1462,
+     "output_tokens_details": {
+      "image_tokens": 1462,
+      "text_tokens": 0
+     },
+     "total_tokens": 3937
+    },
+    "reference": "resolved_01",
+    "referenceSent": true,
+    "subjectSource": "note",
+    "subject": "tea by the window",
+    "composition": {
+     "principles": "Strong directional geometry: the picture is built on long parallel diagonals that cross the whole sheet, and light and shadow become sharp graphic bands in a steady rhythm; graphic spatial relationships of small sharp forms against one vast plane; nothing sits on the vertical centre line.",
+     "viewpoint": "a high vantage looking steeply down",
+     "placement": "in the lower-left, where two diagonals cross",
+     "scale": "a repeated small form in a stepped diagonal rhythm",
+     "staging": "shown whole"
+    },
+    "settings": {
+     "tier": "resolved",
+     "emotion": "tender",
+     "motif": "interior",
+     "energy": "calm",
+     "expression": {
+      "range": "moderate",
+      "flow": "connected",
+      "dynamics": "even",
+      "vibrato": false
+     }
+    },
+    "promptCheck": {
+     "verdict": "ok",
+     "people": [],
+     "leaks": [],
+     "unrequested": [],
+     "inventory": [
+      "person",
+      "fir",
+      "snow"
+     ],
+     "from": "resolved_01"
+    }
+   },
+   "review": {
+    "depicted": "blue two-tone, seen steeply from above: a single cup of tea on a saucer low on the left, a tea-bag tag on its rim, long diagonal shadows of the window frame across a pale sill or tabletop, window panes at the top",
+    "verdict": "ok",
+    "people": [],
+    "leaks": [],
+    "unrequested": [],
+    "at": 1792173889225
+   }
+  },
+  {
+   "id": "validation-4-S5-gathered",
+   "createdAt": 1792174140000,
+   "groupId": "validation-4",
+   "label": "validation 4 · S5-gathered",
+   "clip": null,
+   "note": "风吹过麦田",
+   "overrides": {
+    "tier": "gathered",
+    "emotion": "tender",
+    "motif": "landscape",
+    "seed": 1
+   },
+   "features": null,
+   "ms": {
+    "provider": 36099
+   },
+   "engine": "ai:openai/gpt-image-2",
+   "image": "validation/S5-gathered-validation-4.jpg",
+   "result": {
+    "tier": "gathered",
+    "emotion": "tender",
+    "motif": "landscape",
+    "seed": 1,
+    "energy": "calm",
+    "stylePosition": null,
+    "controlScore": null,
+    "controlConfidence": null,
+    "interpretation": {
+     "sources": {
+      "completeness": "override",
+      "emotion": "override",
+      "motif": "override"
+     },
+     "controlScore": null,
+     "signals": null
+    },
+    "method": "ai:openai/gpt-image-2",
+    "provider": "openai",
+    "providerLabel": "OpenAI gpt-image-2 (medium)",
+    "model": "gpt-image-2",
+    "quality": "medium",
+    "size": "1024x1536",
+    "family": "G1-atmospheric-study",
+    "familyLabel": "Atmospheric study",
+    "familyRefs": [
+     "gathered_01.jpg",
+     "gathered_05.jpg"
+    ],
+    "swatches": [
+     {
+      "name": "light orange",
+      "hex": "#d6c5b1",
+      "share": 0.297
+     },
+     {
+      "name": "blue",
+      "hex": "#93abbf",
+      "share": 0.26
+     },
+     {
+      "name": "light cool grey",
+      "hex": "#c5cbcc",
+      "share": 0.195
+     }
+    ],
+    "prompt": "The attached image is the primary style reference for this painting and the visual authority: it overrides every written description below, including colour, light and composition notes. Controlled by the reference: (1) medium and technique: whether it reads as transparent washes, flat graphic colour, ink-like wash or dry-brush, and its paint behaviour, brush marks, texture, granulation and edges, including whether it has blooms and wet-in-wet at all; (2) dominant palette: its principal colour family, saturation, temperature and supporting accents; (3) colour distribution: the balance of dominant, secondary and accent colour; (4) composition language: visual weight, viewpoint, asymmetry, focal placement and spatial rhythm; (5) negative space: roughly how much open, lightly painted or untouched paper there is, and where; (6) detail distribution: where detail concentrates and where forms dissolve; (7) degree of stylisation and level of finish. Free: the subject and the exact arrangement. Paint a new, original painting in the same artistic language; do not copy or trace its composition, figures or motifs, and do not reproduce any text, titles or watermarks in it. Content never comes from the reference: its subjects, objects, figures, places and setting are not part of its style. Paint only the subject the text below asks for, even when it is unlike anything in the reference, and keep the reference's palette and light while doing so.\nA semi-abstract painting, only suggesting, never spelling out: 风吹过麦田\nStyle — Atmospheric study: Build the picture from a few broad horizontal bands of pale wash, one of them warmed with coral or apricot light. Suggest the subject with only a handful of thin brush-drawn accents or one dry-brush flick, and leave everything else as wash. Light values, soft edges, generous breathing room. This describes only how it is painted, never what is depicted.\nContent: paint only what the subject above names, in its own setting, and add no objects, scenery or story that it does not ask for. No people anywhere: no human figures, silhouettes, faces or body parts, however small or distant. When the words tell of love, loss or company, carry that through place, light, weather and the traces left behind.\nSemi-abstract: ambiguous, emerging forms; a mood of place may be felt but no subject is clearly identifiable. No complete silhouettes, clearly identifiable objects or fully formed scenery: ambiguity, not a blurred illustration. Less resolved than the reference itself, in its own technique.\nComposition, in the reference's own language: Broad horizontal bands weighted unevenly: one band dominates and the horizon sits high or low, never at the middle; the few accents gather toward one side and the rest stays open and airy. This painting: a level, distant view; the focus on a low horizon toward the left edge, a thin, low strip across part of the width, shown whole. Do not place the focus in the centre or on the vertical centre line, and avoid symmetrical layouts.\nVertical 4:5 format.\nColour hierarchy, measured from the reference: dominant light orange (#d6c5b1, about 30% of the picture), secondary blue (#93abbf, about 26% of the picture), supporting light cool grey (#c5cbcc, about 20% of the picture); no separate accent colour. Overall high-key and light, soft, low saturation, neutral in temperature; about 10% open or near-white paper and almost no deep darks. Keep these proportions: vary the colour only within this hierarchy, never introduce an unrelated palette.\nMood: tender, leaning toward the softer, gentler end of the reference's own colour and value range.\nPace of the marks, in the reference's own technique: slow and settled.\nGesture, from how the voice moved, made only with the reference's own kind of marks: marks that rise and fall a little; one connected flow; even pressure throughout.\nA hand-made painting in the artistic language of the attached reference: its medium, technique, texture, brushwork, colour treatment, composition language and degree of stylisation. An original composition, not a copy of the reference or of any existing artwork.\nAvoid: text, letters, titles, signature, logo or watermark, a frame, border or mat, a photo of a painting on a table, photorealism or a photograph, a photo-to-painting filter effect, glossy digital or 3D rendering, people, human figures, silhouettes or faces, a centred, symmetrical composition.",
+    "usage": {
+     "input_tokens": 2474,
+     "input_tokens_details": {
+      "image_tokens": 1530,
+      "text_tokens": 944
+     },
+     "output_tokens": 1462,
+     "output_tokens_details": {
+      "image_tokens": 1462,
+      "text_tokens": 0
+     },
+     "total_tokens": 3936
+    },
+    "reference": "gathered_05",
+    "referenceSent": true,
+    "subjectSource": "note",
+    "subject": "风吹过麦田",
+    "composition": {
+     "principles": "Broad horizontal bands weighted unevenly: one band dominates and the horizon sits high or low, never at the middle; the few accents gather toward one side and the rest stays open and airy.",
+     "viewpoint": "a level, distant view",
+     "placement": "on a low horizon toward the left edge",
+     "scale": "a thin, low strip across part of the width",
+     "staging": "shown whole"
+    },
+    "settings": {
+     "tier": "gathered",
+     "emotion": "tender",
+     "motif": "landscape",
+     "energy": "calm",
+     "expression": {
+      "range": "moderate",
+      "flow": "connected",
+      "dynamics": "even",
+      "vibrato": false
+     }
+    },
+    "promptCheck": {
+     "verdict": "ok",
+     "people": [],
+     "leaks": [],
+     "unrequested": [],
+     "inventory": [
+      "wave"
+     ],
+     "from": "gathered_05"
+    }
+   },
+   "review": {
+    "depicted": "a soft pale field: a band of warm wheat-ochre across the middle, a few wind-bent grass stalks on the left, a broad pale blue-grey sky with dry-brushed clouds above and a hazy blue foreground below; soft and only suggested",
+    "verdict": "ok",
+    "people": [],
+    "leaks": [],
+    "unrequested": [],
+    "at": 1792173889229
+   }
+  },
+  {
+   "id": "validation-4-S6-loose",
+   "createdAt": 1792174170000,
+   "groupId": "validation-4",
+   "label": "validation 4 · S6-loose",
+   "clip": null,
+   "note": "",
+   "overrides": {
+    "tier": "loose",
+    "emotion": "tender",
+    "motif": "abstract",
+    "seed": 1
+   },
+   "features": null,
+   "ms": {
+    "provider": 33097
+   },
+   "engine": "ai:openai/gpt-image-2",
+   "image": "validation/S6-loose-validation-4.jpg",
+   "result": {
+    "tier": "loose",
+    "emotion": "tender",
+    "motif": "abstract",
+    "seed": 1,
+    "energy": "calm",
+    "stylePosition": null,
+    "controlScore": null,
+    "controlConfidence": null,
+    "interpretation": {
+     "sources": {
+      "completeness": "override",
+      "emotion": "override",
+      "motif": "override"
+     },
+     "controlScore": null,
+     "signals": null
+    },
+    "method": "ai:openai/gpt-image-2",
+    "provider": "openai",
+    "providerLabel": "OpenAI gpt-image-2 (medium)",
+    "model": "gpt-image-2",
+    "quality": "medium",
+    "size": "1024x1536",
+    "family": "L1-line-over-wash",
+    "familyLabel": "Line over wash",
+    "familyRefs": [
+     "loose_01.jpg"
+    ],
+    "swatches": [
+     {
+      "name": "light blue",
+      "hex": "#b7d6e7",
+      "share": 0.162
+     },
+     {
+      "name": "blue",
+      "hex": "#6d98ba",
+      "share": 0.122
+     },
+     {
+      "name": "light teal",
+      "hex": "#bddee7",
+      "share": 0.087
+     }
+    ],
+    "prompt": "The attached image is the primary style reference for this painting and the visual authority: it overrides every written description below, including colour, light and composition notes. Controlled by the reference: (1) medium and technique: whether it reads as transparent washes, flat graphic colour, ink-like wash or dry-brush, and its paint behaviour, brush marks, texture, granulation and edges, including whether it has blooms and wet-in-wet at all; (2) dominant palette: its principal colour family, saturation, temperature and supporting accents; (3) colour distribution: the balance of dominant, secondary and accent colour; (4) composition language: visual weight, viewpoint, asymmetry, focal placement and spatial rhythm; (5) negative space: roughly how much open, lightly painted or untouched paper there is, and where; (6) detail distribution: where detail concentrates and where forms dissolve; (7) degree of stylisation and level of finish. Free: the subject and the exact arrangement. Paint a new, original painting in the same artistic language; do not copy or trace its composition, figures or motifs, and do not reproduce any text, titles or watermarks in it. Content never comes from the reference: its subjects, objects, figures, places and setting are not part of its style. Paint only the subject the text below asks for, even when it is unlike anything in the reference, and keep the reference's palette and light while doing so.\nAn abstract painting that expresses the sound of the voice itself, not any subject or story.\nStyle — Line over wash: Lay loose, scrubbed washes, then draw over them with a pencil or crayon line that loops, hatches, dashes and circles without describing anything. Lines sit on top of the colour and wander off the edge of the wash. One or two thin warm lines as the only accent. Leave a ragged margin of bare paper around the painted area. This describes only how it is painted, never what is depicted.\nContent: paint only what the subject above names, in its own setting, and add no objects, scenery or story that it does not ask for. No people anywhere: no human figures, silhouettes, faces or body parts, however small or distant. When the words tell of love, loss or company, carry that through place, light, weather and the traces left behind.\nAbstract: nothing is deliberately depicted and there is no picture space to step into; the reference's own marks, colour and texture are the painting.\nVertical 4:5 format.\nColour hierarchy, measured from the reference: dominant light blue (#b7d6e7, about 16% of the picture), secondary blue (#6d98ba, about 12% of the picture), supporting light teal (#bddee7, about 9% of the picture); no separate accent colour. Overall high-key and light, moderate saturation, cool in temperature; about 58% open or near-white paper and almost no deep darks. Keep these proportions: vary the colour only within this hierarchy, never introduce an unrelated palette.\nMood: tender, leaning toward the softer, gentler end of the reference's own colour and value range.\nPace of the marks, in the reference's own technique: slow and settled.\nGesture, from how the voice moved, made only with the reference's own kind of marks: marks that rise and fall a little; one connected flow; even pressure throughout.\nA hand-made painting in the artistic language of the attached reference: its medium, technique, texture, brushwork, colour treatment, composition language and degree of stylisation. An original composition, not a copy of the reference or of any existing artwork.\nAvoid: text, letters, titles, signature, logo or watermark, a frame, border or mat, a photo of a painting on a table, photorealism or a photograph, a photo-to-painting filter effect, glossy digital or 3D rendering, people, human figures, silhouettes or faces, a centred, symmetrical composition.",
+    "usage": {
+     "input_tokens": 2356,
+     "input_tokens_details": {
+      "image_tokens": 1530,
+      "text_tokens": 826
+     },
+     "output_tokens": 1462,
+     "output_tokens_details": {
+      "image_tokens": 1462,
+      "text_tokens": 0
+     },
+     "total_tokens": 3818
+    },
+    "reference": "loose_01",
+    "referenceSent": true,
+    "subjectSource": "sound",
+    "subject": "(no words: sound only)",
+    "composition": null,
+    "settings": {
+     "tier": "loose",
+     "emotion": "tender",
+     "motif": "abstract",
+     "energy": "calm",
+     "expression": {
+      "range": "moderate",
+      "flow": "connected",
+      "dynamics": "even",
+      "vibrato": false
+     }
+    },
+    "promptCheck": {
+     "verdict": "ok",
+     "people": [],
+     "leaks": [],
+     "unrequested": [],
+     "inventory": [],
+     "from": "loose_01"
+    }
+   },
+   "review": {
+    "depicted": "abstract: loose blue and turquoise washes with salt texture, overdrawn with looping, hatched and dashed blue pencil lines and dots; ragged white margin around; nothing depicted",
+    "verdict": "ok",
+    "people": [],
+    "leaks": [],
+    "unrequested": [],
+    "at": 1792173889230
+   }
+  }
+ ],
+ "limitations": [
+  "Intense emotion is weakly expressed. \"mountain road at dusk\" was set to intense, but all three images came out pale and calm (drip curtain, sepia slope, misty monochrome). The emotion is carried only as a colour and value lean within the reference's own range, so a quiet reference keeps it quiet.",
+  "Gathered can be too legible. In \"mountain road at dusk\" the winding road reads clearly, while Gathered should stay ambiguous.",
+  "Two-part subjects can lose a part. \"morning clouds over the rooftops\" shows the clouds but not the rooftops."
+ ]
+}

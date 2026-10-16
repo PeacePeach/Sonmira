@@ -61,7 +61,7 @@ for (const id of ['resolved_01', 'resolved_12', 'resolved_06']) {
   await page.waitForFunction(() => document.querySelector('#artwork .pair img')?.complete && document.querySelector('#artwork .pair img').naturalWidth > 0, null, { timeout: 15000 });
   const meta = await page.innerText('#artwork .pairmeta');
   assert.match(meta, new RegExp(`Reference\\s+${id}`));
-  assert.match(meta, /Subject from\s+the note/);
+  assert.match(meta, /Subject\s+\S[^\n]*\nfrom the note/);
   assert.match(meta, /Prompt check\s+clean/);
   assert.match(meta, /Composition\s+\S/);
 }

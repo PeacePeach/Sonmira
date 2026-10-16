@@ -376,7 +376,7 @@ function settingsList(r) {
     <dt>Tier</dt><dd>${esc(st.tier ?? m.tier)}</dd>
     <dt>Emotion · motif</dt><dd>${esc(st.emotion ?? m.emotion)} · ${esc(st.motif ?? m.motif)}</dd>
     <dt>Energy</dt><dd>${esc(st.energy ?? m.energy ?? '—')}${x ? ` · ${esc([x.range, x.flow, x.dynamics, x.vibrato ? 'vibrato' : null].filter(Boolean).join(' / '))}` : ''}</dd>
-    <dt>Subject from</dt><dd>${esc(SUBJECT_FROM[m.subjectSource] ?? m.subjectSource ?? '—')}${m.subject ? `<div class="hint">${esc(m.subject)}</div>` : ''}</dd>
+    <dt>Subject</dt><dd><b>${esc(m.subject ?? '—')}</b><div class="hint">from ${esc(SUBJECT_FROM[m.subjectSource] ?? m.subjectSource ?? '—')}</div></dd>
     <dt>Composition</dt><dd>${m.composition ? esc(`${m.composition.viewpoint}; focus ${m.composition.placement}; ${m.composition.scale}; ${m.composition.staging}`) : '—'}</dd>
     <dt>Seed</dt><dd>${m.seed}</dd>
     <dt>Model</dt><dd>${esc(m.model ?? '—')} · ${esc(m.quality ?? '—')} · ${esc(m.size ?? '—')}</dd>
@@ -395,7 +395,7 @@ function pairView(r, canvas = null) {
   const out = document.createElement('figure');
   let art = canvas;
   if (!art) { art = document.createElement('img'); const u = URL.createObjectURL(r.png); urls.push(u); art.src = u; }
-  out.append(art, Object.assign(document.createElement('figcaption'), { textContent: `Generated · ${r.result.tier}` }));
+  out.append(art, Object.assign(document.createElement('figcaption'), { textContent: `Generated · ${r.result.tier} · ${r.result.familyLabel ?? r.result.family}` }));
   const meta = document.createElement('div');
   meta.className = 'pairmeta';
   meta.innerHTML = settingsList(r);
@@ -670,7 +670,13 @@ async function loadValidation() {
       const grid = document.createElement('div');
       grid.className = 'compare paired';
       grid.replaceChildren(...runs.map((r) => pairView(r)));
-      sec.append(h, grid);
+      if (v.limitations?.length) {
+        const lim = document.createElement('div');
+        lim.className = 'limitations';
+        lim.innerHTML = `<h3>Known limitations</h3><ul>${v.limitations.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>`;
+        sec.append(h, lim);
+      } else sec.append(h);
+      sec.append(...(v.strips ?? []).map((st) => tierStrip(st, runs)), grid);
       return sec;
     }));
     box.replaceChildren(...shown);
@@ -680,6 +686,28 @@ async function loadValidation() {
     h.textContent = `Could not load the validation runs: ${e.message}`;
     box.replaceChildren(h);
   }
+}
+
+// Same words and seed at each tier, the generated images side by side.
+function tierStrip(st, runs) {
+  const box = document.createElement('div');
+  box.className = 'tierstrip';
+  const h = document.createElement('h3');
+  h.textContent = st.title;
+  const row = document.createElement('div');
+  row.className = 'tierrow';
+  for (const id of st.runs) {
+    const r = runs.find((x) => x.id === id);
+    if (!r) continue;
+    const fig = document.createElement('figure');
+    const img = document.createElement('img');
+    const u = URL.createObjectURL(r.png); urls.push(u); img.src = u;
+    img.alt = `${r.result.tier} · ${r.result.familyLabel ?? r.result.family}`;
+    fig.append(img, Object.assign(document.createElement('figcaption'), { textContent: `${r.result.tier} · ${r.result.familyLabel ?? r.result.family} · ${r.result.reference}` }));
+    row.append(fig);
+  }
+  box.append(h, row);
+  return box;
 }
 
 // ---------- reference check ----------
@@ -713,9 +741,10 @@ async function checkReferences() {
     }));
     $('refGrid').replaceChildren(...[...$('refGrid').children].sort((x, y) => (x.dataset.id < y.dataset.id ? -1 : 1)));
     const okCount = shown.filter(Boolean).length;
-    const all = okCount === c.active && !c.missingFromStore.length;
+    const all = okCount === c.active && c.ok;
+    const reg = c.storeRegistry;
     $('refSummary').className = `refsummary ${all ? 'good' : 'bad'}`;
-    $('refSummary').textContent = `${okCount} of ${c.active} active references load and display from this deployment (store: ${c.store}, ${c.registry} in its registry)${c.missingFromStore.length ? `. Missing from the store: ${c.missingFromStore.join(', ')}` : ''}.`;
+    $('refSummary').textContent = `${okCount} of ${c.active} active references load and display from this deployment's store (${c.store}), checked against the app's tested list${c.failed?.length ? `. Image missing or unreadable: ${c.failed.join(', ')}` : ''}.${reg ? ` For information, the store's own list has ${reg.entries} entries${reg.missing.length ? `, lacks ${reg.missing.join(', ')}` : ''}${reg.otherFamily.length ? `, files ${reg.otherFamily.join(', ')} under another family` : ''}${reg.extraActive.length ? `, has extra ${reg.extraActive.join(', ')}` : ''}; it no longer affects which reference is painted.` : ''}`;
   } catch (e) {
     $('refSummary').className = 'refsummary bad';
     $('refSummary').textContent = `Reference check failed: ${e.message}`;

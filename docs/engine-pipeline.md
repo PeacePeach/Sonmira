@@ -146,3 +146,11 @@ $0.003 per painting; roughly 2–5 s before the image request starts. A wordless
 take skips the text call. Models: `OPENAI_TRANSCRIBE_MODEL`
 (`gpt-4o-mini-transcribe` halves the transcription cost, likely less robust on
 singing) and `OPENAI_TEXT_MODEL`.
+
+## Known limitations (Validation 4, 16 Oct)
+
+These were seen in the ten Validation 4 images. They are recorded only: the prompts were not changed.
+
+- **Intense emotion is weakly expressed.** With emotion set to intense, "mountain road at dusk" came out pale and calm at all three tiers. The emotion line only moves colour and value within the reference's own range, so a quiet reference stays quiet.
+- **Gathered can be too legible.** In that same subject, the Gathered road reads clearly when it should stay ambiguous.
+- **Two-part subjects can lose a part.** "morning clouds over the rooftops" showed only the clouds.

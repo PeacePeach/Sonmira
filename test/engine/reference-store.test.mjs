@@ -2,7 +2,7 @@
 // stand-in for @vercel/blob and a mocked OpenAI: no network, no paid calls.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createLibrary } from '../../src/engine/direct/index.js';
+import { createLibrary, LIBRARY } from '../../src/engine/direct/index.js';
 import { REFERENCE_LIBRARY } from '../../src/engine/direct/references.js';
 import { blobStore, addReference, setReferenceActive, removeReference, REGISTRY_PATH, REGISTRY_TTL_MS } from '../../src/engine/providers/reference-store.js';
 import { createHandler } from '../../api/generate.js';
@@ -77,30 +77,31 @@ test('it becomes eligible on a running server without redeploying', async () => 
   assert.ok(Array.from({ length: 200 }, (_, s) => after.select(R4, s).id).includes('balcony_morning'));
 });
 
-test('the server reads the selected reference from Blob, sends only it to OpenAI, and uses its palette', async () => {
+test('the server selects from the bundled registry, reads only that image from Blob and sends only it to OpenAI', async () => {
   const { client, store } = await seeded();
+  // A reference added to Blob's registry alone is never selected (Han, 16 Oct).
   await addReference(store, { family: R4, fileName: 'balcony_morning.jpg', bytes: NEW_BYTES, palette: NEW_PALETTE });
-  const lib = createLibrary(await store.loadRegistry());
-  const seed = Array.from({ length: 200 }, (_, s) => s).find((s) => lib.select(R4, s).id === 'balcony_morning');
+  for (const ref of LIBRARY.pool(R4)) await store.putImage(ref.path, NEW_BYTES);
   const { sent, fetchImpl } = mockOpenAI();
   const handler = createHandler({ store, env: { OPENAI_API_KEY: 'k' }, fetchImpl });
-  const r = await call(handler, { spec: { completeness: 'resolved', emotion: 'tender', motif: 'garden', seed, family: R4, energy: { value: 'calm' } } });
-  assert.equal(r.code, 200, JSON.stringify(r.json));
-  assert.equal(r.json.reference, 'balcony_morning');
+  for (let seed = 0; seed < 40; seed++) {
+    const r = await call(handler, { spec: { completeness: 'resolved', emotion: 'tender', motif: 'garden', seed, family: R4, energy: { value: 'calm' } } });
+    assert.equal(r.code, 200, JSON.stringify(r.json));
+    assert.notEqual(r.json.reference, 'balcony_morning');
+    assert.equal(r.json.libraryVersion, LIBRARY.version);
+  }
+  const r = await call(handler, { spec: { completeness: 'resolved', emotion: 'tender', motif: 'garden', seed: 3, family: R4, energy: { value: 'calm' } } });
+  const ref = LIBRARY.select(R4, 3);
+  assert.equal(r.json.reference, ref.id);
   assert.equal(r.json.referenceSent, true);
-  assert.equal(r.json.libraryVersion, lib.version);
-  // The palette measured at import is in the instructions.
-  assert.match(r.json.prompt, /dominant [a-z -]*green \(#2e8b57, about 55%/);
-  // Exactly one image, the selected one, with the bytes stored in Blob.
-  assert.equal(sent.length, 1);
-  assert.match(sent[0].url, /images\/edits$/);
-  const images = sent[0].form.getAll('image[]');
+  // Exactly one image, the selected one, with the bytes stored in Blob at its bundled path.
+  const last = sent[sent.length - 1];
+  assert.match(last.url, /images\/edits$/);
+  const images = last.form.getAll('image[]');
   assert.equal(images.length, 1);
-  assert.equal(images[0].name, 'balcony_morning.jpg');
-  assert.deepEqual(new Uint8Array(await images[0].arrayBuffer()), NEW_BYTES);
+  assert.ok(client.calls.some((c) => c[0] === 'get' && c[1] === `references/${ref.path}`));
   // No Blob URL, pathname or token reaches the client.
   assert.doesNotMatch(JSON.stringify(r.json), /blob\.vercel-storage|references\/|BLOB_READ_WRITE/);
-  assert.ok(client.calls.some((c) => c[0] === 'get' && c[1] === 'references/resolved/R4/balcony_morning.jpg'));
 });
 
 test('references can be disabled, re-enabled and removed', async () => {
@@ -122,7 +123,7 @@ test('storage errors reach the client as a code, without store details', async (
   const store = blobStore({ client: { async get() { throw new Error('https://store.private.blob.vercel-storage.com/x?token=secret'); } } });
   const handler = createHandler({ store, env: { OPENAI_API_KEY: 'k' }, fetchImpl: mockOpenAI().fetchImpl });
   const r = await call(handler, { spec: { completeness: 'resolved', emotion: 'tender', motif: 'garden', seed: 1, family: R4, energy: { value: 'calm' } } });
-  assert.equal(r.code, 502);
+  assert.equal(r.code, 503, 'before any provider call, so the spend guard releases it');
   assert.equal(r.json.code, 'reference_store');
   assert.doesNotMatch(JSON.stringify(r.json), /secret|vercel-storage/);
 });

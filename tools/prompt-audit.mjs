@@ -17,7 +17,7 @@
 // family's own observed style. Then it measures how much of the prompt is
 // word-for-word identical across the families.
 
-import { direct, FAMILIES, LIBRARY, REFERENCE_AVOID as AVOID, REFERENCE_STYLE as GLOBAL_STYLE, createLibrary } from '../src/engine/direct/index.js';
+import { direct, FAMILIES, LIBRARY, REFERENCE_AVOID as AVOID, REFERENCE_STYLE as GLOBAL_STYLE } from '../src/engine/direct/index.js';
 import { generateFromDirection } from '../src/engine/providers/openai.js';
 import { localStore, blobStore } from '../src/engine/providers/reference-store.js';
 
@@ -80,8 +80,6 @@ export async function captureRequest(direction, loadReference) {
 
 export async function auditTier({ tier = 'resolved', lyrics = 'a lantern floating on a dark river at night', emotion = 'tender', motif = 'water', env = process.env, library = LIBRARY } = {}) {
   const { kind, store } = await storeFor(env);
-  // With a store, audit the registry the server actually selects from.
-  if (store && library === LIBRARY) library = createLibrary(await store.loadRegistry());
   const concept = { text: lyrics, theme: [], imagery: [], figurative: [] };
   const rows = [];
   for (const family of Object.keys(FAMILIES).filter((id) => FAMILIES[id].tier === tier)) {

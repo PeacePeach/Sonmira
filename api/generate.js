@@ -8,7 +8,7 @@
 // The browser sends the visual spec (layer B); the prompt is built here from
 // it by the provider-independent art direction (layer C).
 
-import { direct, createLibrary, FAMILIES, checkPrompt } from '../src/engine/direct/index.js';
+import { direct, LIBRARY, FAMILIES, checkPrompt } from '../src/engine/direct/index.js';
 import { generateFromDirection, openaiConfig } from '../src/engine/providers/openai.js';
 import { referenceStoreFromEnv } from '../src/engine/providers/reference-store.js';
 import { REFERENCE_LIBRARY } from '../src/engine/direct/references.js';
@@ -75,7 +75,10 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
   if (!spec) { res.status(400).json({ ok: false, error: 'invalid spec' }); return; }
   if ((body.provider || 'openai') !== 'openai') { res.status(400).json({ ok: false, error: 'unknown provider' }); return; }
   try {
-    const library = store ? createLibrary(await store.loadRegistry()) : undefined;
+    // References are selected from the bundled, version-controlled registry
+    // (direct/references.js: tested, shipped and rolled back with the deploy).
+    // The store only supplies the image bytes; its registry is never read here.
+    const library = LIBRARY;
     const direction = direct({ ...spec, library });
     // The decided tier is authoritative: never paint a family of another tier.
     if (FAMILIES[direction.family].tier !== spec.completeness) {
@@ -89,6 +92,9 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
     const g = await generateFromDirection(direction, { loadReference: store?.loadImage, stream: true, env, fetchImpl });
     res.status(200).json({ ok: true, provider: g.provider, model: g.model, quality: g.quality, size: g.size, ms: g.ms, usage: g.usage, prompt: direction.prompt, family: direction.family, familyLabel: direction.familyLabel, familyRefs: direction.refs, subjectSource: direction.subjectSource, subject: direction.subject, reference: direction.reference?.id ?? null, composition: direction.composition, settings: { tier: direction.level, emotion: spec.emotion, motif: spec.motif, energy: spec.energy.value, expression: spec.expression ?? null }, promptCheck: checkPrompt(direction, { library }), referenceSent: Boolean(g.reference), seed: direction.seed, libraryVersion: direction.libraryVersion, swatches: direction.swatches, image: `data:${g.mime};base64,${g.b64}` });
   } catch (e) {
+    // A reference image missing or unreadable in the store happens before any
+    // provider call: 503 no_reference, like a missing store.
+    if (e.code === 'reference_missing' || e.code === 'reference_store') { res.status(503).json({ ok: false, error: 'reference image unavailable', code: e.code === 'reference_store' ? 'reference_store' : 'no_reference' }); return; }
     res.status(e.code === 'not_configured' ? 503 : 502).json({ ok: false, error: e.message, code: e.code || 'error' });
   }
 };
