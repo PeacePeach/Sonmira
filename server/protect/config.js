@@ -7,7 +7,7 @@
 //   SONMIRA_COST_IMAGE_USD   reserved per image generation (default 0.15)
 //   SONMIRA_COST_TRANSCRIBE_USD / SONMIRA_COST_TEXT_USD / SONMIRA_COST_EVAL_USD
 //   SONMIRA_LIMIT_<NAME>     any number in LIMITS below, e.g. SONMIRA_LIMIT_GENERATE_DAY
-//   SONMIRA_PROTECT=off      local development only; ignored in Production
+//   SONMIRA_PROTECT=off      local development only; ignored on every Vercel deployment
 //   KV_REST_API_URL + KV_REST_API_TOKEN (or UPSTASH_REDIS_REST_*)
 
 import { fakeProviderOn, PREVIEW_INVITE, PREVIEW_SECRET } from '../dev/mode.js';
@@ -35,7 +35,9 @@ export const normalizeInvite = (c) => String(c ?? '').trim().toUpperCase().repla
 export function protectConfig(env = process.env) {
   const limits = Object.fromEntries(Object.entries(LIMITS).map(([k, d]) => [k, int(env[`SONMIRA_LIMIT_${k}`], d)]));
   return {
-    off: env.SONMIRA_PROTECT === 'off' && env.VERCEL_ENV !== 'production',
+    // Never on a deployment (Vercel sets VERCEL), so no Preview can fall
+    // through to unguarded paid calls.
+    off: env.SONMIRA_PROTECT === 'off' && !env.VERCEL && !env.VERCEL_ENV,
     secret: env.SONMIRA_TOKEN_SECRET || (fakeProviderOn(env) ? PREVIEW_SECRET : ''),
     invites: String(env.SONMIRA_INVITE_CODES || (fakeProviderOn(env) ? PREVIEW_INVITE : '')).split(',').map(normalizeInvite).filter((c) => c.length >= 6),
     capMicros: usd(env.SONMIRA_DAILY_CAP_USD, 3),

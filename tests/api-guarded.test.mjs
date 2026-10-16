@@ -53,4 +53,6 @@ test('the fake provider is refused in Production', async () => {
   const { fakeProviderOn } = await import('../server/dev/fake-openai.js');
   assert.equal(fakeProviderOn({ SONMIRA_FAKE_PROVIDER: '1', VERCEL_ENV: 'production' }), false);
   assert.equal(fakeProviderOn({ SONMIRA_FAKE_PROVIDER: '1', VERCEL_ENV: 'preview' }), true);
+  // Only the explicit switch turns it on; a branch name never does.
+  assert.equal(fakeProviderOn({ VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: 'claude/production-readiness-integration' }), false);
 });

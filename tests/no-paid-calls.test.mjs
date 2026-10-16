@@ -44,8 +44,8 @@ function run(env) {
   return JSON.parse(p.stdout.trim().split('\n').filter((l) => l.startsWith('{')).pop());
 }
 
-test('Preview of this branch: the whole flow works on the fake provider, no OpenAI request', () => {
-  const r = run({ VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: 'claude/production-readiness-integration' });
+test('Preview with the explicit fake switch: the whole flow works on the fake provider, no OpenAI request', () => {
+  const r = run({ VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: 'claude/production-readiness-integration', SONMIRA_FAKE_PROVIDER: '1' });
   assert.deepEqual(r.openai, []);
   assert.equal(r.session[0], 200);
   assert.equal(r.understand[0], 200);
@@ -54,21 +54,31 @@ test('Preview of this branch: the whole flow works on the fake provider, no Open
   assert.deepEqual(r.forged, [401, 'invite_required']);
 });
 
-test('Preview of another branch, nothing configured: refused before any provider call', () => {
-  const r = run({ VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: 'engine/procedural-watercolor' });
+test('Preview without the switch, whatever the branch name: refused before any provider call', () => {
+  for (const ref of ['claude/production-readiness-integration', 'engine/procedural-watercolor', undefined]) {
+    const r = run({ VERCEL_ENV: 'preview', ...(ref ? { VERCEL_GIT_COMMIT_REF: ref } : {}) });
+    assert.deepEqual(r.openai, [], ref);
+    assert.equal(r.session[1], 'not_configured', ref);
+    assert.equal(r.understand[1], 'not_configured', ref);
+    assert.equal(r.generate[1], 'not_configured', ref);
+  }
+});
+
+test('Preview with the guard switched off: ignored on a deployment, still refused', () => {
+  const r = run({ VERCEL_ENV: 'preview', SONMIRA_PROTECT: 'off' });
   assert.deepEqual(r.openai, []);
   assert.equal(r.understand[1], 'not_configured');
   assert.equal(r.generate[1], 'not_configured');
 });
 
-test('Preview where Vercel does not expose the branch name: refused, not paid', () => {
-  const r = run({ VERCEL_ENV: 'preview' });
+test('Preview with only some of the guard configured (secret and codes, no store): refused', () => {
+  const r = run({ VERCEL_ENV: 'preview', SONMIRA_TOKEN_SECRET: 'preview-secret-0123456789abcdef', SONMIRA_INVITE_CODES: 'BETA-CODE-1', TRY_INVITE: 'BETA-CODE-1' });
   assert.deepEqual(r.openai, []);
   assert.equal(r.generate[1], 'not_configured');
 });
 
-test('Production ignores the fake switch and the branch name, and without its own setup refuses', () => {
-  const r = run({ VERCEL_ENV: 'production', VERCEL_GIT_COMMIT_REF: 'claude/production-readiness-integration', SONMIRA_FAKE_PROVIDER: '1' });
+test('Production ignores the fake switch and the guard switch, and without its own setup refuses', () => {
+  const r = run({ VERCEL_ENV: 'production', VERCEL_GIT_COMMIT_REF: 'main', SONMIRA_FAKE_PROVIDER: '1', SONMIRA_PROTECT: 'off' });
   assert.deepEqual(r.openai, []);
   assert.equal(r.session[1], 'not_configured');
   assert.equal(r.generate[1], 'not_configured');
