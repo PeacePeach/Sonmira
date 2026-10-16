@@ -2,7 +2,8 @@
 // primary action (share image), and an optional video export. Files are made
 // on the device and handed to the system share sheet.
 
-import { h, icons } from '../ui/dom.js';
+import { h } from '../ui/dom.js';
+import { icon } from '../ui/icons.js';
 import { clock } from '../format.js';
 import { renderShareImage } from './image.js';
 import { createExportAudioContext, renderShareVideo, videoMimeType, VideoExportError } from './video.js';
@@ -42,7 +43,7 @@ export function openShareSheet(app, item) {
   const secondary = h('button', { class: 'quiet-btn', onClick: onSecondary, hidden: !canVideo }, `Make a video · ${clock(Math.min(30, item.durationSec))}`);
 
   const panel = h('div', { class: 'share-panel', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Share' },
-    h('div', { class: 'share-head' }, h('span', { class: 'serif share-title' }, 'Share'), h('button', { class: 'icon-btn', 'aria-label': 'Close', onClick: close }, icons.close())),
+    h('div', { class: 'share-head' }, h('span', { class: 'serif share-title' }, 'Share'), h('button', { class: 'icon-btn', 'aria-label': 'Close', onClick: close }, icon('close'))),
     previewBox, progress, message,
     h('div', { class: 'actions' }, primary, secondary));
   const scrim = h('div', { class: 'share-scrim', onClick: close });
