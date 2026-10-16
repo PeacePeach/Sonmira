@@ -16,8 +16,10 @@
 
 import { rng, hashSeed } from '../render/rng.js';
 import { FAMILIES, SUBJECTS, AFFINITY, familiesOfTier } from './families.js';
+import { LIBRARY, referencePalette, REFERENCE_AUTHORITY } from './library.js';
 
 export { FAMILIES, REFERENCES, LIBRARY_VERSION } from './families.js';
+export { LIBRARY, createLibrary, colourName, referencePalette } from './library.js';
 export const DIRECTION_VERSION = 3;
 
 // Global Sonmira constraints: true for every family and every tier.
@@ -90,17 +92,18 @@ function pickWeighted(list, r) {
 // Families allowed for a tier and motif, with weights. A family is left out
 // when it has no subject for the motif (with no words, the families whose
 // references centre on people).
-export function familiesFor(level, motif) {
+export function familiesFor(level, motif, library = LIBRARY) {
   return familiesOfTier(level)
     .filter((id) => FAMILIES[id].tier === 'loose' || SUBJECTS[id]?.[motif] != null)
-    .map((id) => [id, FAMILIES[id].refs.length * ((AFFINITY[id] || []).includes(motif) ? 2 : 1)]);
+    .map((id) => [id, Math.max(1, library.pool(id).length) * ((AFFINITY[id] || []).includes(motif) ? 2 : 1)]);
 }
 
 export function direct(spec) {
   const level = LEVELS[spec.completeness] ? spec.completeness : 'gathered';
   const motif = spec.motif || 'abstract';
   const r = rng(hashSeed(spec.seed >>> 0, 'direct'));
-  const drawn = pickWeighted(familiesFor(level, motif), r);
+  const library = spec.library || LIBRARY;
+  const drawn = pickWeighted(familiesFor(level, motif, library), r);
   // A developer override may pick any family; it brings its own tier rules.
   const familyId = FAMILIES[spec.family] ? spec.family : drawn;
   const F = FAMILIES[familyId];
@@ -108,49 +111,40 @@ export function direct(spec) {
   const subject = tier === 'loose' ? null : (SUBJECTS[familyId]?.[motif] ?? SUBJECTS[familyId]?.landscape ?? null);
   const energy = spec.energy?.value || 'calm';
 
-  // One of the family's observed colour schemes: its two dominant colours,
-  // sometimes a third, and its accent when it has one. When generation is
-  // guided by one primary reference (spec.reference), its own scheme is used,
-  // never one seen in another reference.
-  const drawnP = F.palettes[Math.floor(r() * F.palettes.length)];
-  const own = F.palettes.find((p) => p.ref && p.ref === spec.reference);
-  const P = own || drawnP;
-  const guided = Boolean(spec.reference);
+  // The primary reference: drawn from the family's pool by seed (or given,
+  // e.g. by a tool, when it belongs to this family).
+  const given = spec.reference && library.get(spec.reference);
+  const reference = given && given.family === familyId && given.active ? given : library.select(familyId, spec.seed);
+  const fromRef = referencePalette(reference);
+
+  // Colour comes from the reference's measured hierarchy. Only a reference
+  // that has not been indexed yet falls back to one of the family's observed
+  // schemes: its two dominant colours, sometimes a third, and its accent.
+  const P = F.palettes[Math.floor(r() * F.palettes.length)];
   const chosen = P.colors.slice(0, 2);
   const rest = P.colors.slice(2);
   if (rest.length && (!P.accent || r() < 0.5)) chosen.push(rest[Math.floor(r() * rest.length)]);
   if (P.accent) chosen.push(P.accent);
+  const swatches = fromRef ? fromRef.swatches : chosen;
 
   const sections = {
     subject: `${/^[aeiou]/.test(LEVELS[tier].label) ? 'An' : 'A'} ${LEVELS[tier].label}${subject ? ` of ${subject}` : ''}.`,
     family: `Style — ${F.label}: ${F.rules}`,
     form: LEVELS[tier].form,
-    palette: `${guided ? `Colour, as seen in the reference${own ? '' : ' (the reference wins where it differs)'}` : 'Colour'}: ${P.colors.filter((p) => chosen.includes(p)).map((p) => p.name).join(', ')}, on white or warm white paper${P.accent ? `, with ${P.accent.name} as the only accent, kept small` : ''}.${own?.light ? ` Light: ${own.light}.` : ''}`,
-    emotion: `${guided ? 'Mood, within the reference\'s own colours and light — ' : ''}${EMOTION[spec.emotion] || EMOTION.tender}`,
+    palette: fromRef ? fromRef.text : `Colour: ${P.colors.filter((p) => chosen.includes(p)).map((p) => p.name).join(', ')}, on white or warm white paper${P.accent ? `, with ${P.accent.name} as the only accent, kept small` : ''}.`,
+    // Sound varies mood and marks inside the reference's language, never its identity.
+    emotion: `${reference ? 'Mood, within the reference\'s own colours and light — ' : ''}${EMOTION[spec.emotion] || EMOTION.tender}`,
     energy: ENERGY[energy],
     style: GLOBAL_STYLE,
   };
   const prompt = [sections.subject, sections.family, sections.form, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.energy, sections.style, `Avoid: ${AVOID.join(', ')}.`].join('\n');
   return {
     version: DIRECTION_VERSION, level: tier, requestedLevel: level,
-    family: familyId, familyLabel: F.label, refs: F.refs.slice(),
-    subject, pigments: chosen.map((p) => p.name), swatches: chosen, sections, prompt, avoid: AVOID.slice(),
+    family: familyId, familyLabel: F.label, refs: library.pool(familyId).map((e) => e.path.split('/').pop()),
+    // The one reference image to send with `referencePrompt + prompt`.
+    reference: reference ? { id: reference.id, path: reference.path, family: reference.family } : null,
+    referencePrompt: reference ? REFERENCE_AUTHORITY : null,
+    libraryVersion: library.version, seed: spec.seed >>> 0,
+    subject, pigments: swatches.map((p) => p.name), swatches, sections, prompt, avoid: AVOID.slice(),
   };
-}
-
-// Reference-guided generation: every family follows ONE primary reference
-// per generation, drawn from its references by seed, so stylistically
-// different references are never blended. Only that image goes to the model,
-// and the prompt separates what it controls from what is free.
-export function referenceGuide(familyId, seed = 0) {
-  const F = FAMILIES[familyId];
-  if (!F) throw new Error(`unknown family ${familyId}`);
-  const primary = F.refs[Math.floor(rng(hashSeed(seed >>> 0, 'primary-ref'))() * F.refs.length)];
-  const refs = [primary];
-  const text = [
-    'The attached image is the primary style reference for this painting and the visual authority: it overrides every written description below, including colour, light and composition notes.',
-    'Controlled by the reference: (1) dominant palette: its principal colour family, saturation, temperature and supporting accents; (2) colour distribution: the balance of dominant, secondary and accent colour; (3) composition: visual weight, asymmetry, focal placement and spatial rhythm; (4) negative space: roughly how much open, lightly painted or untouched paper there is, and where; (5) detail distribution: where detail concentrates and where forms dissolve; (6) watercolor behaviour: its washes, brush marks, blooms, granulation and edges; (7) level of finish: how much is deliberately left incomplete.',
-    'Free: the subject and the exact arrangement. Paint a new, original painting in the same artistic language; do not copy or trace its composition, figures or motifs, and do not reproduce any text, titles or watermarks in it.',
-  ].join(' ');
-  return { refs, primary, text };
 }

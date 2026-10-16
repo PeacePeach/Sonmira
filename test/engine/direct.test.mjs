@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { direct, familiesFor, FAMILIES, REFERENCES } from '../../src/engine/direct/index.js';
+import { direct, familiesFor, FAMILIES, REFERENCES, LIBRARY } from '../../src/engine/direct/index.js';
 import { SUBJECTS } from '../../src/engine/direct/families.js';
 import { visualSpec } from '../../src/engine/interpret/spec.js';
 import { interpret } from '../../src/engine/interpret/index.js';
@@ -48,16 +48,13 @@ test('loose depicts nothing; gathered and resolved always have a subject', () =>
   }
 });
 
-test('palette is one of the family\'s own schemes, keeps its accent, and the avoid list is always sent', () => {
+test('palette is the selected reference\'s measured hierarchy, and the avoid list is always sent', () => {
   for (const id of Object.keys(FAMILIES)) for (let seed = 1; seed <= 30; seed++) {
     const d = direct(spec(FAMILIES[id].tier, { seed, family: id }));
-    const scheme = FAMILIES[id].palettes.find((P) => P.colors[0].name === d.pigments[0]);
-    assert.ok(scheme, id);
-    const names = [...scheme.colors, scheme.accent].filter(Boolean).map((p) => p.name);
-    assert.ok(d.pigments.every((p) => names.includes(p)), id);
-    assert.deepEqual(d.pigments.slice(0, 2), scheme.colors.slice(0, 2).map((p) => p.name));
-    if (scheme.accent) assert.equal(d.pigments.at(-1), scheme.accent.name);
-    assert.ok(d.pigments.length >= 2 && d.pigments.length <= 4, `${id}: ${d.pigments.length}`);
+    const ref = LIBRARY.get(d.reference.id);
+    assert.equal(ref.family, id);
+    assert.deepEqual(d.swatches.map((c) => c.hex), [...ref.palette.colors, ref.palette.accent].filter(Boolean).map((c) => c.hex), id);
+    assert.ok(d.pigments.length >= 1 && d.pigments.length <= 4, `${id}: ${d.pigments.length}`);
     assert.match(d.prompt, /Avoid: neon/);
     assert.match(d.prompt, /signature, logo or watermark/);
   }
@@ -84,29 +81,13 @@ test('no words: no people and no story at any tier', () => {
 });
 
 
-test('reference guide: every family follows one primary reference drawn by seed', async () => {
-  const { referenceGuide, FAMILIES } = await import('../../src/engine/direct/index.js');
+test('every family follows one primary reference drawn by seed', () => {
   for (const id of Object.keys(FAMILIES)) {
-    const g = referenceGuide(id, 7);
-    assert.deepEqual(g.refs, [g.primary]);
-    assert.ok(FAMILIES[id].refs.includes(g.primary), id);
-    assert.equal(referenceGuide(id, 7).primary, g.primary);
+    const d = direct(spec(FAMILIES[id].tier, { seed: 7, family: id }));
+    assert.equal(d.reference.family, id);
+    assert.ok(FAMILIES[id].refs.includes(d.reference.path.split('/').pop()), id);
+    assert.match(d.referencePrompt, /primary style reference/);
   }
-  const seen = new Set(Array.from({ length: 40 }, (_, s) => referenceGuide('R4-lyrical-everyday', s).primary));
+  const seen = new Set(Array.from({ length: 40 }, (_, seed) => direct(spec('resolved', { seed, family: 'R4-lyrical-everyday' })).reference.id));
   assert.equal(seen.size, FAMILIES['R4-lyrical-everyday'].refs.length);
-});
-
-test('a primary reference brings its own palette and light, never another reference\'s', async () => {
-  const { direct, FAMILIES } = await import('../../src/engine/direct/index.js');
-  for (const id of ['R4-lyrical-everyday', 'R5-light-as-subject']) {
-    for (const ref of FAMILIES[id].refs) {
-      const P = FAMILIES[id].palettes.find((p) => p.ref === ref);
-      assert.ok(P, `${id} ${ref}`);
-      for (const seed of [1, 2, 3]) {
-        const d = direct({ completeness: 'resolved', motif: 'water', emotion: 'tender', seed, family: id, reference: ref });
-        assert.ok(d.pigments.every((n) => [...P.colors, P.accent].some((c) => c?.name === n)), `${id} ${ref} ${d.pigments}`);
-        assert.match(d.sections.palette, new RegExp(`Light: ${P.light}`));
-      }
-    }
-  }
 });

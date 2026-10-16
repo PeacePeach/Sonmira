@@ -87,3 +87,16 @@ async function readImage(res, cfg, t0) {
     mime: 'image/jpeg', b64, ms: Date.now() - t0, usage: body.usage ?? null,
   };
 }
+
+// One entry point for an art direction from direct(): with its selected
+// reference and a way to load it, the reference image goes to the edits
+// endpoint, and it is the ONLY image sent; without either, text-only
+// generation from the same direction (whose colour still comes from the
+// reference's measured palette).
+//   loadReference(reference) → { name, mime, bytes }
+export async function generateFromDirection(direction, { loadReference, env = process.env, fetchImpl = fetch, stream = false } = {}) {
+  if (!direction.reference || !loadReference) return generateOpenAI(direction, { env, fetchImpl });
+  const image = await loadReference(direction.reference);
+  const g = await editOpenAI(`${direction.referencePrompt}\n${adaptPrompt(direction)}`, [image], { env, fetchImpl, stream });
+  return { ...g, reference: direction.reference.id };
+}

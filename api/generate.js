@@ -9,7 +9,13 @@
 // it by the provider-independent art direction (layer C).
 
 import { direct, FAMILIES } from '../src/engine/direct/index.js';
-import { generateOpenAI, openaiConfig } from '../src/engine/providers/openai.js';
+import { generateFromDirection, openaiConfig } from '../src/engine/providers/openai.js';
+import { fileReferenceLoader } from '../src/engine/providers/reference-files.js';
+
+// With SONMIRA_REFS_DIR set, the selected primary reference image is sent
+// with the prompt (edits endpoint, streamed); without it, text-only
+// generation that still uses the reference's measured palette.
+const REFS_DIR = process.env.SONMIRA_REFS_DIR;
 
 const LEVELS = ['loose', 'gathered', 'resolved'];
 const EMOTIONS = ['tender', 'bright', 'melancholic', 'intense'];
@@ -37,8 +43,8 @@ export default async function handler(req, res) {
   if ((body.provider || 'openai') !== 'openai') { res.status(400).json({ ok: false, error: 'unknown provider' }); return; }
   const direction = direct(spec);
   try {
-    const g = await generateOpenAI(direction);
-    res.status(200).json({ ok: true, provider: g.provider, model: g.model, quality: g.quality, size: g.size, ms: g.ms, usage: g.usage, prompt: direction.prompt, family: direction.family, familyLabel: direction.familyLabel, familyRefs: direction.refs, swatches: direction.swatches, image: `data:${g.mime};base64,${g.b64}` });
+    const g = await generateFromDirection(direction, { loadReference: REFS_DIR && fileReferenceLoader(REFS_DIR), stream: true });
+    res.status(200).json({ ok: true, provider: g.provider, model: g.model, quality: g.quality, size: g.size, ms: g.ms, usage: g.usage, prompt: direction.prompt, family: direction.family, familyLabel: direction.familyLabel, familyRefs: direction.refs, reference: direction.reference?.id ?? null, referenceSent: Boolean(g.reference), seed: direction.seed, libraryVersion: direction.libraryVersion, swatches: direction.swatches, image: `data:${g.mime};base64,${g.b64}` });
   } catch (e) {
     res.status(e.code === 'not_configured' ? 503 : 502).json({ ok: false, error: e.message, code: e.code || 'error' });
   }

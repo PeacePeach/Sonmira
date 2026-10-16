@@ -41,6 +41,8 @@ export function planPainting(opts = {}) {
       family: direction.family,
       familyLabel: direction.familyLabel,
       familyRefs: direction.refs,
+      reference: direction.reference?.id ?? null,
+      libraryVersion: direction.libraryVersion,
       swatches: direction.swatches,
       interpretation: it,
     },

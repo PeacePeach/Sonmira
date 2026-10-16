@@ -4,7 +4,8 @@
 //   OPENAI_API_KEY=... node tools/generate-family.mjs G2 R4 R5 \
 //     [--refs DIR] [--out DIR] [--seed N] [--motif M] [--emotion E] [--dry-run] [--no-stream]
 //
-// --refs  the reference folder with loose/, gathered/ and resolved/ inside
+// --refs  the reference root; image paths come from the registry
+//         (src/engine/direct/references.js, kept by tools/index_references.py)
 //         (default $SONMIRA_REFS_DIR). The reference images are not stored
 //         in this repository.
 // --out   default qa/out/families; each run writes
@@ -21,11 +22,12 @@
 //
 // One family per argument, so a single family can be regenerated alone.
 
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { join, extname } from 'node:path';
-import { direct, referenceGuide, FAMILIES } from '../src/engine/direct/index.js';
+import { writeFile, mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
+import { direct, LIBRARY, FAMILIES } from '../src/engine/direct/index.js';
 import { AFFINITY, SUBJECTS } from '../src/engine/direct/families.js';
-import { editOpenAI, openaiConfig } from '../src/engine/providers/openai.js';
+import { generateFromDirection, openaiConfig } from '../src/engine/providers/openai.js';
+import { fileReferenceLoader } from '../src/engine/providers/reference-files.js';
 
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf(`--${k}`); return i >= 0 ? args.splice(i, 2)[1] : d; };
@@ -38,10 +40,9 @@ const motifArg = opt('motif');
 const emotion = opt('emotion', 'tender');
 
 const resolveFamily = (a) => FAMILIES[a] ? a : Object.keys(FAMILIES).find((id) => id.toUpperCase().startsWith(`${a.toUpperCase()}-`));
-// Gathered stays unnamed; other tiers take the motif the primary reference
-// shows, else the family's first matching motif.
-const refMotif = (id, ref) => FAMILIES[id].palettes.find((p) => p.ref === ref)?.motif;
-const motifFor = (id, ref) => motifArg || (FAMILIES[id].tier === 'gathered' ? 'abstract' : [refMotif(id, ref), ...(AFFINITY[id] || [])].find((m) => m && SUBJECTS[id]?.[m]) || 'landscape');
+// Gathered stays unnamed; other tiers take the motif hint of the primary
+// reference when the registry has one, else the family's first matching motif.
+const motifFor = (id, ref) => motifArg || (FAMILIES[id].tier === 'gathered' ? 'abstract' : [ref?.motif, ...(AFFINITY[id] || [])].find((m) => m && SUBJECTS[id]?.[m]) || 'landscape');
 
 if (!args.length || !refsDir) {
   console.error('usage: node tools/generate-family.mjs <family…> --refs <dir> [--seed N] [--dry-run]');
@@ -57,20 +58,19 @@ for (const a of args) {
   if (!family) { console.error(`unknown family ${a}`); process.exitCode = 1; continue; }
   const tier = FAMILIES[family].tier;
   const seed = seedArg != null ? Number(seedArg) >>> 0 : (Math.random() * 2 ** 32) >>> 0;
-  const guide = referenceGuide(family, seed);
-  const motif = motifFor(family, guide.primary);
-  const d = direct({ completeness: tier, motif, emotion, seed, family, reference: guide.primary, energy: { value: 'calm' } });
-  const prompt = `${guide.text}\n${d.prompt}`;
-  if (dry) { console.log(`--- ${family} (seed ${seed}, refs ${guide.refs.join(', ')})\n${prompt}\n`); continue; }
+  // The family's primary reference, drawn by seed from the registry pool.
+  const ref = LIBRARY.select(family, seed);
+  const motif = motifFor(family, ref);
+  const d = direct({ completeness: tier, motif, emotion, seed, family, reference: ref?.id, energy: { value: 'calm' } });
+  if (!d.reference) { console.error(`  ✗ ${family}: no active reference in the registry`); process.exitCode = 1; continue; }
+  const prompt = `${d.referencePrompt}\n${d.prompt}`;
+  if (dry) { console.log(`--- ${family} (seed ${seed}, reference ${d.reference.id}, library ${d.libraryVersion})\n${prompt}\n`); continue; }
 
-  const images = await Promise.all(guide.refs.map(async (name) => ({
-    name, mime: extname(name) === '.png' ? 'image/png' : 'image/jpeg', bytes: await readFile(join(refsDir, tier, name)),
-  })));
-  console.log(`${family}: generating with ${guide.refs.length} reference(s)…`);
+  console.log(`${family}: generating with reference ${d.reference.id}…`);
   // Streamed, so the ~30 s proxy limit does not cut long requests. Any API or
   // proxy error stops the run: no retries, since a failed request may still
   // be billed.
-  const g = await editOpenAI(prompt, images, { stream: !noStream }).catch((e) => {
+  const g = await generateFromDirection(d, { loadReference: fileReferenceLoader(refsDir), stream: !noStream }).catch((e) => {
     console.error(`  ✗ ${family}: ${e.message}${e.status ? ` (HTTP ${e.status})` : ''}. Stopping; nothing was retried.`);
     process.exit(1);
   });
@@ -80,7 +80,8 @@ for (const a of args) {
   await writeFile(`${base}.jpg`, Buffer.from(g.b64, 'base64'));
   await writeFile(`${base}.json`, JSON.stringify({
     family, tier, label: d.familyLabel, seed, motif, emotion, subject: d.subject,
-    references: guide.refs, primaryReference: guide.primary,
+    referenceId: d.reference.id, referencePath: d.reference.path, libraryVersion: d.libraryVersion,
+    references: [d.reference.path.split('/').pop()], primaryReference: d.reference.path.split('/').pop(), palette: d.swatches,
     model: g.model, quality: g.quality, size: g.size, endpoint: 'images/edits', stream: !noStream, ms: g.ms, usage: g.usage,
     prompt, createdAt: new Date().toISOString(),
   }, null, 2));

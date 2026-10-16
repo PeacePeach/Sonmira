@@ -13,7 +13,10 @@ refs_dir, sheet, outs = Path(sys.argv[1]), sys.argv[2], sys.argv[3:]
 rows = []
 for o in outs:
     meta = json.loads(Path(o).with_suffix('.json').read_text())
-    tiles = [(f"ref {r}" + (" (primary)" if r == meta.get('primaryReference') else ''), refs_dir / meta['tier'] / r) for r in meta['references']]
+    if meta.get('referencePath'):
+        tiles = [(f"ref {meta['referenceId']} (primary)", refs_dir / meta['referencePath'])]
+    else:
+        tiles = [(f"ref {r}" + (" (primary)" if r == meta.get('primaryReference') else ''), refs_dir / meta['tier'] / r) for r in meta['references']]
     tiles.append((f"{meta['family']}  ·  {meta['model']} {meta['quality']}  ·  seed {meta['seed']}", Path(o)))
     rows.append([(t, Image.open(p).convert('RGB')) for t, p in tiles])
 fit = lambda im: im.resize((round(im.width * H / im.height), H))
