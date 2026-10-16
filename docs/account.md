@@ -56,14 +56,16 @@ and the browser simulation:
 calls to let a signed-in person on a new iPhone skip the invite code.
 
 **Who may send an account id.** `/apple` never trusts the `accountId` in the
-body: `deps.authorize(req, accountId)` must confirm the caller holds it (the
-generation guard's install token), or the answer is `401 unauthorized`.
-Without that check, someone who learned a guest's id could sign in with their
-own Apple ID and merge that guest's balance and seat into their account.
-Deployed (`VERCEL` set) with no check supplied, `/apple` answers
-`503 not_configured`; locally every caller is allowed. The other endpoints
-prove the caller with a session token (`session`, `delete`) or Apple's
-signature (`notifications`).
+body on its own. `deps.authorize(req, accountId)` (the generation guard's
+install token) decides: proven, the id is linked, or merged into the Apple
+ID's existing account; unproven, the Apple ID's existing account is returned
+(recovery on a fresh install needs no invite code) and the id is neither
+linked nor merged, and with no existing account the answer is
+`401 unauthorized`. Without that rule, someone who learned a guest's id could
+link it to their own Apple ID and take its balance and seat. Deployed
+(`VERCEL` set) with no check supplied, `/apple` answers `503 not_configured`;
+locally every caller is allowed. The other endpoints prove the caller with a
+session token (`session`, `delete`) or Apple's signature (`notifications`).
 
 **Rate limits.** Each endpoint is limited per address per minute on the
 account store (`LIMITS` in `deploy.js`): `apple` 10 and `delete` 5, because
@@ -89,8 +91,8 @@ The integration passes them without editing these files, through
 `createDeployedHandlers({ ledger, seats, authorize, limit })` (or
 `buildFromEnv(env, { … })`) in the one-line `api/account/*.js` files. Until
 then they are no-ops. On the client, `createAccountForDevice(app, { box })`
-lets the native build keep the account id in the same Keychain item billing
-and the guard use.
+and `newId` let the native build keep the account id in the same Keychain
+item billing and the guard use, and make new guest ids as UUIDs.
 
 - Payments: `ledger.merge(fromId, toId)`, `ledger.erase(id)`.
 - Production Readiness: `adoptSeat(fromId, toId)`, `eraseAccount(id)`, and `/api/session` accepting `verifyAccount`.

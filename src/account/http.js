@@ -10,10 +10,11 @@
 // token, an Apple user id or an account id in full.
 //
 // deps.authorize(req, accountId) → boolean proves the caller holds the
-// account id it sends (the generation guard's install token). Without it,
-// /apple answers 503 not_configured: a client-supplied id is never trusted,
-// or anyone who learned a guest's id could merge that guest into their own
-// account. The other endpoints prove who is calling with a session token or
+// account id it sends (the generation guard's install token). A
+// client-supplied id is never trusted on its own, or anyone who learned a
+// guest's id could link it to their own Apple ID. Unproven, sign-in only
+// returns an Apple ID's existing account (recovery) and links or merges
+// nothing; with no check configured, /apple answers 503 not_configured. The other endpoints prove who is calling with a session token or
 // Apple's signature.
 // deps.limit(req, name) → boolean caps requests per address (429 rate_limited).
 
@@ -57,8 +58,8 @@ export function createAccountHandlers(getDeps) {
   return {
     apple: route('apple', async (b, { accounts, authorize }, req) => {
       if (!authorize) throw new AccountError('not_configured', 503);
-      if (typeof b.accountId !== 'string' || !(await authorize(req, b.accountId))) throw new AccountError('unauthorized', 401);
-      return accounts.signInWithApple({ identityToken: b.identityToken, rawNonce: b.rawNonce, accountId: b.accountId });
+      const deviceProven = typeof b.accountId === 'string' && (await authorize(req, b.accountId)) === true;
+      return accounts.signInWithApple({ identityToken: b.identityToken, rawNonce: b.rawNonce, accountId: b.accountId, deviceProven });
     }),
     session: route('session', (b, { accounts }) => accounts.renew(b.token)),
     delete: route('delete', (b, { accounts }) => accounts.deleteAccount({ token: b.token, identityToken: b.identityToken, rawNonce: b.rawNonce, authorizationCode: b.authorizationCode })),

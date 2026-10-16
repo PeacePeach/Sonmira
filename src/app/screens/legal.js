@@ -18,7 +18,7 @@ export const DOCS = {
       'There are no analytics or advertising.',
       'The microphone is used only while you are singing, after you tap to begin.',
       'Deleting the app, or clearing Sonmira’s data in your browser, removes your diary permanently. Backup is not available yet.',
-      'In this web preview, purchases and Sign in with Apple are simulated and nothing is charged. In the iPhone app, they are real.',
+      'Development previews only simulate purchases and Sign in with Apple, and nothing is charged there. In the iPhone app, purchases are made through Apple.',
     ],
   },
   terms: {

@@ -71,6 +71,14 @@ test('sign-in needs proof that the caller holds the account id it sends', async 
   assert.deepEqual([r.status, r.json.error], [401, 'unauthorized']);
   assert.equal((await signIn(owner, undefined, 'attacker')).status, 401);
   assert.equal((await signIn(owner, `token-for-${owner}`, 'owner')).json.status, 'linked');
+  // Recovery on a fresh install, before it has an install token: the Apple ID's
+  // account comes back, and the unproven id is neither linked nor merged.
+  const fresh = randomId();
+  const back = await signIn(fresh, undefined, 'owner');
+  assert.deepEqual([back.status, back.json.status, back.json.accountId], [200, 'returning', owner]);
+  // A different, proven guest signing in with that Apple ID is merged as before.
+  const other = randomId();
+  assert.deepEqual((await signIn(other, `token-for-${other}`, 'owner')).json.accountId, owner);
   // No check configured → refuse rather than trust the id.
   const open = createAccountHandlers(async () => ({ ...deps, authorize: null }));
   const rawNonce = randomId();
@@ -90,7 +98,7 @@ test('the integration composes the endpoints through createDeployedHandlers', as
   const seen = [];
   const hs = createDeployedHandlers({ authorize: async () => false, limit: async (req, name) => { seen.push(name); return true; } }, { SONMIRA_ACCOUNT_SECRET: SECRET });
   const r = await call(hs.apple, { identityToken: 'x', rawNonce: 'y', accountId: randomId() });
-  assert.deepEqual([r.status, r.json.error, seen], [401, 'unauthorized', ['apple']]);
+  assert.deepEqual([r.status, seen], [401, ['apple']]);
   const ledger = { merge: async () => {}, erase: async () => {} };
   assert.ok(buildFromEnv({ SONMIRA_ACCOUNT_SECRET: SECRET }, { ledger }).accounts);
 });
@@ -107,4 +115,20 @@ test('each endpoint is rate limited per address', async () => {
   assert.notEqual((await call(limited.session, {}, 'POST', from('1.1.1.1'))).status, 429, 'limits are per endpoint');
   t += 60_000;
   assert.notEqual((await call(limited.delete, {}, 'POST', from('1.1.1.1'))).status, 429, 'the window moves on');
+});
+
+test('an unproven id is never merged, even when the Apple ID has an account', async () => {
+  const calls = [];
+  const ledger = { merge: async (a, b) => calls.push(['merge', a, b]), erase: async () => {} };
+  const seats = { adoptSeat: async (a, b) => calls.push(['adopt', a, b]), eraseAccount: async () => {} };
+  const verifyIdentity = (t, n) => verifyIdentityToken(t, { audience: 'app.sonmira', rawNonce: n, getKey: apple.getKey });
+  const accounts = createAccounts({ store: createMemoryStore(), secret: SECRET, verifyIdentity, ledger, seats });
+  const signIn = async (accountId, deviceProven) => { const rawNonce = randomId(); return accounts.signInWithApple({ identityToken: await apple.token({ sub: 'u', rawNonce }), rawNonce, accountId, deviceProven }); };
+  const a = randomId(), victim = randomId(), b = randomId();
+  await assert.rejects(signIn(a, false), { code: 'unauthorized' }, 'nothing to recover, nothing linked');
+  await signIn(a, true);
+  assert.equal((await signIn(victim, false)).accountId, a);
+  assert.deepEqual(calls, []);
+  await signIn(b, true);
+  assert.deepEqual(calls, [['merge', b, a], ['adopt', b, a]]);
 });
