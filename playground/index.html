@@ -45,6 +45,17 @@
     </div>
 
     <div class="card dev">
+      <h2>Image provider</h2>
+      <label>Painted by
+        <select id="provider">
+          <option value="procedural">Procedural renderer (JS, no AI)</option>
+          <option value="openai">OpenAI image model (server)</option>
+        </select>
+      </label>
+      <p class="hint" id="providerHint">Checking which providers are configured…</p>
+    </div>
+
+    <div class="card dev">
       <h2>Developer overrides</h2>
       <label>Vocal control
         <select id="ovTier">

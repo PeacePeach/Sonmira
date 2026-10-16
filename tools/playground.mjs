@@ -18,9 +18,24 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const ALLOWED = ['playground', 'src'];
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml' };
 
+// Same function the Vercel preview runs, so AI providers work locally too
+// when their keys are in this shell's environment (e.g. OPENAI_API_KEY).
+async function api(req, res) {
+  const { default: generate } = await import('../api/generate.js');
+  let raw = '';
+  for await (const chunk of req) raw += chunk;
+  const shim = {
+    setHeader: (k, v) => res.setHeader(k, v),
+    status(code) { res.statusCode = code; return shim; },
+    json(obj) { res.setHeader('content-type', 'application/json'); res.end(JSON.stringify(obj)); },
+  };
+  await generate({ method: req.method, body: raw ? JSON.parse(raw) : {} }, shim);
+}
+
 async function handler(req, res) {
   try {
     const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+    if (path === '/api/generate') { await api(req, res); return; }
     if (path === '/' || path === '/playground') { res.writeHead(302, { location: '/playground/' }).end(); return; }
     const file = normalize(join(ROOT, path.endsWith('/') ? path + 'index.html' : path));
     const top = file.slice(ROOT.length).split(sep)[0];

@@ -87,6 +87,37 @@ const dl = page.waitForEvent('download');
 await page.click('.tab[data-view=library]');
 await page.locator('#runs .run button[data-a=json]').nth(0).click();
 console.log('download', (await dl).suggestedFilename());
+
+// AI provider path, with the server mocked (no key, no cost): the page must
+// send the spec, show the returned image and label it with the provider.
+execFileSync('ffmpeg', ['-loglevel', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=0xe8dfd0:s=96x120', '-frames:v', '1', `${S}/ai.jpg`]);
+const { readFileSync } = await import('node:fs');
+const jpg = readFileSync(`${S}/ai.jpg`).toString('base64');
+const ai = await ctx.newPage();
+ai.on('pageerror', (e) => errors.push(String(e)));
+let sentSpec = null;
+await ai.route('**/api/generate', (route) => {
+  const r = route.request();
+  if (r.method() === 'GET') return route.fulfill({ json: { providers: { openai: { configured: true, model: 'gpt-image-1', quality: 'medium', size: '1024x1536' } } } });
+  sentSpec = JSON.parse(r.postData()).spec;
+  return route.fulfill({ json: { ok: true, provider: 'openai', model: 'gpt-image-1', quality: 'medium', ms: 1234, prompt: 'PROMPT', image: `data:image/jpeg;base64,${jpg}` } });
+});
+await ai.goto(BASE);
+await ai.waitForFunction(() => window.__playground?.ready);
+await ai.waitForFunction(() => /configured on the server/.test(document.getElementById('providerHint').textContent));
+await ai.selectOption('#provider', 'openai');
+await ai.setInputFiles('#fileInput', wav);
+await ai.waitForFunction(() => /Ready/.test(document.getElementById('status').textContent));
+await ai.selectOption('#ovTier', 'resolved');
+await ai.click('#paintBtn');
+await ai.waitForFunction(() => /Done|failed/.test(document.getElementById('status').textContent), null, { timeout: 60000 });
+console.log('ai →', await ai.textContent('#status'));
+assert.equal(sentSpec.completeness, 'resolved');
+assert.match(await ai.innerText('#artwork'), /OpenAI gpt-image-1/);
+assert.match(await ai.innerText('#results'), /Provider\s+OpenAI gpt-image-1/);
+await ai.click('.tab[data-view=library]');
+assert.match(await ai.locator('#runs .run').first().innerText(), /OpenAI gpt-image-1/);
+assert.match(await page.locator('#runs .run').first().innerText(), /Procedural renderer/);
 console.log('errors', errors);
 await browser.close();
 assert.deepEqual(errors, []);

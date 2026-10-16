@@ -19,3 +19,10 @@ Browser check: `npm run playground -- --no-open &` then `node tools/playground-e
 ## Hosted preview
 
 The repo is connected to Vercel, which builds a preview for each pushed branch and posts the link on its PR. The Playground lives at `<preview>/playground/`. `vercel.json` serves the files as they are (no build), marks every page noindex, and turns off deployments from `main`. Keep Vercel Authentication on in Deployment Protection so only signed-in project members can open previews.
+
+## Image providers
+
+"Painted by" picks the provider. Every painting and library card is labelled with the provider that made it.
+
+- **Procedural renderer (JS, no AI):** runs in the page, free.
+- **OpenAI image model:** the page runs analysis, interpretation and the visual spec, then posts the spec to `/api/generate`. The server builds the prompt from the spec (`src/engine/direct/`) and calls OpenAI with its own key, so the key never reaches the browser. Configure it with `OPENAI_API_KEY` (and optionally `OPENAI_IMAGE_MODEL`, `OPENAI_IMAGE_QUALITY`, `OPENAI_IMAGE_SIZE`) in the Vercel project's Preview environment, or in your shell before `npm run playground`. Each AI painting is billed to that OpenAI account.

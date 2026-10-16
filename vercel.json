@@ -29,5 +29,10 @@
     "deploymentEnabled": {
       "main": false
     }
+  },
+  "functions": {
+    "api/generate.js": {
+      "maxDuration": 120
+    }
   }
 }

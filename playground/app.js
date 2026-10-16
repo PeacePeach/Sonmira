@@ -191,26 +191,53 @@ async function analyze() {
   return analysis;
 }
 
+const engineOpts = (a, ov, control) => ({
+  features: a?.features ?? null,
+  noteText: $('note').value,
+  vocalControlOverride: control,
+  emotionOverride: ov.emotion ?? undefined,
+  motifOverride: ov.motif ?? undefined,
+  seed: ov.seed,
+  width: W, height: H,
+});
+
 async function paint(ov, control) {
   const a = await analyze();
-  setStatus('Painting…');
-  const r = await call({
-    op: 'paint',
-    opts: {
-      features: a?.features ?? null,
-      noteText: $('note').value,
-      vocalControlOverride: control,
-      emotionOverride: ov.emotion ?? undefined,
-      motifOverride: ov.motif ?? undefined,
-      seed: ov.seed,
-      width: W, height: H,
-    },
-  });
+  return $('provider').value === 'procedural' ? paintProcedural(a, ov, control) : paintAI(a, ov, control, $('provider').value);
+}
+
+async function paintProcedural(a, ov, control) {
+  setStatus('Painting with the procedural renderer…');
+  const r = await call({ op: 'paint', opts: engineOpts(a, ov, control) });
   const canvas = document.createElement('canvas');
   canvas.width = r.image.width; canvas.height = r.image.height;
   canvas.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(r.image.rgba.buffer), r.image.width, r.image.height), 0, 0);
   const png = await new Promise((res) => canvas.toBlob(res, 'image/png'));
-  return { meta: r.meta, canvas, png, features: a?.features ?? null, ms: { analyze: a?.ms ?? null, paint: r.ms } };
+  const meta = { ...r.meta, provider: 'procedural', providerLabel: 'Procedural renderer (JS, no AI)' };
+  return { meta, canvas, png, features: a?.features ?? null, ms: { analyze: a?.ms ?? null, paint: r.ms } };
+}
+
+// Layers A–C run here (same code as the procedural path); the server builds
+// the prompt from the spec and calls the provider with its own key.
+async function paintAI(a, ov, control, provider) {
+  const plan = await call({ op: 'plan', opts: engineOpts(a, ov, control) });
+  setStatus(`Generating with ${provider}… this usually takes 20–60 s.`);
+  const t0 = performance.now();
+  const resp = await fetch('/api/generate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ provider, spec: plan.spec }) });
+  const g = await resp.json().catch(() => ({ ok: false, error: `HTTP ${resp.status}` }));
+  if (!g.ok) throw new Error(g.error || `HTTP ${resp.status}`);
+  const img = new Image();
+  img.src = g.image;
+  await img.decode();
+  const canvas = document.createElement('canvas');
+  canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+  canvas.getContext('2d').drawImage(img, 0, 0);
+  const png = await (await fetch(g.image)).blob();
+  const meta = {
+    ...plan.summary, focus: '50% 50%', method: `ai:${g.provider}/${g.model}`,
+    provider: g.provider, providerLabel: `OpenAI ${g.model} (${g.quality})`, model: g.model, prompt: g.prompt, usage: g.usage ?? null,
+  };
+  return { meta, canvas, png, features: a?.features ?? null, ms: { analyze: a?.ms ?? null, paint: performance.now() - t0, provider: g.ms } };
 }
 
 function makeRun(res, ov, groupId, label) {
@@ -274,7 +301,7 @@ $('tiersBtn').addEventListener('click', () => guarded(async () => {
 
 const measuredTierOf = (score) => (score >= CALIBRATION.resolvedAt ? 'resolved' : score >= CALIBRATION.gatheredAt ? 'gathered' : 'loose');
 function captionFor(m, extra = '') {
-  return `<span style="text-transform:capitalize">${esc(m.tier)}<b>${extra}</b></span><span>position ${fmt(m.stylePosition)} · seed ${m.seed}</span>`;
+  return `<span><span style="text-transform:capitalize">${esc(m.tier)}<b>${extra}</b></span> · ${esc(m.providerLabel || 'Procedural renderer (JS, no AI)')}</span><span>position ${fmt(m.stylePosition)} · seed ${m.seed}</span>`;
 }
 function showArtwork(items, trio = false) {
   const el = $('artwork');
@@ -344,7 +371,10 @@ function showResults(run, { compareTiers = false } = {}) {
     <div class="sect"><h3>Painting</h3><dl class="kv">
       <dt>Pigments</dt><dd><div class="swatches">${pig}</div></dd>
       <dt>Seed</dt><dd>${m.seed}</dd>
+      <dt>Provider</dt><dd>${esc(m.providerLabel || 'Procedural renderer (JS, no AI)')}</dd>
       <dt>Method</dt><dd>${esc(m.method)}</dd>
+      ${m.energy ? `<dt>Energy</dt><dd>${esc(m.energy)}</dd>` : ''}
+      ${m.prompt ? `<dt>Prompt</dt><dd><details><summary>show</summary><pre class="prompt">${esc(m.prompt)}</pre></details></dd>` : ''}
       <dt>Note</dt><dd>${run.note ? esc(run.note) : '<span class="hint">none</span>'}</dd>
     </dl></div>`;
 }
@@ -371,6 +401,7 @@ function runCard(r, { compact = false } = {}) {
   el.innerHTML = `
     <img src="${url}" alt="">
     <div class="t">${esc(m.tier)} · ${esc(m.emotion)} · ${esc(m.motif)}</div>
+    <div class="m prov">${esc(m.providerLabel || 'Procedural renderer (JS, no AI)')}</div>
     <div class="m">${new Date(r.createdAt).toLocaleString()}${r.label ? ` · ${esc(r.label)}` : ''}</div>
     <div class="m">${r.clip ? `${esc(r.clip.name)} (${r.clip.source})` : 'no audio'}</div>
     <dl class="kv" style="margin-top:6px">
@@ -442,6 +473,8 @@ async function loadRun(r) {
   $('ovEmotion').value = ov.emotion || 'auto';
   $('ovMotif').value = ov.motif || 'auto';
   $('seed').value = String(r.result.seed);
+  const prov = r.result.provider || 'procedural';
+  if (!$('provider').querySelector(`option[value=${prov}]`)?.disabled) $('provider').value = prov;
   if (r.audio) await setClip(r.audio, r.clip?.name || 'saved take', r.clip?.source || 'upload');
   else clearClip();
   const img = new Image(); img.src = URL.createObjectURL(r.png);
@@ -457,6 +490,22 @@ function switchView(v) {
 }
 for (const t of document.querySelectorAll('.tab')) t.addEventListener('click', () => switchView(t.dataset.view));
 
+async function checkProviders() {
+  const opt = $('provider').querySelector('option[value=openai]');
+  try {
+    const r = await fetch('/api/generate');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const p = (await r.json()).providers?.openai;
+    if (p?.configured) { $('providerHint').textContent = `OpenAI is configured on the server (${p.model}, ${p.quality} quality). Each AI painting is billed to that account.`; return; }
+    opt.disabled = true;
+    $('providerHint').textContent = 'OpenAI is not configured: add OPENAI_API_KEY to the server environment. The procedural renderer still works.';
+  } catch {
+    opt.disabled = true;
+    $('providerHint').textContent = 'No generation server here, so only the procedural renderer is available.';
+  }
+}
+
 setBusy(false);
+checkProviders();
 refreshLibrary();
 window.__playground = { ready: true };
