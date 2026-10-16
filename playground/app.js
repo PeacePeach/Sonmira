@@ -611,7 +611,50 @@ function switchView(v) {
   for (const t of document.querySelectorAll('.tab')) t.classList.toggle('active', t.dataset.view === v);
   $('studio').hidden = v !== 'studio';
   $('library').hidden = v !== 'library';
+  $('refs').hidden = v !== 'refs';
 }
+
+// ---------- reference check ----------
+// The server reads every reference in its registry; each thumbnail is then
+// loaded the way the comparison loads it (/api/reference by id).
+async function checkReferences() {
+  $('refCheckBtn').disabled = true;
+  $('refSummary').className = 'refsummary';
+  $('refSummary').textContent = 'Reading every reference on the server…';
+  $('refGrid').replaceChildren();
+  try {
+    const r = await fetch('/api/reference?check=1');
+    const c = await r.json().catch(() => ({ ok: false, error: `HTTP ${r.status}` }));
+    if (!c.items) throw new Error(c.error || `HTTP ${r.status}`);
+    const shown = await Promise.all(c.items.map(async (it) => {
+      const card = document.createElement('figure');
+      card.className = `refcard ${it.ok ? '' : 'bad'}`;
+      card.dataset.id = it.id;
+      const img = document.createElement('img');
+      let displayed = false;
+      if (it.ok && it.active) {
+        try { img.src = await referenceUrl(it.id); await img.decode(); displayed = true; } catch { /* reported below */ }
+      }
+      card.classList.toggle('bad', !(it.ok && (displayed || !it.active)));
+      const fam = FAMILIES[it.family];
+      card.append(img, Object.assign(document.createElement('figcaption'), {
+        innerHTML: `<b>${esc(it.id)}</b> ${it.active ? '' : '<span class="hint">(inactive)</span>'}<br>${esc(fam ? `${fam.tier} · ${fam.label}` : it.family ?? 'no family')}<br>${it.ok ? `${Math.round(it.bytes / 1024)} KB · ${esc(it.mime)}${it.active && !displayed ? ' · <span class="warn">did not display</span>' : ''}` : `<span class="warn">${esc(it.error || 'failed')}</span>`}`,
+      }));
+      $('refGrid').append(card);
+      return it.active && it.ok && displayed;
+    }));
+    $('refGrid').replaceChildren(...[...$('refGrid').children].sort((x, y) => (x.dataset.id < y.dataset.id ? -1 : 1)));
+    const okCount = shown.filter(Boolean).length;
+    const all = okCount === c.active && !c.missingFromStore.length;
+    $('refSummary').className = `refsummary ${all ? 'good' : 'bad'}`;
+    $('refSummary').textContent = `${okCount} of ${c.active} active references load and display from this deployment (store: ${c.store}, ${c.registry} in its registry)${c.missingFromStore.length ? `. Missing from the store: ${c.missingFromStore.join(', ')}` : ''}.`;
+  } catch (e) {
+    $('refSummary').className = 'refsummary bad';
+    $('refSummary').textContent = `Reference check failed: ${e.message}`;
+  }
+  $('refCheckBtn').disabled = false;
+}
+$('refCheckBtn').addEventListener('click', checkReferences);
 for (const t of document.querySelectorAll('.tab')) t.addEventListener('click', () => switchView(t.dataset.view));
 
 async function checkProviders() {

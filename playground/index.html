@@ -15,6 +15,7 @@
   <nav>
     <button class="tab active" data-view="studio">Studio</button>
     <button class="tab" data-view="library">Library &amp; compare <span id="libCount"></span></button>
+    <button class="tab" data-view="refs">References</button>
   </nav>
 </header>
 
@@ -137,6 +138,16 @@
   </div>
   <div id="compare" class="compare" hidden></div>
   <div id="runs" class="runs"></div>
+</main>
+
+<main id="refs" class="view" hidden>
+  <div class="libbar">
+    <span class="hint">Loads every reference this deployment's server can read (private store), so you can confirm all of them are available here.</span>
+    <span class="spacer"></span>
+    <button id="refCheckBtn" class="primary">Check all references</button>
+  </div>
+  <p id="refSummary" class="refsummary"></p>
+  <div id="refGrid" class="refgrid"></div>
 </main>
 
 <script type="module" src="app.js"></script>

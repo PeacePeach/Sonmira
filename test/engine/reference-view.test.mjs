@@ -48,3 +48,20 @@ test('generate reports the reference id, settings and prompt check, and honours 
   assert.equal(r.json.promptCheck.verdict, 'ok');
   assert.doesNotMatch(JSON.stringify(r.json), /blob\.vercel|https?:\/\/[^"]*resolved_12/);
 });
+
+test('check=1 reads every reference in the store and reports failures without URLs', async () => {
+  const good = await call(createHandler({ store, env: {} }), { method: 'GET', query: { check: '1' } });
+  const active = REFERENCE_LIBRARY.filter((e) => e.active).length;
+  assert.equal(good.code, 200);
+  assert.equal(good.json.ok, true);
+  assert.equal(good.json.loaded, active);
+  assert.equal(good.json.items.length, REFERENCE_LIBRARY.length);
+  const broken = { ...store, loadRegistry: async () => REFERENCE_LIBRARY.filter((e) => e.id !== 'resolved_06'),
+    loadImage: async (ref) => { if (ref.id === 'resolved_12') throw new Error('fetch failed for https://x.private.blob.vercel-storage.com/references/resolved/resolved_12.jpg'); return store.loadImage(ref); } };
+  const bad = await call(createHandler({ store: broken, env: {} }), { method: 'GET', query: { check: '1' } });
+  assert.equal(bad.json.ok, false);
+  assert.deepEqual(bad.json.missingFromStore, ['resolved_06']);
+  const row = bad.json.items.find((i) => i.id === 'resolved_12');
+  assert.equal(row.ok, false);
+  assert.doesNotMatch(JSON.stringify(bad.json), /blob\.vercel-storage|https?:/);
+});

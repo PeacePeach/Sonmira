@@ -85,6 +85,14 @@ await page.press('#compare .pair:nth-child(3) .review input', 'Tab');
 assert.match(await page.textContent('#compare .pair:nth-child(3) .verdict'), /no leakage found/);
 await page.locator('#compare').screenshot({ path: `${S}/library-compare.png` });
 
+await page.click('.tab[data-view=refs]');
+await page.click('#refCheckBtn');
+await page.waitForFunction(() => /of \d+ active references|failed/.test(document.getElementById('refSummary').textContent), null, { timeout: 60000 });
+const summary = await page.textContent('#refSummary');
+console.log(summary);
+assert.match(summary, /^22 of 22 active references load and display/);
+await page.screenshot({ path: `${S}/references.png`, fullPage: true });
+await page.click('.tab[data-view=library]');
 await page.setViewportSize({ width: 390, height: 900 });
 await page.locator('#compare .pair').first().screenshot({ path: `${S}/compare-phone.png` });
 assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'no horizontal scroll at phone width');
