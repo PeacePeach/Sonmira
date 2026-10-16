@@ -12,7 +12,8 @@ Sonmira on iPhone is this web app, added to the Home Screen. There is no native 
 | Emotion, motif, style family and seed | Client | `plan.js`, `direct/` |
 | Transcription and lyrics reading (prompt, models) | Server | `api/understand.js`, `providers/openai-understand.js` |
 | Image prompt, reference choice within the family, image call | Server | `api/generate.js`, `direct/`, `providers/openai.js` |
-| Reference library (registry and images) | Server, Vercel Blob | `providers/reference-store.js` |
+| Reference list (which images, which family) | Server, bundled in the code | `direct/references.js` |
+| Reference images | Server, Vercel Blob (private) | `providers/reference-store.js` |
 | Invites, limits, spend cap | Server | Production Readiness branch |
 
 The server re-checks what the client sends. `cleanSpec` validates every field, and a family from a different tier is refused. A tampered client can only change its own painting, and the guard still applies its limits.
@@ -26,7 +27,7 @@ All of it. Client and server code ship together in one Vercel deploy, and the ne
 | Image prompts, family rules, composition | Code change, then deploy. `tests/visual-freeze.test.mjs` fails until the change is approved and the snapshot is refreshed. |
 | Singing thresholds, words gate, interpretation | Code change, then deploy. Re-check them for free in the Playground Singing test, which re-analyses the saved takes. |
 | Image or text models, image quality and size | Environment variables (`OPENAI_IMAGE_MODEL`, `OPENAI_IMAGE_QUALITY`, `OPENAI_IMAGE_SIZE`, `OPENAI_TRANSCRIBE_MODEL`, `OPENAI_TEXT_MODEL`), then redeploy |
-| Reference images and registry | `tools/references.mjs`. It writes the Blob registry, which the live server reads within 30 s, with no deploy. |
+| Reference styles (which images, which family) | Edit the bundled registry `src/engine/direct/references.js`, then deploy. Upload a new image to Blob first with `tools/references.mjs add`. The freeze test fails until the change is approved. |
 
 Iteration is safe in these ways:
 - Every branch gets its own Preview.
@@ -35,16 +36,17 @@ Iteration is safe in these ways:
 
 If the app is ever wrapped as a native App Store app, the wrapper should load the hosted URL. Bundling the files into the app would make every client-side change above wait for a new iOS build.
 
-## The one gap: reference edits bypass deploys
+## Reference selection is version-controlled (Han, 16 Oct)
 
-Production picks references from the registry in Blob, not from the tested registry in the repo (`direct/references.js`). An edit there has three problems:
-- It reaches Production within 30 s, without Preview, without tests and without review.
-- If Preview shares the Blob store, a reference experiment on Preview changes Production.
-- Vercel's rollback doesn't undo it.
+`/api/generate` selects from the bundled registry (`src/engine/direct/references.js`), which has 22 active references in 12 families. Blob storage holds only the image files.
 
-**Proposed minimal fix:** select from the bundled registry, which is in git, covered by the freeze test and rolled back with the deploy. Blob would keep only the image files. The change is a few lines in `api/generate.js`, plus a test.
+Blob's own registry is kept for `tools/references.mjs`, but it no longer decides anything. A reference change therefore goes through Preview, the tests and a deploy, and Vercel's rollback takes it back. `tests/reference-source.test.mjs` fails if the server reads the store's registry or paints a reference that isn't bundled.
 
-Before switching, run one check with the Blob token (`node tools/references.mjs verify` and `list`, compared with the bundled registry). It confirms that every active bundled reference has its image in Blob. The 10 approved Validation 4 requests were rebuilt from the bundled registry with identical prompts and references, so at least those families already match.
+There are two ways to check that every active bundled image is in Blob, neither of which costs anything:
+- the Playground's References tab, **Check all references**, on any deployment with the Blob token;
+- `node tools/references.mjs verify`.
+
+A missing or unreadable image is a `503` with no provider call, so the spend guard releases it.
 
 ## Known classification limitations (V1)
 

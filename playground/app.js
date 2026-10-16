@@ -736,9 +736,10 @@ async function checkReferences() {
     }));
     $('refGrid').replaceChildren(...[...$('refGrid').children].sort((x, y) => (x.dataset.id < y.dataset.id ? -1 : 1)));
     const okCount = shown.filter(Boolean).length;
-    const all = okCount === c.active && !c.missingFromStore.length;
+    const all = okCount === c.active && c.ok;
+    const reg = c.storeRegistry;
     $('refSummary').className = `refsummary ${all ? 'good' : 'bad'}`;
-    $('refSummary').textContent = `${okCount} of ${c.active} active references load and display from this deployment (store: ${c.store}, ${c.registry} in its registry)${c.missingFromStore.length ? `. Missing from the store: ${c.missingFromStore.join(', ')}` : ''}.`;
+    $('refSummary').textContent = `${okCount} of ${c.active} active references load and display from this deployment's store (${c.store}), checked against the app's tested list${c.failed?.length ? `. Image missing or unreadable: ${c.failed.join(', ')}` : ''}.${reg ? ` For information, the store's own list has ${reg.entries} entries${reg.missing.length ? `, lacks ${reg.missing.join(', ')}` : ''}${reg.otherFamily.length ? `, files ${reg.otherFamily.join(', ')} under another family` : ''}${reg.extraActive.length ? `, has extra ${reg.extraActive.join(', ')}` : ''}; it no longer affects which reference is painted.` : ''}`;
   } catch (e) {
     $('refSummary').className = 'refsummary bad';
     $('refSummary').textContent = `Reference check failed: ${e.message}`;

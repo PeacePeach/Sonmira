@@ -5,21 +5,24 @@
 //
 //   node tools/references.mjs add <image> <FAMILY> [--id ID] [--light TEXT] [--motif M]
 //        upload privately, assign to a family (full id or code, e.g. R4),
-//        measure its palette, add it to the registry → eligible at once
+//        measure its palette, add it to Blob's registry. The server selects
+//        from the bundled registry (src/engine/direct/references.js), so a
+//        reference becomes eligible only when its entry is added there and
+//        deployed: Preview first, tests, and Vercel rollback apply.
 //   node tools/references.mjs disable <id>    keep it, stop selecting it
 //   node tools/references.mjs enable <id>
 //   node tools/references.mjs remove <id>     delete the image and its entry
 //   node tools/references.mjs list
 //   node tools/references.mjs verify
-//        read the registry and every active image back through the same
-//        code the server uses, and report counts and sizes
+//        read every active image of the bundled registry back from Blob
+//        through the same code the server uses, and report counts and sizes
 //   node tools/references.mjs sync <refs_root>
 //        setup: upload every reference in the bundled registry
 //        (src/engine/direct/references.js) from a local folder that is not
 //        in Blob's registry yet, then add those entries to it
 //
-// The deployed app re-reads the registry within REGISTRY_TTL_MS; no
-// redeploy is needed.
+// Blob's registry is kept for these tools only; the deployed app selects
+// from the bundled registry and reads only image bytes from Blob.
 
 import { readFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
@@ -58,7 +61,8 @@ if (cmd === 'add') {
   for (const e of entries) console.log(`${e.active ? ' ' : 'x'} ${e.id.padEnd(16)} ${String(e.family).padEnd(22)} ${e.path}`);
   console.log(`library version ${createLibrary(entries).version}`);
 } else if (cmd === 'verify') {
-  const entries = await store.loadRegistry({ fresh: true });
+  // The images the server can select: the bundled registry's active entries.
+  const entries = REFERENCE_LIBRARY;
   const active = entries.filter((e) => e.active);
   let ok = 0;
   for (const e of active) {
@@ -70,7 +74,7 @@ if (cmd === 'add') {
       console.log(`FAIL ${e.id.padEnd(16)} ${err.code || err.message}`);
     }
   }
-  console.log(`registry: ${entries.length} entries, ${active.length} active, version ${createLibrary(entries).version}; images readable: ${ok}/${active.length}`);
+  console.log(`bundled registry: ${entries.length} entries, ${active.length} active, version ${createLibrary(entries).version}; images readable in Blob: ${ok}/${active.length}`);
   if (ok !== active.length) process.exitCode = 1;
 } else if (cmd === 'sync') {
   const [root] = rest;

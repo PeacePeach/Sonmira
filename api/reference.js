@@ -33,7 +33,7 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
   const id = q.id;
   if (!ID.test(String(id ?? ''))) return fail(400, 'invalid id');
   try {
-    const ref = (await store.loadRegistry()).find((e) => e.id === id && e.active);
+    const ref = REFERENCE_LIBRARY.find((e) => e.id === id && e.active);
     if (!ref) return fail(404, 'unknown reference');
     const img = await store.loadImage(ref);
     res.setHeader('content-type', img.mime);
@@ -45,24 +45,35 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
 
 export default createHandler();
 
-// Reads every reference the store's registry lists (a few at a time) and
-// reports what loaded; no paths or URLs are returned.
+// Reads the image of every active reference in the bundled registry (the
+// one /api/generate selects from) through the store, a few at a time, and
+// reports what loaded; no paths or URLs are returned. The store's own
+// registry is compared for information only.
 export async function checkAll(store, bundled = REFERENCE_LIBRARY) {
-  let registry;
-  try { registry = await store.loadRegistry(); } catch (e) { return { ok: false, store: store.kind, error: `registry unavailable: ${e.code || e.message}` }; }
   const items = [];
-  const queue = [...registry];
+  const queue = bundled.filter((e) => e.active);
   const worker = async () => {
     for (let e = queue.shift(); e; e = queue.shift()) {
-      const row = { id: e.id, family: e.family ?? null, active: Boolean(e.active), ok: false, bytes: 0, mime: null, error: null };
+      const row = { id: e.id, family: e.family ?? null, active: true, ok: false, bytes: 0, mime: null, error: null };
       try { const img = await store.loadImage(e); row.bytes = img.bytes.length; row.mime = img.mime; row.ok = row.bytes > 0; if (!row.ok) row.error = 'empty'; } catch (err) { row.error = String(err.code || err.message || err).replace(/https?:\/\/\S+/g, '[url]').slice(0, 120); }
       items.push(row);
     }
   };
   await Promise.all(Array.from({ length: 4 }, worker));
   items.sort((a, b) => (a.id < b.id ? -1 : 1));
-  const inStore = new Set(registry.map((e) => e.id));
-  const missing = bundled.filter((e) => e.active && !inStore.has(e.id)).map((e) => e.id);
-  const active = items.filter((i) => i.active);
-  return { ok: active.length > 0 && active.every((i) => i.ok) && !missing.length, store: store.kind, registry: registry.length, active: active.length, loaded: active.filter((i) => i.ok).length, missingFromStore: missing, items };
+  let storeRegistry = null;
+  try {
+    const reg = await store.loadRegistry?.();
+    if (Array.isArray(reg)) {
+      const byId = new Map(reg.map((e) => [e.id, e]));
+      storeRegistry = {
+        entries: reg.length,
+        missing: items.filter((i) => !byId.get(i.id)?.active).map((i) => i.id),
+        otherFamily: items.filter((i) => byId.get(i.id) && byId.get(i.id).family !== i.family).map((i) => i.id),
+        extraActive: reg.filter((e) => e.active && !bundled.some((b) => b.id === e.id && b.active)).map((e) => e.id),
+      };
+    }
+  } catch { /* information only */ }
+  const loaded = items.filter((i) => i.ok).length;
+  return { ok: items.length > 0 && loaded === items.length, store: store.kind, source: 'bundled', active: items.length, loaded, failed: items.filter((i) => !i.ok).map((i) => i.id), storeRegistry, items };
 }
