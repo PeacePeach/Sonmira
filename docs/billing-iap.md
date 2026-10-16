@@ -116,7 +116,8 @@ The guard lives on the Production Readiness branch. When it merges:
 - `402 no_paintings` from `/api/generate` opens the paywall, with the take
   kept;
 - `/api/billing/transactions` and `/status` take `authorize(req, account)`:
-  the guard's install token, with `account === token.installId`. Until then
-  they rely on the rules above and a per-address limit;
+  the guard's install token, with `account === token.installId`. On Vercel
+  they answer `503 not_configured` until it is supplied (Apple's
+  notifications keep working); locally they stay open;
 - in the bundled build, the guard answers CORS for `capacitor://localhost`,
   including the `x-sonmira-day` header.

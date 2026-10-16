@@ -10,7 +10,7 @@ import { memoryKV } from '../server/billing/kv.js';
 import { createLedger } from '../server/billing/ledger.js';
 import { createAppleVerifier } from '../server/billing/apple.js';
 import { createCharge } from '../server/billing/charge.js';
-import { createTransactionsHandler, createStatusHandler, createNotificationsHandler } from '../server/billing/http.js';
+import { createTransactionsHandler, createStatusHandler, createNotificationsHandler, billingFromEnv } from '../server/billing/http.js';
 
 const chain = testAppleChain();
 const PACK = 'app.sonmira.little_moments.10';
@@ -305,4 +305,18 @@ test('the per-address limit counts in one-minute windows', async () => {
   }
   assert.ok(codes.slice(0, 100).every((c) => c === 200));
   assert.equal(codes.at(-1), 429);
+});
+
+test('deployed without the account check, the app endpoints refuse; Apple notifications still work', async () => {
+  const env = { VERCEL: '1', KV_REST_API_URL: 'https://kv.invalid', KV_REST_API_TOKEN: 't' };
+  const deps = { ...billingFromEnv(env), log: () => {} };
+  assert.equal(deps.authorize, null);
+  const res = () => ({ code: 0, body: null, setHeader() {}, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; } });
+  const st = res(); await createStatusHandler(deps)({ method: 'GET', headers: {}, query: { account: A } }, st);
+  assert.deepEqual([st.code, st.body.code], [503, 'not_configured']);
+  const tx = res(); await createTransactionsHandler(deps)({ method: 'POST', headers: {}, body: { account: A, transactions: [] } }, tx);
+  assert.equal(tx.code, 503);
+  const n = res(); await createNotificationsHandler(deps)({ method: 'POST', headers: {}, body: { signedPayload: 'nope' } }, n);
+  assert.equal(n.code, 400, 'reaches signature checking');
+  assert.equal(typeof billingFromEnv({}).authorize, 'function', 'local development stays open');
 });

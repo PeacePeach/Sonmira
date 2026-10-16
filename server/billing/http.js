@@ -32,6 +32,9 @@ export function billingFromEnv(env = process.env) {
   const appAppleId = env.SONMIRA_APPLE_APP_ID || (bundleId === 'app.sonmira' ? '6823759268' : undefined);
   return {
     kv,
+    // Deployed, the account check must be supplied (the guard's install
+    // token); without one the app's endpoints refuse rather than run open.
+    authorize: env.VERCEL ? null : async () => true,
     ledger: kv ? createLedger({ kv }) : null,
     verifier: createAppleVerifier({
       bundleId,
@@ -61,7 +64,7 @@ function lazy(deps) {
   let d = null;
   return () => {
     if (d) return d;
-    d = { log: defaultLog, authorize: async () => true, ...(deps ?? billingFromEnv()) };
+    d = deps ? { log: defaultLog, authorize: async () => true, ...deps } : { log: defaultLog, ...billingFromEnv() };
     d.limit ??= perAddress(d.kv);
     return d;
   };
@@ -73,7 +76,7 @@ export function createTransactionsHandler(deps) {
     res.setHeader?.('cache-control', 'no-store');
     if (req.method !== 'POST') return deny(res, 405, 'method');
     const { ledger, verifier, log, authorize, limit } = get();
-    if (!ledger) return deny(res, 503, 'not_configured');
+    if (!ledger || !authorize) return deny(res, 503, 'not_configured');
     if (!(await limit(req, 'transactions'))) return deny(res, 429, 'rate_limited');
     const b = body(req);
     const account = normalizeAccount(b?.account);
@@ -114,7 +117,7 @@ export function createStatusHandler(deps) {
     res.setHeader?.('cache-control', 'no-store');
     if (req.method !== 'GET') return deny(res, 405, 'method');
     const { ledger, authorize, limit } = get();
-    if (!ledger) return deny(res, 503, 'not_configured');
+    if (!ledger || !authorize) return deny(res, 503, 'not_configured');
     if (!(await limit(req, 'status'))) return deny(res, 429, 'rate_limited');
     const q = req.query ?? Object.fromEntries(new URL(req.url, 'http://x').searchParams);
     const account = normalizeAccount(q.account);
