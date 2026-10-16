@@ -72,7 +72,7 @@ export function sing(centsAt, sec, { sr = SR, amp = 0.25, ampAt = null, noise = 
 }
 
 // Melody as semitone steps from A3 (−1200 cents); each note { st, sec }, st = null rest.
-function melodyCurve(notes, { detune = () => 0, drift = 0, wobble = null, vibrato = null, glideSec = 0.06, overshoot = 0 } = {}) {
+export function melodyCurve(notes, { detune = () => 0, drift = 0, wobble = null, vibrato = null, glideSec = 0.06, overshoot = 0 } = {}) {
   const segs = [];
   let t = 0;
   notes.forEach((n, i) => { segs.push({ ...n, t0: t, t1: t + n.sec, off: n.st == null ? 0 : detune(i) }); t += n.sec; });
