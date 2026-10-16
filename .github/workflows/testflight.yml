@@ -1,0 +1,82 @@
+# Builds the iOS app and uploads it to TestFlight, without a Mac.
+# Signing is managed by Apple through an App Store Connect API key (role
+# Admin, so Xcode can create the distribution certificate in the cloud).
+#
+# Repository secrets (Settings → Secrets and variables → Actions):
+#   ASC_KEY_ID       the key's ID
+#   ASC_ISSUER_ID    the Issuer ID shown above the keys
+#   ASC_KEY_P8       the contents of the downloaded AuthKey_XXXX.p8
+#   APPLE_TEAM_ID    the 10-character Team ID (developer.apple.com → Membership)
+#
+# Run it from Actions → TestFlight → Run workflow, or push a tag testflight-*.
+name: TestFlight
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_url:
+        description: Site the app opens (default native/ios.json)
+        required: false
+  push:
+    tags: ['testflight-*']
+
+jobs:
+  upload:
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      KEY_PATH: ${{ github.workspace }}/../AuthKey.p8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check the secrets are set
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          for v in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8 APPLE_TEAM_ID; do
+            [ -n "${!v}" ] || { echo "::error::Add the repository secret $v (see the top of this file)."; exit 1; }
+          done
+          printf '%s\n' "$ASC_KEY_P8" > "$KEY_PATH"
+      - run: npm ci
+      - run: npm run ios
+        env:
+          SONMIRA_APP_URL: ${{ inputs.app_url }}
+      - name: Archive
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Sonmira.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID '${{ secrets.ASC_KEY_ID }}' \
+            -authenticationKeyIssuerID '${{ secrets.ASC_ISSUER_ID }}' \
+            DEVELOPMENT_TEAM='${{ secrets.APPLE_TEAM_ID }}' \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            archive | tail -n 60
+          exit ${PIPESTATUS[0]}
+      - name: Upload to TestFlight
+        run: |
+          cat > "$RUNNER_TEMP/export.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>${{ secrets.APPLE_TEAM_ID }}</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Sonmira.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/export.plist" -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID '${{ secrets.ASC_KEY_ID }}' \
+            -authenticationKeyIssuerID '${{ secrets.ASC_ISSUER_ID }}' | tail -n 40
+          exit ${PIPESTATUS[0]}
+      - if: always()
+        run: rm -f "$KEY_PATH"
