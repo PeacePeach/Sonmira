@@ -41,7 +41,10 @@ export const SINGING_CALIBRATION = {
   intonation: { devGood: 12, devRandom: 28, minNotes: 4 },
   transitions: { overshoot: 50, minCount: 2 },
   weights: { stability: 0.3, intonation: 0.25, transitions: 0.15, control: 0.15, rhythm: 0.1, coherence: 0.05 },
-  strong: { score: 0.8, confidence: 0.6, stability: 0.7, intonation: 0.6, transitions: 0.6 },
+  // intonation 0.8 (was 0.6): on the first real takes (Han, 16 Oct) a casual
+  // and a careful take of the same song differed most in tuning consistency
+  // (0.755 vs 1.0); the singer heard the casual one as Gathered.
+  strong: { score: 0.8, confidence: 0.6, stability: 0.7, intonation: 0.8, transitions: 0.6 },
   // Whole-performance control (performance.js). PROVISIONAL: set on
   // synthetic takes only (mixed-quality takes measure window p25 0.43–0.45
   // and 40 % weak windows; consistently controlled takes, including
@@ -60,7 +63,10 @@ export const SINGING_CALIBRATION = {
   strongPerformance: {
     controlledShare: 0.6,   // of all voiced time: notes, bends and phrase edges
     windowP25: 0.6,         // the weaker windows must be controlled too
-    maxWeakWindowShare: 0.15, // at most about 1 weak window in 7 (none in a short take)
+    maxWeakWindowShare: 0.15, // at most about 1 weak window in 7 …
+    minWeakWindowsAllowed: 1, // … but always one: a short take has only 4–5 windows, and
+                              // the singer heard a 4-window take with one weak
+                              // stretch as Resolved (16 Oct)
     maxTuningDriftCents: 50, // the singer's own key may not keep sliding
     minRhythm: 0.25,        // only extremely weak rhythm blocks Strong (timing is expressive)
     minCoherence: 0.25,     // only extremely erratic leaps block Strong
@@ -317,7 +323,7 @@ export function singingAnalysis(track, features = null, cal = SINGING_CALIBRATIO
     { id: 'transitions', ok: !C.transitions || C.transitions.score >= S.transitions, value: C.transitions?.score ?? 'not measured', need: `≥ ${S.transitions} when measured` },
     { id: 'controlled_share', ok: (perf.controlledShare ?? 0) >= SP.controlledShare, value: perf.controlledShare, need: `≥ ${SP.controlledShare} of voiced time controlled` },
     { id: 'weakest_windows', ok: (perf.windowP25 ?? 0) >= SP.windowP25, value: perf.windowP25, need: `p25 of ${cal.performance.windowSec} s windows ≥ ${SP.windowP25}` },
-    { id: 'weak_windows', ok: perf.windows.length > 0 && perf.weakWindowShare <= SP.maxWeakWindowShare, value: perf.weakWindowShare, need: `≤ ${SP.maxWeakWindowShare} of windows under ${cal.performance.weakWindow}` },
+    { id: 'weak_windows', ok: perf.windows.length > 0 && Math.round(perf.weakWindowShare * perf.windows.length) <= Math.max(SP.minWeakWindowsAllowed ?? 0, Math.floor(SP.maxWeakWindowShare * perf.windows.length)), value: perf.weakWindowShare, need: `≤ ${SP.maxWeakWindowShare} of windows under ${cal.performance.weakWindow}, at least ${SP.minWeakWindowsAllowed ?? 0} allowed` },
     { id: 'key_drift', ok: perf.tuning.driftCents <= SP.maxTuningDriftCents, value: perf.tuning.driftCents, need: `≤ ${SP.maxTuningDriftCents} cents` },
     { id: 'rhythm', ok: !C.rhythm || C.rhythm.score >= SP.minRhythm, value: C.rhythm?.score ?? 'not measured', need: `≥ ${SP.minRhythm} (only extreme cases)` },
     { id: 'coherence', ok: !C.coherence || C.coherence.score >= SP.minCoherence, value: C.coherence?.score ?? 'not measured', need: `≥ ${SP.minCoherence} (only extreme cases)` },
