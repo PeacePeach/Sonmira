@@ -6,7 +6,7 @@
 
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { protect, createSessionHandler, memoryKV, redisKV, signToken, inviteId, timedFetch } from '../server/protect/index.js';
+import { protect, createSessionHandler, memoryKV, redisKV, signToken, verifyToken, inviteId, timedFetch } from '../server/protect/index.js';
 import { hasRedis, startRedis } from './helpers/redis.mjs';
 
 const SECRET = 'test-secret-0123456789abcdef0123456789';
@@ -15,6 +15,12 @@ const INSTALL = 'install-aaaaaaaaaaaaaaaa';
 const T0 = Date.UTC(2026, 9, 16, 12, 0, 0);
 
 const tokenFor = (installId = INSTALL, code = 'MOONRIVER01') => signToken(SECRET, { installId, invite: inviteId(code), now: T0 });
+// A token is only good while its install holds a seat on the code (the
+// session handler gives it one); guard() seats the request's install first.
+const seatFor = async (kv, r) => {
+  const who = verifyToken(SECRET, String(r.headers?.authorization ?? '').slice(7));
+  if (who) await kv.join(`invite:${who.invite}:installs`, who.installId, 100, 86400);
+};
 
 function fakeRes() {
   const res = { statusCode: 200, headers: {}, body: undefined };
@@ -46,7 +52,10 @@ function suite(name, makeKV) {
   describe(`guard (${name})`, () => {
     let kv, clock;
     const env = (extra = {}) => ({ ...ENV, ...extra });
-    const guard = (endpoint, h, extra) => protect(endpoint, h, { env: env(extra), kv, now: () => clock, log: () => {} });
+    const guard = (endpoint, h, extra) => {
+      const g = protect(endpoint, h, { env: env(extra), kv, now: () => clock, log: () => {} });
+      return async (r, res) => { await seatFor(kv, r); return g(r, res); };
+    };
     const fresh = async () => { kv = await makeKV(); clock = T0; };
 
     test('refuses without an invitation token, a valid signature or a live code', async () => {

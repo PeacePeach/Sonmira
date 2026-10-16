@@ -13,6 +13,7 @@ import { generateFromDirection, openaiConfig } from '../src/engine/providers/ope
 import { referenceStoreFromEnv } from '../src/engine/providers/reference-store.js';
 import { REFERENCE_LIBRARY } from '../src/engine/direct/references.js';
 import { protect, timedFetch } from '../server/protect/index.js';
+import { wiring } from '../server/wire.js';
 import { fakeProviderOn, fakeOpenAIFetch, fakeReferenceStore } from '../server/dev/fake-openai.js';
 
 // References come from private Vercel Blob in production (registry and
@@ -99,10 +100,11 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
   }
 };
 
-// Guarded (invitation, limits, daily spend cap, idempotency: server/protect),
-// with the provider call bounded under the function's 120 s. A Preview with
+// Guarded (invitation, limits, daily spend cap, idempotency: server/protect)
+// and counted on the install's paintings ledger (server/wire.js), with the
+// provider call bounded under the function's 120 s. A Preview with
 // SONMIRA_FAKE_PROVIDER=1 paints with the offline renderer instead: no cost.
 const fake = fakeProviderOn() ? fakeOpenAIFetch({ delayMs: Number(process.env.SONMIRA_FAKE_DELAY_MS ?? 4000) }) : null;
 export default protect('generate', createHandler(fake
   ? { fetchImpl: fake, env: { ...process.env, OPENAI_API_KEY: 'fake' }, store: fakeReferenceStore(REFERENCE_LIBRARY) }
-  : { fetchImpl: timedFetch(100_000) }));
+  : { fetchImpl: timedFetch(100_000) }), wiring().guard());

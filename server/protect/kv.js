@@ -11,11 +11,18 @@ import { fakeProviderOn } from '../dev/mode.js';
 //   claim(key, value, ttlSec)           → true if the key was free
 //   join(key, member, max, ttlSec)      → { ok, size }   (set with a size cap)
 //   get(key) / set(key, value, ttlSec) / del(...keys)
+//   isMember(key, member) / addMember(key, member, ttlSec) / removeMember(key, member) / members(key)
+//   moveSeat(fromSeat, toSeat, setKey, from, to, inviteId, ttlSec)
+//                                       → 1 moved, 2 freed (to already had one), 0 nothing
 
 const LUA = {
   hit: "local n = redis.call('INCR', KEYS[1]) if n == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end return n",
   reserve: "local cur = tonumber(redis.call('GET', KEYS[1]) or '0') local amt = tonumber(ARGV[1]) if cur + amt > tonumber(ARGV[2]) then return {0, cur} end local n = redis.call('INCRBY', KEYS[1], amt) redis.call('EXPIRE', KEYS[1], ARGV[3]) return {1, n}",
   adjust: "local n = redis.call('INCRBY', KEYS[1], ARGV[1]) if n < 0 then redis.call('SET', KEYS[1], 0) n = 0 end redis.call('EXPIRE', KEYS[1], ARGV[2]) return n",
+  // KEYS: seat of from, seat of to, the invitation's set. Re-checks that from
+  // still holds a seat on that invitation, so a retry or a race is a no-op.
+  moveSeat: "if redis.call('GET', KEYS[1]) ~= ARGV[3] then return 0 end redis.call('SREM', KEYS[3], ARGV[1]) redis.call('DEL', KEYS[1]) if redis.call('GET', KEYS[2]) then return 2 end redis.call('SADD', KEYS[3], ARGV[2]) redis.call('SET', KEYS[2], ARGV[3], 'EX', ARGV[4]) return 1",
+  addMember: "redis.call('SADD', KEYS[1], ARGV[1]) redis.call('EXPIRE', KEYS[1], ARGV[2]) return 1",
   join: "if redis.call('SISMEMBER', KEYS[1], ARGV[1]) == 1 then return {1, redis.call('SCARD', KEYS[1])} end local n = redis.call('SCARD', KEYS[1]) if n >= tonumber(ARGV[2]) then return {0, n} end redis.call('SADD', KEYS[1], ARGV[1]) redis.call('EXPIRE', KEYS[1], ARGV[3]) return {1, n + 1}",
 };
 
@@ -36,6 +43,11 @@ export function redisKV(exec, { prefix = 'sonmira:' } = {}) {
       const [ok, size] = await exec(['EVAL', LUA.join, '1', k(key), s(member), s(max), s(ttl)]);
       return { ok: Number(ok) === 1, size: Number(size) };
     },
+    isMember: async (key, member) => Number(await exec(['SISMEMBER', k(key), s(member)])) === 1,
+    addMember: async (key, member, ttl) => { await exec(['EVAL', LUA.addMember, '1', k(key), s(member), s(ttl)]); },
+    removeMember: async (key, member) => { await exec(['SREM', k(key), s(member)]); },
+    members: async (key) => ((await exec(['SMEMBERS', k(key)])) || []).map(String),
+    moveSeat: async (fromSeat, toSeat, setKey, from, to, invite, ttl) => Number(await exec(['EVAL', LUA.moveSeat, '3', k(fromSeat), k(toSeat), k(setKey), s(from), s(to), s(invite), s(ttl)])),
     get: async (key) => { const v = await exec(['GET', k(key)]); return v == null ? null : String(v); },
     set: async (key, value, ttl) => { await exec(['SET', k(key), s(value), 'EX', s(ttl)]); },
     del: async (...keys) => { if (keys.length) await exec(['DEL', ...keys.map(k)]); },
@@ -75,6 +87,19 @@ export function memoryKV({ now = Date.now } = {}) {
       if (set.size >= max) return { ok: false, size: set.size };
       set.add(member); put(key, set, ttl);
       return { ok: true, size: set.size };
+    },
+    async isMember(key, member) { const e = live(key); return !!(e?.v instanceof Set && e.v.has(member)); },
+    async addMember(key, member, ttl) { const e = live(key); const set = e?.v instanceof Set ? e.v : new Set(); set.add(member); put(key, set, ttl); },
+    async removeMember(key, member) { const e = live(key); if (e?.v instanceof Set) e.v.delete(member); },
+    async members(key) { const e = live(key); return e?.v instanceof Set ? [...e.v] : []; },
+    async moveSeat(fromSeat, toSeat, setKey, from, to, invite, ttl) {
+      if (live(fromSeat)?.v !== invite) return 0;
+      const e = live(setKey); const set = e?.v instanceof Set ? e.v : new Set();
+      set.delete(from); m.delete(fromSeat);
+      if (live(toSeat)) return 2;
+      set.add(to); if (e) e.v = set; else put(setKey, set, ttl);
+      put(toSeat, invite, ttl);
+      return 1;
     },
     async get(key) { const e = live(key); return e ? String(e.v) : null; },
     async set(key, value, ttl) { put(key, String(value), ttl); },
