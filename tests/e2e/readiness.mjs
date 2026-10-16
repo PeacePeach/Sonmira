@@ -8,7 +8,10 @@
 // Covers: invitation, painting, Keep it, a painting closed before Keep it
 // (draft, reopened without a new generation), reload while painting
 // (recording recovered, no second paid call), discard, failure and retry,
-// double tap, per-install rate limit, the daily spend cap, direct API abuse.
+// double tap, per-install rate limit, the daily spend cap, direct API abuse;
+// and across interruptions: reload with a painting not yet kept, a closed
+// tab, a lost connection, a reload with the invitation sheet open, and the
+// rate limit and cap surviving a reload or a new install.
 
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
@@ -22,7 +25,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function startServer(port, env) {
   const proc = spawn(process.execPath, [fileURLToPath(new URL('./guarded-server.mjs', import.meta.url))], {
-    env: { ...process.env, PORT: String(port), QUIET: '1', SONMIRA_FAKE_PROVIDER: '1', SONMIRA_TOKEN_SECRET: 'e2e-secret-0123456789abcdefghij', SONMIRA_INVITE_CODES: CODE, SONMIRA_LIMIT_INSTALLS_PER_INVITE: '100', SONMIRA_LIMIT_IP_HOUR: '1000', ...env },
+    env: { ...process.env, PORT: String(port), QUIET: '1', SONMIRA_FAKE_PROVIDER: '1', SONMIRA_TOKEN_SECRET: 'e2e-secret-0123456789abcdefghij', SONMIRA_INVITE_CODES: CODE, SONMIRA_LIMIT_INSTALLS_PER_INVITE: '100', SONMIRA_LIMIT_IP_HOUR: '1000', SONMIRA_LIMIT_SESSION_IP_HOUR: '1000', ...env },
     stdio: ['ignore', 'pipe', 'inherit'],
   });
   return new Promise((resolve) => proc.stdout.on('data', (d) => { if (String(d).includes('guarded server')) resolve({ base: `http://localhost:${port}/`, stop: () => proc.kill() }); }));
@@ -35,8 +38,11 @@ let shotN = 0;
 async function guardLog(base) { return (await (await fetch(`${base}__test/guard-log`)).json()); }
 const paidCalls = (log, endpoint, install) => log.filter((e) => e.endpoint === endpoint && (!install || e.install === install) && (e.outcome === 'ok' || e.outcome === 'failed')).length;
 
+const open = new Set();
 async function fresh(base) {
   const ctx = await browser.newContext({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  open.add(ctx);
+  ctx.on('close', () => open.delete(ctx));
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -69,10 +75,12 @@ async function step(name, fn) {
   if (process.env.ONLY && !name.includes(process.env.ONLY)) return;
   const t0 = Date.now();
   try { await fn(); results.push({ name, ok: true, ms: Date.now() - t0 }); console.log(`ok   ${name}`); }
-  catch (e) { results.push({ name, ok: false, error: e.message }); console.log(`FAIL ${name}\n     ${e.message.split('\n')[0]}`); }
+  catch (e) { if (process.env.DEBUG && typeof A !== 'undefined') console.log(JSON.stringify((await guardLog(A.base)).slice(-6).map((x) => [x.endpoint, x.outcome, x.status, x.reason ?? x.limit ?? '']))); await Promise.all([...open].map((c) => c.close().catch(() => {}))); results.push({ name, ok: false, error: e.message }); console.log(`FAIL ${name}\n     ${e.message.split('\n').slice(0, process.env.DEBUG ? 12 : 1).join('\n     ')}`); }
 }
 
-const A = await startServer(5191, { SONMIRA_FAKE_DELAY_MS: '2500', SONMIRA_LIMIT_GENERATE_HOUR: '2' });
+// Every test device comes from 127.0.0.1, so the per-address limits are raised in startServer;
+// more paintings than $3 buys run here, so this server's cap is raised too (the cap has its own server below).
+const A = await startServer(5191, { SONMIRA_FAKE_DELAY_MS: '2500', SONMIRA_LIMIT_GENERATE_HOUR: '2', SONMIRA_DAILY_CAP_USD: '50' });
 
 await step('invitation: a wrong code is refused, the right one paints; one paid image', async () => {
   const { ctx, page } = await fresh(A.base);
@@ -81,6 +89,7 @@ await step('invitation: a wrong code is refused, the right one paints; one paid 
   await page.click('text=Create painting');
   await invite(page, 'WRONG-CODE-9');
   await page.waitForSelector('[data-sheet] .share-message');
+  await page.waitForFunction(() => document.querySelectorAll('[data-sheet]').length === 1); // the first sheet has finished closing
   await page.shot('invite-wrong-code');
   await page.fill('[aria-label="Invitation code"]', CODE);
   await page.click('[data-sheet] .pill');
@@ -147,6 +156,94 @@ await step('reload while painting: the recording is recovered and finished with 
   assert.equal(paidCalls(log, 'generate', me), 1, `one image, log: ${JSON.stringify(mine.map((e) => e.endpoint + ':' + e.outcome))}`);
   assert.equal(paidCalls(log, 'understand', me), 1);
   assert.ok(mine.some((e) => e.outcome === 'replay'), 'the resumed request got the stored result');
+  await ctx.close();
+});
+
+await step('reload after the painting arrived, before Keep it: reopened with no new generation, counted once', async () => {
+  const { ctx, page } = await fresh(A.base);
+  await record(page);
+  await page.fill('.caption-input', 'Kitchen song');
+  await page.click('text=Create painting');
+  await invite(page);
+  await page.waitForSelector('[data-phase=result]', { timeout: 30000 });
+  const free = await page.evaluate(() => window.sonmira.billing.status().free);
+  await page.reload();
+  await page.waitForSelector('.drafts-row');
+  const d = await drafts(page);
+  assert.equal(d.length, 1);
+  assert.equal(d[0].status, 'ready');
+  assert.ok(d[0].hasAudio && d[0].hasPainting, 'recording and painting both survived');
+  assert.equal((await entries(page)).length, 0);
+  assert.equal(await page.evaluate(async () => (await window.sonmira.drafts.list())[0].note), 'Kitchen song', 'the note too');
+  await page.click('.drafts-row');
+  await page.click('[data-draft] .draft-open');
+  await page.waitForSelector('[data-phase=result]');
+  assert.equal(await page.evaluate(() => window.sonmira.billing.status().free), free, 'not counted a second time');
+  await page.click('text=Keep it');
+  await page.waitForSelector('[data-screen=diary] .entry');
+  assert.equal(paidCalls(await guardLog(A.base), 'generate', await page.install()), 1);
+  assert.deepEqual(page.errors, []);
+  await ctx.close();
+});
+
+await step('tab closed while painting, app opened again in a new tab: recovered, one paid image', async () => {
+  const { ctx, page } = await fresh(A.base);
+  await record(page);
+  await page.click('text=Create painting');
+  await invite(page);
+  await page.waitForSelector('[data-phase=generating]');
+  await page.waitForTimeout(1000);
+  const me = await page.install();
+  await page.close();
+  const again = await ctx.newPage();
+  await again.goto(A.base);
+  await again.waitForSelector('.drafts-row');
+  assert.equal((await drafts(again))[0].status, 'painting');
+  await again.click('.drafts-row');
+  await again.click('[data-draft] .draft-open');
+  await again.waitForSelector('[data-phase=result]', { timeout: 30000 });
+  assert.equal(paidCalls(await guardLog(A.base), 'generate', me), 1);
+  await ctx.close();
+});
+
+await step('connection lost while painting: the take is kept, Try again gets the painting already made', async () => {
+  const { ctx, page } = await fresh(A.base);
+  // The request reaches the server and the painting is made, but the answer
+  // never arrives (the phone lost its connection on the way back).
+  let drop = true;
+  await page.route('**/api/generate', async (route) => {
+    if (route.request().method() !== 'POST' || !drop) return route.continue();
+    drop = false;
+    await route.fetch().catch(() => {});
+    return route.abort('connectionreset');
+  });
+  await record(page);
+  await page.click('text=Create painting');
+  await invite(page);
+  await page.waitForSelector('[data-phase=error][data-kind=generation]', { timeout: 30000 });
+  const d = await drafts(page);
+  assert.equal(d[0].status, 'failed');
+  assert.ok(d[0].hasAudio);
+  await page.click('[data-kind=generation] .pill');
+  await page.waitForSelector('[data-phase=result]', { timeout: 30000 });
+  const log = await guardLog(A.base), me = await page.install();
+  assert.equal(paidCalls(log, 'generate', me), 1, 'Try again was answered with the painting already made');
+  assert.ok(log.some((e) => e.install === me && e.endpoint === 'generate' && e.outcome === 'replay'));
+  await ctx.close();
+});
+
+await step('invitation sheet left open and the app reloaded: the take waits as a draft and paints after the code', async () => {
+  const { ctx, page } = await fresh(A.base);
+  await record(page);
+  await page.click('text=Create painting');
+  await page.waitForSelector('[aria-label="Invitation code"]');
+  await page.reload();
+  await page.waitForSelector('.drafts-row');
+  assert.ok((await drafts(page))[0].hasAudio);
+  await page.click('.drafts-row');
+  await page.click('[data-draft] .draft-open');
+  await invite(page);
+  await page.waitForSelector('[data-phase=result]', { timeout: 30000 });
   await ctx.close();
 });
 
@@ -231,6 +328,17 @@ await step('rate limit: the third painting in an hour is refused calmly and the 
   assert.equal(d.length, 1);
   assert.equal(d[0].error, 'rate_limited');
   assert.equal(await page.evaluate(() => window.sonmira.billing.status().free), 1, 'not counted');
+  // The limit is the server's: a reload (fresh page state) changes nothing.
+  const paid = paidCalls(await guardLog(A.base), 'generate', await page.install());
+  await page.reload();
+  await page.click('.drafts-row');
+  await page.click('[data-draft] .draft-open');
+  await page.waitForSelector('[data-phase=preview]'); // a failed take reopens on its recording
+  await page.click('text=Create painting');
+  await page.waitForSelector('[data-phase=error][data-kind=generation]', { timeout: 30000 });
+  assert.equal(await page.getAttribute('[data-kind=generation]', 'data-code'), 'rate_limited');
+  assert.equal(paidCalls(await guardLog(A.base), 'generate', await page.install()), paid);
+  assert.ok((await drafts(page))[0].hasAudio);
   await ctx.close();
 });
 
@@ -269,6 +377,15 @@ await step('daily spend cap: once reached, painting is refused for everyone and 
   const log = await guardLog(B.base);
   assert.ok(log.some((e) => e.outcome === 'spend_cap'));
   assert.equal(paidCalls(log, 'generate'), 1);
+  // Clearing the app's storage (a new install) doesn't get around the cap either.
+  const three = await fresh(B.base);
+  await record(three.page);
+  await three.page.click('text=Create painting');
+  await invite(three.page);
+  await three.page.waitForSelector('[data-phase=error][data-kind=generation]', { timeout: 30000 });
+  assert.equal(await three.page.getAttribute('[data-kind=generation]', 'data-code'), 'spend_cap');
+  assert.equal(paidCalls(await guardLog(B.base), 'generate'), 1);
+  await three.ctx.close();
   await two.ctx.close();
 });
 B.stop();
