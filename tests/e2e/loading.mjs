@@ -97,6 +97,7 @@ const watchLine = (page) => page.evaluate(() => {
   assert.deepEqual(lines.filter((l) => order.includes(l)), order, 'real stages in order: ' + JSON.stringify(lines));
   assert.equal(s.calls.generate, 1, 'one image request; the animation makes none');
   await sleep(1600);
+  assert.doesNotMatch(await s.page.$eval('[data-screen=sing]', (e) => e.innerText), /\b(loose|gathered|resolved)\b|_complete|_words/i);
   const art = await s.page.$eval('.painting img.art', (i) => ({ hidden: i.classList.contains('hidden'), loaded: i.complete && i.naturalWidth > 0 }));
   assert.deepEqual(art, { hidden: false, loaded: true });
   await shot(s.page, 'loading-2-revealed');
@@ -138,7 +139,11 @@ const watchLine = (page) => page.evaluate(() => {
   const lines = await s.page.evaluate(() => window.__lines.map((l) => l.text));
   assert.ok(!lines.includes('Letting colours take shape…'), JSON.stringify(lines));
   assert.equal(s.calls.generate, 0);
-  assert.match(await s.page.textContent('[data-phase=analyzed]'), /Analysis only: no painting was made/);
+  const shown = await s.page.textContent('[data-phase=analyzed]');
+  assert.match(shown, /Analysis complete/);
+  // Internal states stay in the dev panel, never in the product UI.
+  const mainText = await s.page.$eval('[data-screen=sing]', (e) => e.innerText);
+  assert.doesNotMatch(mainText, /\b(loose|gathered|resolved)\b|lexical_words|asr_confident|phrase_complete|no painting was made/i);
   await shot(s.page, 'loading-4-analyzed');
   await s.ctx.close();
   console.log('analyze only: ok', JSON.stringify(lines));

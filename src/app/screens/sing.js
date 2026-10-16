@@ -78,6 +78,7 @@ export function mountSing(app) {
     phase = 'starting';
     hint = '';
     painting.setStrokes([]); painting.setArtwork(null);
+    painting.el.classList.add('alive'); // the washes live until the artwork covers them
     const line = h('div', { class: 'line serif' }, SINGING_LINES[0]);
     const note = h('div', { class: 'hint' }, 'Waiting for the microphone…');
     const halo = h('div', { class: 'halo', style: { background: 'oklch(0.78 0.1 240 / 0.55)' } });
@@ -225,7 +226,7 @@ export function mountSing(app) {
       cap.stop();
       if (phase !== 'generating') return;
       resting();
-      if (e?.code === 'analyze_only') analyzed(e.understanding);
+      if (e?.code === 'analyze_only') analyzed();
       else generationError(e);
       return;
     }
@@ -241,21 +242,19 @@ export function mountSing(app) {
       track.classList.add('done');
       line.style.opacity = '0';
       later(() => { line.textContent = result.interpretation.dryingLine; line.style.opacity = '1'; }, 450);
-      later(() => { painting.setStrokes(result.wash); developing(false); }, 1700); // under the opaque artwork
+      later(() => { painting.setStrokes(result.wash); developing(false); painting.el.classList.remove('alive'); }, 1700); // under the opaque artwork
       later(showResult, 2000);
     }, wait);
   }
 
-  // Dev "analyze only": the decision is made, no painting is requested.
-  function analyzed(u) {
+  // Dev "analyze only" (set only from the ?dev panel): the decision is made
+  // and shown in the dev panel; the main UI stays neutral and product-like.
+  function analyzed() {
     phase = 'gen-error';
-    const tier = u?.tier ? u.tier[0].toUpperCase() + u.tier.slice(1) : '—';
     show(h('div', { class: 'phase centered', 'data-phase': 'analyzed' },
-      h('div', { class: 'error-copy' },
-        h('h1', { class: 'serif', style: 'font-size:30px' }, tier),
-        h('div', { class: 'lede' }, `Analysis only: no painting was made. ${u?.decision?.reason ?? ''}`)),
+      h('div', { class: 'error-copy' }, h('h1', { class: 'serif', style: 'font-size:30px' }, 'Analysis complete')),
       h('div', { class: 'actions', style: 'width:100%' },
-        h('button', { class: 'pill', onClick: () => { phase = 'preview'; generate(); } }, 'Analyze again'),
+        h('button', { class: 'pill', onClick: () => { phase = 'preview'; generate(); } }, 'Run again'),
         h('button', { class: 'quiet-btn', onClick: singAgain }, 'Sing again'))));
   }
 
@@ -331,7 +330,7 @@ export function mountSing(app) {
   function singAgain() {
     timers.forEach(clearTimeout); timers = [];
     take = null; result = null; hint = '';
-    painting.setStrokes([]); painting.setArtwork(null); developing(false);
+    painting.setStrokes([]); painting.setArtwork(null); developing(false); painting.el.classList.remove('alive');
     ready();
   }
 

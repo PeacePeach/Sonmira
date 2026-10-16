@@ -176,10 +176,21 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 @keyframes developRun { from { transform: translateX(-100%); } to { transform: translateX(225%); } }
 .painting .wash { transition: scale .5s cubic-bezier(.2, .6, .3, 1), opacity .5s ease-out; }
 .painting.developing .wash { opacity: .9; transition: scale 1.6s ease-out, opacity 2.4s ease-in-out; animation: washDevelop 11s ease-in-out infinite alternate; }
-.painting.resting .wash { animation-play-state: paused; }
+.painting.resting .wash, .painting.resting .stroke { animation-play-state: paused; }
+/* Alive (recording, preview, processing): each wash drifts on its own slow
+   phase through the fixed displacement field, so edges keep re-forming like
+   pigment moving in wet paper. Developing adds a slow outward bleed and
+   dilution on top, continuing the same washes. */
+.painting.alive .stroke { animation: pigmentDrift var(--dur) ease-in-out var(--delay) infinite alternate; }
+.painting.alive .stroke.bloom { animation: bloom 1s ease-out both, pigmentDrift var(--dur) ease-in-out var(--delay) infinite alternate; }
+.painting.alive.developing .stroke { animation: pigmentDrift var(--dur) ease-in-out var(--delay) infinite alternate, pigmentBleed 16s cubic-bezier(.25, .6, .35, 1) both; }
+.painting.alive.developing .stroke.bloom { animation: bloom 1s ease-out both, pigmentDrift var(--dur) ease-in-out var(--delay) infinite alternate, pigmentBleed 16s cubic-bezier(.25, .6, .35, 1) both; }
+@keyframes pigmentDrift { from { translate: 0 0; rotate: 0deg; } to { translate: var(--dx) var(--dy); rotate: 4deg; } }
+@keyframes pigmentBleed { from { scale: 1; opacity: 1; } to { scale: var(--spread); opacity: .82; } }
 @keyframes washDevelop { 0% { transform: none; } 50% { transform: scale(1.03) rotate(.35deg) translate(.5%, -.4%); } 100% { transform: scale(1.055) rotate(-.25deg) translate(-.4%, .3%); } }
 @media (prefers-reduced-motion: reduce) {
   .painting .wash, .painting.developing .wash { animation: none; scale: none !important; transition: opacity .8s ease-out; }
+  .painting.alive .stroke, .painting.alive .stroke.bloom, .painting.alive.developing .stroke, .painting.alive.developing .stroke.bloom { animation: none; }
   .develop-run { width: 100%; transform: none; background: var(--muted); animation: developBreathe 2.4s ease-in-out infinite alternate; }
 }
 @keyframes developBreathe { from { opacity: .2; } to { opacity: .6; } }
