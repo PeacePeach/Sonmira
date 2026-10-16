@@ -19,11 +19,12 @@ import { rng, hashSeed } from '../render/rng.js';
 import { FAMILIES, familiesOfTier } from './families.js';
 import { LIBRARY, referencePalette, REFERENCE_AUTHORITY } from './library.js';
 import { PEOPLE } from './leakage.js';
+import { compositionPlan, compositionLine } from './composition.js';
 
 export { FAMILIES, REFERENCES, LIBRARY_VERSION } from './families.js';
 export { LIBRARY, createLibrary, colourName, referencePalette } from './library.js';
 export { checkLeakage, checkPrompt } from './leakage.js';
-export const DIRECTION_VERSION = 6;
+export const DIRECTION_VERSION = 7;
 
 // Global Sonmira constraints: true for every family and every tier.
 // Materiality is independent of abstraction: Loose, Gathered and Resolved all
@@ -69,7 +70,7 @@ export const REFERENCE_STYLE = 'A hand-made painting in the artistic language of
 export const REFERENCE_AVOID = [
   'text, letters, titles, signature, logo or watermark', 'a frame, border or mat', 'a photo of a painting on a table',
   'photorealism or a photograph', 'a photo-to-painting filter effect', 'glossy digital or 3D rendering',
-  'people, human figures, silhouettes or faces',
+  'people, human figures, silhouettes or faces', 'a centred, symmetrical composition',
 ];
 
 // What may be depicted, for every tier and family. The references and the
@@ -246,12 +247,16 @@ export function direct(spec) {
     : tier === 'loose' && spec.soundOnly ? `${article(labelOf('loose', withRef))} that expresses the sound of the voice itself, not any subject or story.`
     : `${article(labelOf(tier, withRef))}${subject ? ` of ${subject}` : ''}.`;
   const avoid = withRef ? REFERENCE_AVOID : AVOID;
+  const plan = tier === 'loose' ? null : compositionPlan(familyId, spec.seed);
   const sections = {
     subject: subjectLine,
     meaning: concept ? meaningLine(tier, concept) : null,
     family: `Style — ${F.label}: ${F.rules} This describes only how it is painted, never what is depicted.`,
     content: CONTENT_RULE,
     form: withRef ? LEVELS[tier].refForm : LEVELS[tier].form,
+    // How the reference composes, drawn per seed: viewpoint, off-centre
+    // placement and scale (composition.js). Loose stays all-over.
+    composition: compositionLine(plan, tier),
     // The reference's light note can name its own objects ("sun through
     // leaves", "windows under violet shadow"), so only its quality is kept.
     palette: fromRef ? fromRef.text.replace(/Light: [^.]*\./, 'Light: the reference\'s own quality and direction of light, carried onto the new subject.') : `Colour: ${P.colors.filter((p) => chosen.includes(p)).map((p) => p.name).join(', ')}, on white or warm white paper${P.accent ? `, with ${P.accent.name} as the only accent, kept small` : ''}.`,
@@ -261,7 +266,7 @@ export function direct(spec) {
     gesture: expressionLine(spec.expression, withRef),
     style: withRef ? REFERENCE_STYLE : GLOBAL_STYLE,
   };
-  const prompt = [sections.subject, sections.meaning, sections.family, sections.content, sections.form, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.energy, sections.gesture, sections.style, `Avoid: ${avoid.join(', ')}.`].filter(Boolean).join('\n');
+  const prompt = [sections.subject, sections.meaning, sections.family, sections.content, sections.form, sections.composition, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.energy, sections.gesture, sections.style, `Avoid: ${avoid.join(', ')}.`].filter(Boolean).join('\n');
   return {
     version: DIRECTION_VERSION, level: tier, requestedLevel: level,
     family: familyId, familyLabel: F.label, refs: library.pool(familyId).map((e) => e.path.split('/').pop()),
@@ -270,6 +275,7 @@ export function direct(spec) {
     referencePrompt: reference ? REFERENCE_AUTHORITY : null,
     libraryVersion: library.version, seed: spec.seed >>> 0,
     concept: concept ?? null,
+    composition: plan,
     subject: concept ? concept.text : subject, subjectSource: concept ? (concept.source === 'note' ? 'note' : 'lyrics') : tier === 'loose' && spec.soundOnly ? 'sound' : 'atmosphere',
     pigments: swatches.map((p) => p.name), swatches, sections, prompt, avoid: avoid.slice(),
   };

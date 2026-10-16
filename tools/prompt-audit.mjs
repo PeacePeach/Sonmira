@@ -43,7 +43,8 @@ export const CONFLICTS = [
 // Technique, composition and colour prescriptions that must come from the
 // reference (or the family's own rules), never from the shared layer. Any of
 // these in the prompt outside the reference-authority paragraph, the family's
-// style line and the reference's measured palette is reported.
+// style line, its composition principles and the reference's measured
+// palette is reported.
 export const UNIVERSAL_TECHNIQUE = [
   /wet-on-wet|wet-in-wet/i, /\bblooms?\b/i, /backruns?/i, /granulation/i, /white paper|bare paper|reserved white/i, /negative space/i,
   /smooth (artificial )?gradients?/i, /cinematic/i, /pastel/i, /splash|spatter|flicks?\b/i, /transparent layered/i, /one clear colour idea|at most one accent/i,
@@ -51,7 +52,7 @@ export const UNIVERSAL_TECHNIQUE = [
 ];
 
 export function sharedLayer(prompt, direction) {
-  return prompt.replace(direction.referencePrompt ?? '', '').replace(direction.sections.family, '').replace(direction.sections.palette ?? '', '').replace(direction.sections.subject, '').replace(direction.sections.meaning ?? '', '');
+  return prompt.replace(direction.referencePrompt ?? '', '').replace(direction.sections.family, '').replace(direction.composition?.principles ?? '', '').replace(direction.sections.palette ?? '', '').replace(direction.sections.subject, '').replace(direction.sections.meaning ?? '', '');
 }
 
 async function storeFor(env) {

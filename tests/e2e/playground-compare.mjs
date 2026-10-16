@@ -37,7 +37,7 @@ await page.route('**/api/generate', async (route) => {
   generated.push(spec);
   return route.fulfill({ json: { ok: true, provider: 'openai', model: 'stub', quality: 'medium', size: '1024x1536', ms: 1, prompt: d.prompt, family: d.family, familyLabel: d.familyLabel, familyRefs: d.refs,
     subjectSource: d.subjectSource, subject: d.subject, reference: d.reference.id, referenceSent: true, seed: d.seed, swatches: d.swatches,
-    settings: { tier: d.level, emotion: spec.emotion, motif: spec.motif, energy: spec.energy.value, expression: spec.expression ?? null }, promptCheck: checkPrompt(d), image: imageFor(d.reference.id) } });
+    composition: d.composition, settings: { tier: d.level, emotion: spec.emotion, motif: spec.motif, energy: spec.energy.value, expression: spec.expression ?? null }, promptCheck: checkPrompt(d), image: imageFor(d.reference.id) } });
 });
 await page.goto(BASE);
 await page.waitForFunction(() => window.__playground?.ready);
@@ -63,6 +63,7 @@ for (const id of ['resolved_01', 'resolved_12', 'resolved_06']) {
   assert.match(meta, new RegExp(`Reference\\s+${id}`));
   assert.match(meta, /Subject from\s+the note/);
   assert.match(meta, /Prompt check\s+clean/);
+  assert.match(meta, /Composition\s+\S/);
 }
 assert.deepEqual(generated.map((s) => s.reference), ['resolved_01', 'resolved_12', 'resolved_06']);
 assert.ok(generated.every((s) => s.concept?.source === 'note' && s.seed === 1 && s.emotion === 'tender' && s.motif === 'water' && s.completeness === 'resolved'));

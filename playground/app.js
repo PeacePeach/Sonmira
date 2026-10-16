@@ -262,7 +262,7 @@ async function paintAI(a, ov, control, provider) {
     family: g.family ?? plan.summary.family, familyLabel: g.familyLabel ?? plan.summary.familyLabel, familyRefs: g.familyRefs ?? plan.summary.familyRefs, swatches: g.swatches ?? plan.summary.swatches,
     provider: g.provider, providerLabel: `OpenAI ${g.model} (${g.quality})`, model: g.model, quality: g.quality, size: g.size, prompt: g.prompt, usage: g.usage ?? null,
     reference: g.reference ?? null, referenceSent: g.referenceSent ?? null, subjectSource: g.subjectSource ?? null, subject: g.subject ?? null,
-    settings: g.settings ?? null, promptCheck: g.promptCheck ?? null, seed: g.seed ?? plan.summary.seed,
+    settings: g.settings ?? null, composition: g.composition ?? null, promptCheck: g.promptCheck ?? null, seed: g.seed ?? plan.summary.seed,
   };
   return { meta, canvas, png, features: a?.features ?? null, ms: { analyze: a?.ms ?? null, paint: performance.now() - t0, provider: g.ms } };
 }
@@ -371,6 +371,7 @@ function settingsList(r) {
     <dt>Emotion · motif</dt><dd>${esc(st.emotion ?? m.emotion)} · ${esc(st.motif ?? m.motif)}</dd>
     <dt>Energy</dt><dd>${esc(st.energy ?? m.energy ?? '—')}${x ? ` · ${esc([x.range, x.flow, x.dynamics, x.vibrato ? 'vibrato' : null].filter(Boolean).join(' / '))}` : ''}</dd>
     <dt>Subject from</dt><dd>${esc(SUBJECT_FROM[m.subjectSource] ?? m.subjectSource ?? '—')}${m.subject ? `<div class="hint">${esc(m.subject)}</div>` : ''}</dd>
+    <dt>Composition</dt><dd>${m.composition ? esc(`${m.composition.viewpoint}; focus ${m.composition.placement}; ${m.composition.scale}; ${m.composition.staging}`) : '—'}</dd>
     <dt>Seed</dt><dd>${m.seed}</dd>
     <dt>Model</dt><dd>${esc(m.model ?? '—')} · ${esc(m.quality ?? '—')} · ${esc(m.size ?? '—')}</dd>
     <dt>Prompt check</dt><dd>${check}</dd>

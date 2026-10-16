@@ -115,6 +115,15 @@ reference. The universal watercolor technique and long avoid list
 `tools/prompt-audit.mjs` builds the exact request without sending it and
 flags any shared prescription that would compete with the reference.
 
+**How it is composed.** Each Gathered and Resolved family carries its
+references' composition language (`src/engine/direct/composition.js`):
+structural principles such as R1's directional diagonals, R2's aerial,
+asymmetric field and R4's atmospheric depth and negative space, plus
+viewpoints, off-centre placements and scales, one of each drawn per seed.
+The focus is never centred; Resolved adds a bar for spatial hierarchy,
+directional movement and purposeful staging. The words still decide the
+subject; the plan is in the dev panel and the Playground comparison.
+
 **What is depicted.** References decide how a painting is made, never what
 it shows. Family labels and rules name no objects, figures or scenery; the
 reference's light note keeps only its quality. The subject comes from
