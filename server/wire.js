@@ -20,6 +20,8 @@ import { createLedger } from './billing/ledger.js';
 import { createCharge, billingMode } from './billing/charge.js';
 import { billingFromEnv } from './billing/http.js';
 import { buildFromEnv as buildAccounts } from '../src/account/deploy.js';
+import { createAccountHandlers } from '../src/account/http.js';
+import { AccountError } from '../src/account/accounts.js';
 
 let cached = null;
 
@@ -47,6 +49,12 @@ export function wiring(env = process.env) {
     session: () => ({ verifyAccount: async (token) => (await account()?.accounts.verifyAccount(token)) ?? null }),
     /** create*Handler(deps) in server/billing/http.js. */
     billing: () => ({ ...billingFromEnv(env), kv, ledger, authorize }),
+    /** /api/account/*: sign-in proves the device's id with authorize, and moves its seat and ledger. */
+    accountHandlers: createAccountHandlers(async () => {
+      const built = account();
+      if (!built) throw new AccountError('not_configured', 503);
+      return built;
+    }),
   };
   return cached;
 }

@@ -19,6 +19,7 @@ import { createAppleVerifier } from '../server/billing/apple.js';
 import { createTransactionsHandler, createStatusHandler } from '../server/billing/http.js';
 import { createAccounts } from '../src/account/accounts.js';
 import { createMemoryStore } from '../src/account/stores.js';
+import { createAccountHandlers } from '../src/account/http.js';
 import { testAppleChain } from './helpers/apple-sign.mjs';
 import { hasRedis, startRedis } from './helpers/redis.mjs';
 
@@ -65,6 +66,13 @@ function suite(name, makeKV) {
       const log = () => {};
       const session = createSessionHandler({ env, kv, now, log, verifyAccount: (t) => accounts.verifyAccount(t) });
       const day = () => new Date(clock.now).toISOString().slice(0, 10);
+      // /api/account/apple as deployed: the device's id must be proven with its install token.
+      const accountApi = createAccountHandlers(async () => ({ accounts, authorize, limit: async () => true }));
+      const signIn = async (token, appleUser, accountId) => {
+        const res = { statusCode: 0, setHeader() {}, end(b) { this.body = JSON.parse(b); } };
+        await accountApi.apple({ method: 'POST', headers: auth(token), body: { identityToken: appleUser, accountId } }, res);
+        return { status: res.statusCode, ...res.body };
+      };
 
       // The paid handler: counts would-be provider calls; `fail` makes the next ones fail.
       const paid = { calls: 0, fail: null };
@@ -96,7 +104,7 @@ function suite(name, makeKV) {
         });
       };
       const buy = (token, account, jws) => call(transactions, { method: 'POST', body: { account, transactions: [jws], day: day(), device: PHONE }, headers: auth(token) });
-      return { kv, clock, ledger, accounts, paid, join, accountSession, paint, status, left, tx, buy, seats };
+      return { kv, clock, ledger, accounts, paid, join, accountSession, paint, status, left, tx, buy, seats, signIn };
     }
 
     test('billing answers only to the install token of the account it names', async () => {
@@ -198,14 +206,14 @@ function suite(name, makeKV) {
       const g1 = id(), t1 = (await s.join(g1)).token;
       await s.buy(t1, g1, s.tx(g1));
       await s.paint(t1, 'p1-take-1.generate');
-      const linked = await s.accounts.signInWithApple({ identityToken: 'apple-user-1', accountId: g1 });
+      const linked = await s.signIn(t1, 'apple-user-1', g1);
       assert.equal(linked.status, 'linked');
       assert.equal(linked.accountId, g1);
 
       // Phone 2: another guest joins on another code and paints once, then signs in to the same Apple ID.
       const g2 = id(), t2 = (await s.join(g2, 'SUNNY-DAY-02')).token;
       await s.paint(t2, 'p2-take-1.generate');
-      const back = await s.accounts.signInWithApple({ identityToken: 'apple-user-1', accountId: g2 });
+      const back = await s.signIn(t2, 'apple-user-1', g2);
       assert.equal(back.status, 'returning');
       assert.equal(back.accountId, g1);
       // The guest's own token ends: its seat was given back.
@@ -235,16 +243,35 @@ function suite(name, makeKV) {
       const s = await setup();
       const a = id(), t = (await s.join(a)).token;
       await s.buy(t, a, s.tx(a));
-      await s.accounts.signInWithApple({ identityToken: 'apple-user-2', accountId: a });
+      await s.signIn(t, 'apple-user-2', a);
       // Reinstall without iCloud Keychain: a new guest id with no seat and no token.
       const fresh = id();
-      const back = await s.accounts.signInWithApple({ identityToken: 'apple-user-2', accountId: fresh });
+      const back = await s.signIn(null, 'apple-user-2', fresh); // no token: nothing to prove, nothing merged
       assert.equal(back.accountId, a);
       const ta = (await s.accountSession(a, back.token)).token;
       assert.equal((await s.paint(ta, 'r-take-1.generate')).statusCode, 200);
       assert.equal((await s.left(a)).credits, 10);
       // Signing out leaves a fresh guest, who needs a code again.
       assert.equal((await s.accountSession(id(), back.token)).code, 'invite_required');
+    });
+
+    test('nobody can sign in with, or merge, a guest id they do not hold', async () => {
+      const s = await setup();
+      const victim = id(), tv = (await s.join(victim)).token;
+      await s.buy(tv, victim, s.tx(victim));
+      const thief = id(), tt = (await s.join(thief)).token;
+      // Linking a new Apple ID to someone else's id: refused, with or without the thief's own token.
+      assert.equal((await s.signIn(tt, 'apple-thief', victim)).status, 401);
+      assert.equal((await s.signIn(null, 'apple-thief', victim)).status, 401);
+      // A thief with an existing account can't pull the victim's ledger into it either.
+      const own = await s.signIn(tt, 'apple-thief', thief);
+      assert.equal(own.status, 'linked');
+      const r = await s.signIn(tt, 'apple-thief', victim);
+      assert.equal(r.accountId, thief);
+      assert.equal((await s.left(victim)).credits, 10);
+      assert.equal((await s.left(thief)).credits, 0);
+      // The victim's token and seat are untouched.
+      assert.equal((await s.paint(tv, 'v-take-1.generate')).statusCode, 200);
     });
   });
 }

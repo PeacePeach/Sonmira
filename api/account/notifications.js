@@ -1,3 +1,4 @@
-import { handlers } from '../../src/account/deploy.js';
+// Wired to the guard and the paintings ledger (server/wire.js).
+import { wiring } from '../../server/wire.js';
 
-export default handlers.notifications;
+export default wiring().accountHandlers.notifications;
