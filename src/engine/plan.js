@@ -40,6 +40,8 @@ export function planPainting(opts = {}) {
       pigments: direction.pigments,
       family: direction.family,
       familyLabel: direction.familyLabel,
+      familyRefs: direction.refs,
+      swatches: direction.swatches,
       interpretation: it,
     },
   };

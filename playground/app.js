@@ -9,6 +9,7 @@
 
 import { EMOTIONS, MOTIFS, CALIBRATION } from '../src/engine/interpret/index.js';
 import { PIGMENTS } from '../src/engine/art/palettes.js';
+import { FAMILIES } from '../src/engine/direct/families.js';
 import { saveRun, deleteRun, listRuns } from './store.js';
 
 const MAX_SEC = 30;
@@ -42,6 +43,7 @@ let busy = false;
 
 for (const e of EMOTIONS) $('ovEmotion').add(new Option(e, e));
 for (const m of MOTIFS) $('ovMotif').add(new Option(m, m));
+for (const [id, f] of Object.entries(FAMILIES)) $('ovFamily').add(new Option(`${f.tier} · ${f.label}`, id));
 
 function setStatus(text) { $('status').textContent = text || ''; }
 function setBusy(b) {
@@ -237,7 +239,7 @@ async function paintAI(a, ov, control, provider) {
   const png = await (await fetch(g.image)).blob();
   const meta = {
     ...plan.summary, focus: '50% 50%', method: `ai:${g.provider}/${g.model}`,
-    family: g.family ?? plan.summary.family, familyLabel: g.familyLabel ?? plan.summary.familyLabel,
+    family: g.family ?? plan.summary.family, familyLabel: g.familyLabel ?? plan.summary.familyLabel, familyRefs: g.familyRefs ?? plan.summary.familyRefs, swatches: g.swatches ?? plan.summary.swatches,
     provider: g.provider, providerLabel: `OpenAI ${g.model} (${g.quality})`, model: g.model, prompt: g.prompt, usage: g.usage ?? null,
   };
   return { meta, canvas, png, features: a?.features ?? null, ms: { analyze: a?.ms ?? null, paint: performance.now() - t0, provider: g.ms } };
@@ -342,7 +344,9 @@ function showResults(run, { compareTiers = false } = {}) {
   const m = run.result, it = m.interpretation, f = run.features, s = it.signals;
   const srcName = { voice: 'from the voice', note: 'from the note', default: 'default', override: 'override' };
   const measuredTier = it.controlScore == null || !f ? '—' : measuredTierOf(it.controlScore);
-  const pig = (m.pigments || []).map((p) => `<span style="--c:${PIGMENTS[p]}">${p}</span>`).join('');
+  const pig = m.swatches && m.provider !== 'procedural'
+    ? m.swatches.map((p) => `<span style="--c:${p.hex}">${esc(p.name)}</span>`).join('')
+    : (m.pigments || []).map((p) => `<span style="--c:${PIGMENTS[p]}">${p}</span>`).join('');
   $('results').innerHTML = `
     <h2>Analysis${run.clip ? ` · ${esc(run.clip.name)}` : ''}</h2>
     ${warningsFor(run, compareTiers).map((t) => `<p class="warn">${esc(t)}</p>`).join('')}
@@ -374,7 +378,7 @@ function showResults(run, { compareTiers = false } = {}) {
     <div class="sect"><h3>Painting</h3><dl class="kv">
       <dt>Pigments</dt><dd><div class="swatches">${pig}</div></dd>
       <dt>Seed</dt><dd>${m.seed}</dd>
-      ${m.familyLabel && m.provider !== 'procedural' ? `<dt>Style family</dt><dd>${esc(m.familyLabel)}</dd>` : ''}
+      ${m.familyLabel && m.provider !== 'procedural' ? `<dt>Style family</dt><dd>${esc(m.familyLabel)}${m.familyRefs ? `<div class="hint">from ${esc(m.familyRefs.join(', '))}</div>` : ''}</dd>` : ''}
       <dt>Provider</dt><dd>${esc(m.providerLabel || 'Procedural renderer (JS, no AI)')}</dd>
       <dt>Method</dt><dd>${esc(m.method)}</dd>
       ${m.energy ? `<dt>Energy</dt><dd>${esc(m.energy)}</dd>` : ''}
