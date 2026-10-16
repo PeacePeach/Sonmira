@@ -69,10 +69,12 @@ function injectStyle() {
 .drafts-row { display: flex; justify-content: center; gap: 8px; align-items: baseline; width: calc(100% - 56px); margin: 18px 28px 0; font-size: 13px; color: var(--secondary); line-height: 1.5; text-align: center; }
 .drafts-row .drafts-open { color: var(--ink); text-decoration: underline; text-decoration-color: var(--underline); text-underline-offset: 3px; }
 .drafts-lede { font-size: 14px; color: var(--secondary); line-height: 1.55; margin: 6px 0 14px; text-wrap: pretty; }
-.drafts-list { display: flex; flex-direction: column; gap: 22px; padding-bottom: 8px; }
+/* each painting, its words and its Discard sit close together; whitespace, not lines, between paintings */
+.drafts-list { display: flex; flex-direction: column; gap: 44px; padding-bottom: 8px; }
 .draft-open { display: block; width: 100%; text-align: left; }
-.draft-foot { display: flex; justify-content: space-between; align-items: center; padding: 2px 4px 0; }
-.draft-foot .text-btn { padding: 0; margin-right: -4px; }
+.draft-item .entry-meta { padding-top: 12px; }
+.draft-foot { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px 0; }
+.draft-foot .text-btn { padding: 0; height: 36px; margin: -11px -4px -11px 0; } /* a full tap target that takes no extra room */
 .draft-foot .text-btn.armed { color: var(--ink); }
 `));
 }

@@ -209,8 +209,9 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
   .develop-run { width: 100%; transform: none; background: var(--muted); animation: developBreathe 2.4s ease-in-out infinite alternate; }
 }
 @keyframes developBreathe { from { opacity: .2; } to { opacity: .6; } }
-.caption-input { width: 100%; margin-top: 12px; border: 0; border-bottom: 1px solid var(--underline); border-radius: 0; background: transparent; font-family: var(--serif); font-weight: 600; letter-spacing: -0.015em; font-size: 24px; color: var(--ink); padding: 8px 0 12px; outline: none; -webkit-appearance: none; }
+.caption-input { display: block; width: 100%; margin-top: 12px; resize: none; overflow: hidden; line-height: 1.25; text-wrap: pretty; border: 0; border-bottom: 1px solid var(--underline); border-radius: 0; background: transparent; font-family: var(--serif); font-weight: 600; letter-spacing: -0.015em; font-size: 24px; color: var(--ink); padding: 8px 0 12px; outline: none; -webkit-appearance: none; }
 .caption-input:focus { border-bottom-color: var(--secondary); }
+.take-player { margin-top: 26px; }
 .actions { display: flex; flex-direction: column; gap: 6px; padding-top: 22px; }
 .soft-warning { font-family: var(--serif); font-weight: 600; font-style: italic; font-size: 17px; color: var(--secondary); line-height: 1.35; margin-top: 4px; }
 .error-copy { text-align: center; }
@@ -223,7 +224,10 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .play-btn [data-icon=play] { margin-left: 2px; } /* optical centre of the triangle */
 .player .track { height: 2px; background: var(--track); border-radius: 1px; overflow: hidden; }
 .player .fill { height: 100%; width: 0; background: var(--ink); }
-.player .times { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: 12px; color: var(--muted); }
+/* the time row's box hugs its digits (line-height 1, same 8px gap to the
+   numerals as before), so the button centres on the track and the times
+   together rather than on the line box's empty leading */
+.player .times { display: flex; justify-content: space-between; gap: 10px; margin-top: 11px; font-size: 12px; line-height: 1; color: var(--muted); }
 .player .times span:last-child { text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ── detail ──────────────────────────────────────────────────────────────── */
@@ -247,6 +251,7 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .row.action:active { background: #ECE6DB; }
 .row.soon { cursor: default; }
 .row.soon .val { color: var(--chevron); font-style: italic; font-size: 16px; }
+.row.soon .row-label { color: var(--muted); } /* the label quiets with its faint icon */
 .settings .foot { text-align: center; font-size: 15px; font-style: italic; color: var(--muted); padding: 36px 24px 0; }
 .legal .prose { padding: 18px 28px 0; font-family: var(--sans); font-weight: 450; font-size: 15px; line-height: 1.6; color: var(--body); }
 .legal .prose p { margin: 0 0 14px; }
@@ -261,6 +266,10 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 @keyframes sheetIn { from { transform: translateY(100%); } }
 @keyframes sheetOut { to { transform: translateY(100%); } }
 .share-head { display: flex; align-items: center; justify-content: space-between; margin-right: -10px; }
+/* quiet sheets (ui/quiet-sheet.js): a fixed title row over scrolling content */
+.quiet-sheet { display: flex; flex-direction: column; overflow: hidden; }
+.quiet-sheet .share-head { flex-shrink: 0; }
+.sheet-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin: 0 -24px; padding: 0 24px; }
 .share-title { font-size: 26px; }
 .share-preview-box { display: flex; justify-content: center; padding: 8px 0 18px; }
 .share-preview { width: 52%; max-width: 220px; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 3px; background: var(--painting-paper); box-shadow: var(--shadow-card); }
@@ -277,11 +286,14 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .pw-title { margin: 0; font-size: 30px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.15; }
 .pw-lede { margin: 10px 0 0; font-size: 14px; color: var(--secondary); line-height: 1.55; text-wrap: pretty; }
 .pw-plans { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
-.pw-plan { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 16px 18px; background: var(--tile); border: 1px solid var(--tile-line); border-radius: 20px; transition: border-color .2s, background .2s; }
-.pw-plan.on { border-color: var(--ink); background: var(--paper); }
+/* selected: the same tile, one darker border and the filled mark; no ring, no motion */
+.pw-plan { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 16px 18px; background: var(--tile); border: 1px solid var(--tile-line); border-radius: 20px; }
+.pw-plan.on { border-color: var(--ink); }
+.pw-plan:focus-visible { outline: none; }
+.pw-plan:not(.on):focus-visible { border-color: var(--secondary); }
 .pw-plan:active { background: #ECE6DB; }
 .pw-plan[disabled] { cursor: default; }
-.pw-mark { width: 18px; height: 18px; border-radius: 9px; border: 1.3px solid var(--chevron); flex-shrink: 0; position: relative; transition: border-color .2s; }
+.pw-mark { width: 18px; height: 18px; border-radius: 9px; border: 1.3px solid var(--chevron); flex-shrink: 0; position: relative; }
 .pw-plan.on .pw-mark { border-color: var(--ink); }
 .pw-plan.on .pw-mark::after { content: ''; position: absolute; inset: 3.5px; border-radius: 50%; background: var(--ink); }
 .pw-plan-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
@@ -294,15 +306,16 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .pw-message { margin-top: 12px; font-size: 15px; }
 .pw-message[data-tone=error] { color: var(--body); }
 .pw-fine { margin: 14px 4px 0; font-size: 12px; color: var(--muted); line-height: 1.55; text-align: center; text-wrap: pretty; }
-.pw-why { margin-top: 14px; text-align: center; }
-.pw-why-link { font-size: 17px; font-style: italic; color: var(--secondary); height: 40px; padding: 0 10px; text-decoration: underline; text-decoration-color: var(--underline); text-underline-offset: 4px; }
-.pw-why-body { margin-top: 6px; text-align: left; background: var(--tile); border: 1px solid var(--tile-line); border-radius: 16px; padding: 16px 18px 4px; animation: fadeIn .3s ease-out both; }
-.pw-why-body p { margin: 0 0 12px; font-size: 14px; line-height: 1.6; color: var(--body); text-wrap: pretty; }
-.pw-links { display: flex; justify-content: center; align-items: center; gap: 2px; margin-top: 6px; font-size: 12px; color: var(--chevron); }
+.pw-links { display: flex; justify-content: center; align-items: center; gap: 2px; margin-top: 14px; font-size: 12px; color: var(--chevron); }
 .pw-link { font-size: 12px; color: var(--muted); height: 36px; padding: 0 8px; }
 .pw-link:hover { color: var(--body); }
 .pw-sim-approve { display: inline; height: auto; padding: 4px 0 0; font-family: var(--sans); font-style: normal; font-weight: 450; text-decoration: underline; }
 .pw-dev { margin: 8px auto 0; width: fit-content; font: 10px/1.4 ui-monospace, Menlo, monospace; letter-spacing: .04em; text-transform: uppercase; color: var(--secondary); border: 1px dashed var(--chevron); border-radius: 6px; padding: 3px 8px; text-align: center; }
+/* More information (from the paywall) */
+.pw-info-section { padding-top: 18px; }
+.pw-info-section h3 { margin: 0 0 10px; font-weight: 450; }
+.pw-info-section p { margin: 0 0 12px; font-size: 14px; line-height: 1.6; color: var(--body); text-wrap: pretty; }
+.pw-info-links { margin-top: 10px; }
 .pw-done { padding: 4px 0 0; text-align: center; }
 .pw-done .pw-lede { max-width: 300px; margin-left: auto; margin-right: auto; }
 .pw-done .actions { padding-top: 26px; }
@@ -313,7 +326,7 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 /* the bird is wider than the drops; match their visual size */
 .illo[data-illo=mic-off] { height: 118px; margin-top: 15px; }
 @keyframes bloomIn { from { opacity: 0; transform: scale(.96); filter: blur(3px); } }
-@media (prefers-reduced-motion: reduce) { .illo, .pw-why-body { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .illo { animation: none !important; } }
 
 /* purchase simulator — looks like a developer tool on purpose */
 .sim-panel { border-top: 2px dashed var(--chevron); }

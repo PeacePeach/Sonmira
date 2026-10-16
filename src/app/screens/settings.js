@@ -3,19 +3,16 @@
 
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
-import { LENGTHS } from '../settings.js';
 import { openPaywall } from '../paywall/paywall.js';
 import { balanceLabel, renewalLabel } from '../paywall/copy.js';
 
 export function mountSettings(app) {
   const b = app.billing;
-  const lengthVal = h('span', { class: 'val' });
   const paintings = h('div', { class: 'group', 'data-paintings': '' });
   const devGroup = h('div', { class: 'group', 'data-dev-group': '' });
   const weekVal = h('span', { class: 'val' });
   const accountVal = h('span', { class: 'val acct-row-val' });
   const paint = () => {
-    lengthVal.textContent = `${app.settings.maxSeconds} seconds`;
     weekVal.textContent = app.settings.weekStart === 1 ? 'Mon' : 'Sun';
     accountVal.textContent = app.account?.status().signedIn ? 'Signed in with Apple' : 'On this iPhone';
     const st = b.status();
@@ -70,10 +67,6 @@ export function mountSettings(app) {
     h('h1', {}, 'Settings'),
     h('div', { class: 'section' }, 'Diary'),
     h('div', { class: 'group' },
-      action('Recording length', lengthVal, () => {
-        const i = LENGTHS.indexOf(app.settings.maxSeconds);
-        app.setSettings({ maxSeconds: LENGTHS[(i + 1) % LENGTHS.length] }); paint();
-      }, 'recordingLength'),
       action('Start day of week', weekVal, () => { app.setSettings({ weekStart: app.settings.weekStart ? 0 : 1 }); paint(); }, 'weekStart'),
       soon('Daily reminder', 'reminder'),
       soon('Diary lock', 'lock'),

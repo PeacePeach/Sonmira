@@ -102,7 +102,7 @@ node tests/e2e/paywall.mjs             # free tier → paywall → simulated pur
 node tests/e2e/account.mjs             # guest-first, Sign in with Apple (simulated), sign out, delete
 ```
 
-The e2e test covers all 11 prototype requirements (record, stop, auto-stop at 15 s, playback, retry, note, generate, result, save, open, replay, reload), plus mic-denied, a too-short take, settings, calendar and delete.
+The e2e test covers all 11 prototype requirements (record, stop, auto-stop at 20 s, playback, retry, note, generate, result, save, open, replay, reload), plus mic-denied, a too-short take, settings, calendar and delete.
 
 ## Notes
 

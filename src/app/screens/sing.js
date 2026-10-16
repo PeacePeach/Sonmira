@@ -13,6 +13,7 @@ import { openPaywall } from '../paywall/paywall.js';
 import { usesLabel } from '../paywall/copy.js';
 import { takeOf } from '../drafts/index.js';
 import { withGenerationKey, guardMessage } from '../protect/client.js';
+import { MAX_SECONDS } from '../settings.js';
 
 const SINGING_LINES = ['Keep going…', 'Let it out.', 'Softly, softly.', 'That’s it.'];
 const FINDING = 'Finding the shape of your song…';
@@ -36,7 +37,7 @@ const MIC_COPY = {
 
 // params.draft: the key of a draft to return to (from the diary's "waiting" sheet).
 export function mountSing(app, { draft: draftKey = null } = {}) {
-  const maxSeconds = app.settings.maxSeconds;
+  const maxSeconds = MAX_SECONDS;
   const painting = createPainting({ ratio: '32' });
   const fill = h('div', { class: 'rec-fill' });
   const tLabel = h('span', {}, clock(0));
@@ -163,8 +164,8 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
         take.analysis.flags.silent
           ? h('div', { class: 'soft-warning' }, 'We could barely hear you. Sing again a little closer, or keep going as it is.')
           : h('div', { class: 'caps' }, `${clock(take.durationSec)} · Listen back`),
-        h('div', { style: 'margin-top:16px' }, p.el),
-        input),
+        input,
+        h('div', { class: 'take-player' }, p.el)),
       h('div', { class: 'actions' },
         usesEl = h('div', { class: 'uses', 'data-uses': '' }, usesLabel(app.billing.status())),
         h('button', { class: 'pill', onClick: generate }, 'Create painting'),
@@ -172,13 +173,23 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
     player = p;
   }
 
+  // Preview and result share one note field in the same place, so what was
+  // typed before painting is still there after. It wraps onto more lines as
+  // it grows (one paragraph: Enter finishes, pasted line breaks become spaces).
   function noteInput() {
-    return h('input', {
-      class: 'caption-input', placeholder: 'What was this moment?', value: noteDraft, maxlength: '140',
+    const fit = () => { el.style.height = 'auto'; el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`; };
+    const el = h('textarea', {
+      class: 'caption-input', placeholder: 'What was this moment?', maxlength: '140', rows: '1',
       'aria-label': 'A note about this moment (optional)', enterkeyhint: 'done',
-      onInput: (e) => { noteDraft = e.target.value; },
-      onKeydown: (e) => { if (e.key === 'Enter') e.target.blur(); },
+      onInput: () => {
+        if (/[\r\n]/.test(el.value)) el.value = el.value.replace(/\s*[\r\n]+\s*/g, ' ');
+        noteDraft = el.value; fit();
+      },
+      onKeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } },
     });
+    el.value = noteDraft;
+    requestAnimationFrame(fit);
+    return el;
   }
 
   // ── generating ───────────────────────────────────────────────────────────
@@ -306,7 +317,7 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
       h('div', {},
         h('div', { class: 'caps' }, `${clock(take.durationSec)} · ${it.summary}`),
         noteInput(),
-        h('div', { style: 'margin-top:26px' }, p.el)),
+        h('div', { class: 'take-player' }, p.el)),
       h('div', { class: 'actions' }, keep, h('button', { class: 'quiet-btn', onClick: singAgain }, 'Sing again'))));
     player = p;
     shareBtn.hidden = false;

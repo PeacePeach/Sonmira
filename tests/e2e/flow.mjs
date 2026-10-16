@@ -105,13 +105,14 @@ async function run() {
   // 3. play back
   await page.click('[data-phase=preview] .play-btn');
   await advanced(page, '[data-phase=preview] .times span'); // preview playback advances
-  // 4. retry, then record again to the time limit (15 s)
+  // 4. retry, then record again to the time limit (20 s, fixed)
   await page.click('text=Sing again');
   await page.waitForSelector('[data-phase=ready]');
+  assert.match(await page.textContent('.mic-label'), /up to 20 seconds/);
   await page.click('[aria-label="Start recording"]');
-  await page.waitForSelector('[data-phase=preview]', { timeout: 20000 });
+  await page.waitForSelector('[data-phase=preview]', { timeout: 26000 });
   const recorded = await page.textContent('[data-phase=preview] .caps');
-  assert.match(recorded, /0:1[45]/, 'auto-stop at 15 s, got ' + recorded);
+  assert.match(recorded, /0:(19|20)/, 'auto-stop at 20 s, got ' + recorded);
   // 5. note
   await page.fill('.caption-input', 'Rain on the window');
   // 6. generate (the first attempt fails: a clear error, no substitute painting, then a retry)
@@ -169,7 +170,7 @@ async function run() {
   const vid = await lastShared(page);
   assert.match(vid.type, /^video\/mp4/);
   assert.deepEqual([vid.width, vid.height], [1080, 1920], 'video is 9:16');
-  assert.ok(vid.duration > 13 && vid.duration < 17, 'video keeps the recording length, got ' + vid.duration);
+  assert.ok(vid.duration > 18 && vid.duration < 22, 'video keeps the recording length, got ' + vid.duration);
   assert.ok(vid.audioRms > 0.01, 'video carries the original audio');
   await page.waitForSelector('[data-share]', { state: 'detached' });
   assert.equal(await page.inputValue('.caption-input'), 'Rain on the window, again', 'sharing leaves the result as it was');
@@ -208,9 +209,7 @@ async function run() {
   await page.click('[aria-label="Show list"]');
   await page.click('[aria-label="Settings"]');
   await page.waitForSelector('[data-screen=settings]');
-  await page.click('text=Recording length');
-  assert.match(await page.textContent('[data-screen=settings]'), /30 seconds/);
-  await page.click('text=Recording length');
+  assert.doesNotMatch(await page.textContent('[data-screen=settings]'), /Recording length/, 'the length is fixed, not a setting');
   await page.waitForTimeout(300);
   await shot(page, '10-settings');
   await page.click('text=Privacy policy');
