@@ -122,3 +122,44 @@ export const singers = {
     return sing((time) => { const s = syl.find((x) => time >= x.t0 && time < x.t1); return s ? s.c0 + s.slope * (time - s.t0) : null; }, t);
   },
 };
+
+// Sung lyrics: one syllable per note (0.3–0.45 s by default), unvoiced
+// consonant noise between some syllables, a short slide into each note and
+// vibrato from 0.12 s. vib = depth in cents (±); amp = loudness.
+export function sungLyrics({ vib = 30, vibHz = 5.5, gap = 0.06, amp = 0.25, seed = 2, syl = [0.3, 0.45], glide = 0.08 } = {}) {
+  const r = rng(seed), melody = [0, 2, 4, 4, 2, 0, -1, 0, 2, 4, 5, 4, 2, 0, 0, 2, 4, 2, 0, -3];
+  const segs = [];
+  let t = 0.3;
+  for (const st of melody) {
+    const d = syl[0] + r() * (syl[1] - syl[0]);
+    segs.push({ t0: t, t1: t + d, st });
+    t += d + (r() < 0.6 ? gap : 0);
+    if (segs.length === 10) t += 0.5; // a breath between two lines
+  }
+  const at = (time) => {
+    const k = segs.findIndex((s) => time >= s.t0 && time < s.t1);
+    if (k < 0) return null;
+    const s = segs[k], u = time - s.t0, target = -900 + 100 * s.st, prev = segs[k - 1];
+    const c = prev && u < glide ? -900 + 100 * prev.st + (target - (-900 + 100 * prev.st)) * (u / glide) : target;
+    return c + (u > 0.12 ? vib * Math.sin(2 * Math.PI * vibHz * u) : 0);
+  };
+  const x = sing(at, t + 0.4, { amp });
+  const rn = rng(seed + 9);
+  for (let i = 1; i < segs.length; i++) {
+    for (let j = Math.round(segs[i - 1].t1 * SR); j < Math.round(segs[i].t0 * SR); j++) x[j] += (rn() - 0.5) * 0.08 * (amp / 0.25);
+  }
+  return x;
+}
+
+// Spoken lyrics: short syllables whose pitch glides continuously (speech
+// intonation), with word gaps. slow = longer, drawn-out syllables.
+export function spokenLyrics({ seed = 11, amp = 0.25, slow = false } = {}) {
+  const r = rng(seed), syl = [];
+  let t = 0.3;
+  for (let i = 0; i < (slow ? 18 : 30); i++) {
+    const d = slow ? 0.15 + r() * 0.25 : 0.1 + r() * 0.16;
+    syl.push({ t0: t, t1: t + d, c0: -1400 + r() * 300, slope: (r() < 0.7 ? -1 : 1) * (slow ? 300 + r() * 500 : 500 + r() * 900) });
+    t += d + (r() < 0.25 ? 0.2 : 0.04);
+  }
+  return sing((time) => { const s = syl.find((x) => time >= x.t0 && time < x.t1); return s ? s.c0 + s.slope * (time - s.t0) : null; }, t + 0.3, { amp });
+}

@@ -24,11 +24,16 @@
 
 import { TRACK_HOP_SEC } from './pitchtrack.js';
 
-export const SINGING_VERSION = 1;
+export const SINGING_VERSION = 2;
 
 export const SINGING_CALIBRATION = {
   smoothSec: 0.15,          // removes vibrato (4–8 Hz) to see the note's slow line
   movingCentsPerSec: 350,   // faster than this on the smoothed line = between notes
+  // The slope is measured across this span. It must cover about one vibrato
+  // cycle: over a shorter span the vibrato the smoother leaves behind (about
+  // 20 % of its depth at 5–6 Hz) reads as movement, and wide expressive
+  // vibrato (±70–100 cents) made whole held notes "moving".
+  moveSpanSec: 0.2,
   minNoteSec: 0.12,
   bridgeSec: 0.03,          // unvoiced gaps this short stay inside a run
   stability: { wobbleOk: 8, wobbleBad: 38, driftOk: 30, driftBad: 150, jitterOk: 12, jitterBad: 40 },
@@ -36,7 +41,10 @@ export const SINGING_CALIBRATION = {
   transitions: { overshoot: 50, minCount: 2 },
   weights: { stability: 0.3, intonation: 0.25, transitions: 0.15, control: 0.15, rhythm: 0.1, coherence: 0.05 },
   strong: { score: 0.8, confidence: 0.6, stability: 0.7, intonation: 0.6, transitions: 0.6 },
-  sung: { sustainedRatio: 0.4, voicedSec: 1.5 },
+  // Sung vs spoken: share of voiced time spent on held notes. Synthetic
+  // speech measures 0.13–0.19; syllabic sung lyrics 0.36–0.66 (very fast
+  // syllables, ~0.15–0.28 s, about 0.28). Provisional until real recordings.
+  sung: { sustainedRatio: 0.3, voicedSec: 1.5 },
   // A take "ends cleanly" when the voice stops before the recording does, or
   // the last sound is a held note; a voice still moving at the very end was
   // most likely cut off mid-phrase.
@@ -86,6 +94,7 @@ function periodicity(xs, lo, hi) {
 export function findNotes(track, cal = SINGING_CALIBRATION) {
   const fr = track.frames, hop = track.hopSec ?? TRACK_HOP_SEC;
   const bridge = Math.round(cal.bridgeSec / hop), w = Math.max(3, Math.round(cal.smoothSec / hop));
+  const span = Math.max(1, Math.round(cal.moveSpanSec / 2 / hop));
   const runs = [];
   let cur = null, gap = 0;
   fr.forEach((f, i) => {
@@ -102,9 +111,9 @@ export function findNotes(track, cal = SINGING_CALIBRATION) {
     const raw = run.idx.map((i) => fr[i].cents);
     const sm = movingAverage(raw, w);
     const moving = sm.map((_, k) => {
-      const a = sm[Math.max(0, k - 2)], b = sm[Math.min(sm.length - 1, k + 2)];
-      const span = (Math.min(sm.length - 1, k + 2) - Math.max(0, k - 2)) * hop;
-      return Math.abs(b - a) / Math.max(hop, span) > cal.movingCentsPerSec;
+      const a = sm[Math.max(0, k - span)], b = sm[Math.min(sm.length - 1, k + span)];
+      const sec = (Math.min(sm.length - 1, k + span) - Math.max(0, k - span)) * hop;
+      return Math.abs(b - a) / Math.max(hop, sec) > cal.movingCentsPerSec;
     });
     let start = -1;
     for (let k = 0; k <= sm.length; k++) {
@@ -138,7 +147,7 @@ function noteStability(n, hop, cal) {
   const detail = raw.map((v, i) => v - sm[i]);
   const jitter = std(detail);
   const vib = periodicity(detail, Math.round(0.11 / hop), Math.round(0.26 / hop));
-  const vibrato = sm.length * hop >= 0.4 && vib >= 0.4 && jitter >= 6;
+  const vibrato = sm.length * hop >= 0.25 && vib >= 0.4 && jitter >= 6;
   const s = cal.stability;
   const drift = sm.length * hop >= 0.25 ? Math.abs(fit.slope) : 0;
   const score = 1 - 0.5 * (1 - goodBad(wobble, s.wobbleOk, s.wobbleBad)) - 0.3 * (1 - goodBad(drift, s.driftOk, s.driftBad))
@@ -179,9 +188,15 @@ export function singingAnalysis(track, features = null, cal = SINGING_CALIBRATIO
   const { notes, voicedSec } = findNotes(track, cal);
   const noteSec = notes.reduce((a, n) => a + n.sec, 0);
   const sustainedRatio = voicedSec ? noteSec / voicedSec : 0;
+  // Each condition of "sung", with its value and threshold, for diagnostics.
+  const sungChecks = [
+    { id: 'voiced_sec', ok: voicedSec >= cal.sung.voicedSec, value: r3(voicedSec), need: `≥ ${cal.sung.voicedSec} s of pitched voice` },
+    { id: 'sustained_ratio', ok: sustainedRatio >= cal.sung.sustainedRatio, value: r3(sustainedRatio), need: `≥ ${cal.sung.sustainedRatio} of voiced time on held notes (${r3(noteSec)} s in ${notes.length} notes)` },
+  ];
   const vocal = {
     voicedSec: r3(voicedSec), noteCount: notes.length, noteSec: r3(noteSec), sustainedRatio: r3(sustainedRatio),
-    sung: voicedSec >= cal.sung.voicedSec && sustainedRatio >= cal.sung.sustainedRatio,
+    sung: sungChecks.every((c) => c.ok),
+    sungChecks,
     ending: endingOf(track, notes, cal),
   };
 
@@ -209,7 +224,11 @@ export function singingAnalysis(track, features = null, cal = SINGING_CALIBRATIO
     if (a.run !== b.run || Math.abs(b.center - a.center) < 60) continue;
     const dir = Math.sign(b.center - a.center);
     const path = [...b.approach, ...b.raw.slice(0, Math.round(0.08 / hop))];
-    const overshoot = Math.max(0, ...path.map((c) => dir * (c - b.center)));
+    // Beyond what the note itself does once settled: its own vibrato swing
+    // is not overshoot.
+    const settled = b.raw.slice(Math.round(0.08 / hop));
+    const swing = settled.length ? Math.max(0, ...settled.map((c) => dir * (c - b.center))) : 0;
+    const overshoot = Math.max(0, Math.max(...path.map((c) => dir * (c - b.center))) - swing);
     tr.push({ interval: b.center - a.center, overshoot, clean: overshoot <= cal.transitions.overshoot });
   }
   if (tr.length >= cal.transitions.minCount) C.transitions = { score: r3(tr.filter((t) => t.clean).length / tr.length), count: tr.length, meanOvershootCents: r3(mean(tr.map((t) => t.overshoot))) };

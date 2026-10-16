@@ -328,3 +328,66 @@ test('ai engine: a failed understanding step is an explicit error, never a guess
   await assert.rejects(engine.generate({ analysis: { flags: { silent: false }, wash: [], features: analyzeSamples(hum, SR) }, audioBlob: new Blob([new Uint8Array([1])], { type: 'audio/mp4' }) }),
     (e) => e.name === 'GenerationError' && e.code === 'transcribe_failed');
 });
+
+// ── Regression: sung lyrics read as speech (real take: sustained 0.395 < 0.4)
+// Two defects: (1) wide vibrato left after smoothing was read as pitch
+// movement over a 40 ms slope, so held vibrato notes were dropped as
+// "between notes"; (2) the sung threshold sat above syllabic singing.
+import { sungLyrics, spokenLyrics } from './synth.js';
+
+const LINE = 'I will wait for you by the sea tonight';
+const sungTakes = {
+  'plain': sungLyrics(),
+  'expressive, ±70 cent vibrato': sungLyrics({ vib: 70 }),
+  'expressive, ±100 cent vibrato': sungLyrics({ vib: 100, vibHz: 6 }),
+  'soft (−14 dB) with vibrato': sungLyrics({ amp: 0.05, vib: 70 }),
+  'short syllables': sungLyrics({ syl: [0.2, 0.35] }),
+  'short syllables with vibrato': sungLyrics({ syl: [0.18, 0.32], vib: 60 }),
+};
+const spokenTakes = {
+  'spoken': spokenLyrics(),
+  'spoken, soft': spokenLyrics({ amp: 0.05 }),
+  'spoken, other voice': spokenLyrics({ seed: 21 }),
+  'spoken slowly': spokenLyrics({ slow: true, seed: 4 }),
+};
+
+for (const [name, x] of Object.entries(sungTakes)) {
+  test(`sung lyrics are singing and reach stage 2: ${name}`, () => {
+    const m = measure(x);
+    const v = m.singing.vocal;
+    assert.equal(v.sung, true, JSON.stringify(v.sungChecks));
+    assert.ok(v.sustainedRatio >= 0.35, `sustained ${v.sustainedRatio}`);
+    const r = decide(confident(LINE), reading(), m);
+    assert.equal(r.gate.pass, true, JSON.stringify(r.gate.checks.filter((c) => !c.ok)));
+    assert.equal(r.stage, 2);
+    assert.ok(['gathered', 'resolved'].includes(r.tier));
+  });
+}
+
+for (const [name, x] of Object.entries(spokenTakes)) {
+  test(`spoken lyrics stay Loose even with complete, confident words: ${name}`, () => {
+    const m = measure(x);
+    assert.equal(m.singing.vocal.sung, false);
+    assert.ok(m.singing.vocal.sustainedRatio < 0.25, `sustained ${m.singing.vocal.sustainedRatio}`);
+    const r = decide(confident(LINE), reading(), m);
+    assert.equal(r.tier, 'loose');
+    assert.deepEqual(r.gate.failed, ['sung']);
+  });
+}
+
+test('every sung condition is reported with its value and threshold', () => {
+  const v = measure(spokenLyrics()).singing.vocal;
+  assert.deepEqual(v.sungChecks.map((c) => c.id), ['voiced_sec', 'sustained_ratio']);
+  const s = v.sungChecks.find((c) => c.id === 'sustained_ratio');
+  assert.equal(s.ok, false);
+  assert.equal(s.value, v.sustainedRatio);
+  assert.match(s.need, /≥ 0\.3 of voiced time on held notes/);
+  const gate = completionGate({ transcript: confident(LINE), lyrics: reading(), singing: measure(spokenLyrics()).singing });
+  assert.match(gate.checks.find((c) => c.id === 'sung').value, /sustained_ratio 0\.\d+ FAIL/);
+});
+
+test('vibrato is neither "moving" pitch nor overshoot', () => {
+  const q = measure(sungTakes['expressive, ±70 cent vibrato']).singing.quality.components;
+  assert.equal(q.transitions.score, 1, JSON.stringify(q.transitions));
+  assert.ok(q.stability.vibratoShare > 0);
+});

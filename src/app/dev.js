@@ -86,10 +86,12 @@ export function mountDevPanel(app) {
         const q = u.singing?.quality, v = u.singing?.vocal, t = u.transcript, l = u.lyrics, s = u.semantics;
         out.push(section(`decision: ${u.tier}${u.tierSource === 'override' ? ' (forced)' : ''}`, [['tier', u.tier], ['stage', u.decision?.stage], ['reason', u.decision?.reason], ['decided tier', u.decision?.tier]], true));
         out.push(section('audio', [['duration', u.audio?.durationSec], ['sounding s', u.audio?.soundingSec], ['voiced s', u.audio?.voicedSec], ['voiced ratio', u.audio?.voicedRatio], ['pauses', u.audio?.pauses], ['pitch continuity', u.audio?.pitchContinuity], ['median Hz', u.audio?.medianHz], ['dynamic dB', u.audio?.dynamicRangeDb],
-          ['sung', v?.sung], ['notes', v?.noteCount], ['sustained ratio', v?.sustainedRatio], ['ending', v?.ending]]));
+          ['sung', v?.sung], ...(v?.sungChecks ?? []).map((c) => [`  ${c.ok ? '✓' : '✗'} ${c.id}`, `${c.value} (need ${c.need})`]),
+          ['notes', v?.noteCount], ['note s', v?.noteSec], ['sustained ratio', v?.sustainedRatio], ['ending', v?.ending]]));
         out.push(section('lyrics', [['requested', u.wordsRequested], ['skipped', u.wordsSkipped ?? undefined], ['transcript', t?.text], ['asr confidence', t?.asrConfidence], ['words / lexical / vocables', t ? `${t.wordCount} / ${t.lexicalWords} / ${t.nonLexicalWords}` : null], ['hallucination', t?.hallucination],
           ['asr model', t?.model], ['lexical', l?.lexical], ['coherent', l?.coherent], ['phrase complete', l ? `${l.phraseComplete} (${l.completionConfidence})` : null], ['why', l?.completionReason], ['text model', l?.model],
-          ['gate', u.gate ? `${u.gate.pass ? 'PASS' : 'FAIL'} (confidence ${u.gate.confidence})` : null], ['failed checks', u.gate?.failed?.join(', ')]]));
+          ['gate', u.gate ? `${u.gate.pass ? 'PASS' : 'FAIL'} (confidence ${u.gate.confidence})` : null], ['failed checks', u.gate?.failed?.join(', ')],
+          ...(u.gate?.checks ?? []).map((c) => [`  ${c.ok ? '✓' : '✗'} ${c.id}`, `${typeof c.value === 'object' ? JSON.stringify(c.value) : c.value} (need ${c.need})`])]));
         out.push(section('singing', [['score', q?.score], ['confidence', q?.confidence], ['strong', q?.strong], ...Object.entries(q?.components ?? {}).map(([k, c]) => [k, c]), ['unavailable', q?.unavailable?.join('; ')], ['expression', u.expression]]));
         out.push(section('semantics', [['source', s?.source], ['why', s?.reason], ['concept', s?.concept?.text], ['theme', s?.concept?.theme?.join(', ')], ['imagery', s?.concept?.imagery?.join(', ')], ['figurative', s?.concept?.figurative], ['mood', u.emotion?.value + ' · ' + u.emotion?.source], ['motif', u.motif?.value + ' · ' + u.motif?.source]]));
       }

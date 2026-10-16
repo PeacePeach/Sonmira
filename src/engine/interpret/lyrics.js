@@ -91,7 +91,8 @@ export function completionGate({ transcript = null, lyrics = null, singing = nul
   const needCompletion = asr == null ? cal.minCompletionNoAsr : cal.minCompletion;
   add('asr_confident', asr == null || asr >= cal.minAsrConfidence, asr ?? 'unavailable (stricter completion bar applies)', `≥ ${cal.minAsrConfidence}`);
   const sung = singing?.vocal;
-  add('sung', sung?.sung, sung ? `sustained ${sung.sustainedRatio}, voiced ${sung.voicedSec}s` : 'no singing analysis', 'sustained pitched notes (not speech)');
+  add('sung', sung?.sung, sung ? (sung.sungChecks ?? []).map((c) => `${c.id} ${c.value} ${c.ok ? 'ok' : 'FAIL'}`).join(', ') || `sustained ${sung.sustainedRatio}, voiced ${sung.voicedSec}s` : 'no singing analysis',
+    sung?.sungChecks ? sung.sungChecks.map((c) => c.need).join('; ') : 'sustained pitched notes (not speech)');
   const sec = Math.max(0.5, features?.activity?.soundingSec ?? sung?.voicedSec ?? 0);
   const rate = (t?.lexicalWords ?? 0) / sec;
   add('word_rate', rate >= cal.minWordsPerSec && rate <= cal.maxWordsPerSec, r3(rate), `${cal.minWordsPerSec}–${cal.maxWordsPerSec} words per sounding second`);
