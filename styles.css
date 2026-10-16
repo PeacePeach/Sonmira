@@ -19,6 +19,13 @@
   --track: #E4DDD1;
   --underline: #DDD6CA;
 
+  /* icons (src/app/ui/icons.js, docs/icons.md) */
+  --icon: var(--ink);            /* navigation and actions */
+  --icon-muted: var(--secondary); /* leading icons in rows */
+  --icon-subtle: var(--chevron);  /* trailing chevrons */
+  --icon-disabled: var(--disabled);
+  --icon-inverse: #FFFFFF;        /* on ink: the + and the microphone */
+
   --serif: 'Cormorant Garamond', 'Iowan Old Style', Georgia, serif;
   --sans: 'Hanken Grotesk', -apple-system, system-ui, sans-serif;
 
@@ -82,6 +89,14 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 @keyframes pushIn { from { opacity: 0; transform: translateX(18px) } }
 @keyframes modalIn { from { opacity: 0; transform: translateY(26px) } }
 @media (prefers-reduced-motion: reduce) { .screen { animation: none !important; } }
+
+/* ── icons ───────────────────────────────────────────────────────────────── */
+.icon { display: block; flex-shrink: 0; color: var(--icon); }
+.icon-muted { color: var(--icon-muted); }
+.icon-subtle { color: var(--icon-subtle); }
+.icon-disabled { color: var(--icon-disabled); }
+.icon-inverse { color: var(--icon-inverse); }
+:where(button, [role=button]):focus-visible { outline: 1.5px solid var(--secondary); outline-offset: 2px; }
 
 /* ── shared bars & buttons ───────────────────────────────────────────────── */
 .navrow { height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; position: relative; flex-shrink: 0; }
@@ -205,6 +220,7 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .player { display: flex; align-items: center; gap: 16px; }
 .play-btn { width: 48px; height: 48px; border-radius: 24px; border: 1px solid var(--ink); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .play-btn[disabled] { border-color: var(--disabled); opacity: .6; cursor: default; }
+.play-btn [data-icon=play] { margin-left: 2px; } /* optical centre of the triangle */
 .player .track { height: 2px; background: var(--track); border-radius: 1px; overflow: hidden; }
 .player .fill { height: 100%; width: 0; background: var(--ink); }
 .player .times { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: 12px; color: var(--muted); }
@@ -227,6 +243,7 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .row { display: flex; justify-content: space-between; align-items: center; width: 100%; height: 56px; padding: 0 20px; border-bottom: 1px solid var(--tile-line); font-size: 19px; font-family: var(--serif); font-weight: 600; text-align: left; }
 .row:last-child { border-bottom: 0; }
 .row .val { color: var(--muted); }
+.row-label { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .row.action:active { background: #ECE6DB; }
 .row.soon { cursor: default; }
 .row.soon .val { color: var(--chevron); font-style: italic; font-size: 16px; }

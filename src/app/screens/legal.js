@@ -1,6 +1,7 @@
 // Privacy policy and Terms — honest prototype drafts, clearly marked.
 
-import { h, icons } from '../ui/dom.js';
+import { h } from '../ui/dom.js';
+import { icon } from '../ui/icons.js';
 
 export const DOCS = {
   privacy: {
@@ -30,7 +31,7 @@ export const DOCS = {
 export function mountLegal(app, { doc }) {
   const d = DOCS[doc] || DOCS.privacy;
   const el = h('div', { class: 'settings legal', 'data-screen': 'legal' },
-    h('div', { class: 'navrow' }, h('button', { class: 'icon-btn', 'aria-label': 'Back to settings', onClick: () => app.navigate('settings') }, icons.back()), h('div')),
+    h('div', { class: 'navrow' }, h('button', { class: 'icon-btn', 'aria-label': 'Back to settings', onClick: () => app.navigate('settings') }, icon('back', { size: 'lg' })), h('div')),
     h('h1', {}, d.title),
     h('div', { class: 'draft caps' }, 'Prototype draft'),
     h('div', { class: 'prose' }, d.body.map((p) => h('p', {}, p))));

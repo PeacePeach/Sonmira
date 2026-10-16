@@ -1,7 +1,8 @@
 // Sing (create): ready → singing → preview → generating → result → save.
 // Talks to the engine only through the contract: createLiveSession / generate.
 
-import { h, icons } from '../ui/dom.js';
+import { h } from '../ui/dom.js';
+import { icon } from '../ui/icons.js';
 import { createPainting } from '../ui/painting.js';
 import { illustration } from '../ui/illustration.js';
 import { createPlayer } from '../ui/player.js';
@@ -44,12 +45,12 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
   const shareBtn = h('button', { class: 'icon-btn', 'aria-label': 'Share', hidden: true, onClick: () => {
     player?.stop();
     sheet = openShareSheet(app, { painting: result, note: noteDraft.trim(), date: dayKey(), audio: take.audio, durationSec: take.durationSec });
-  } }, icons.share());
+  } }, icon('share'));
   const navRight = h('div', { class: 'spacer44' }, shareBtn);
   const phaseHost = h('div', { style: 'flex:1;display:flex;flex-direction:column;min-height:0' });
   const el = h('div', { class: 'sing', 'data-screen': 'sing' },
     h('div', { class: 'navrow' },
-      h('button', { class: 'icon-btn', 'aria-label': 'Close', onClick: close }, icons.close()),
+      h('button', { class: 'icon-btn', 'aria-label': 'Close', onClick: close }, icon('close')),
       h('span', { class: 'date' }, longDate(dayKey())),
       navRight),
     h('div', { class: 'sing-canvas' }, painting.el, progress),
@@ -79,7 +80,7 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
         hint ? h('div', { class: 'soft-warning', style: 'margin-top:10px' }, hint)
           : h('div', { class: 'lede' }, 'A hum, a line, a lullaby. The color follows your voice.')),
       h('div', { class: 'mic-stack' },
-        h('button', { class: 'mic-btn', 'aria-label': 'Start recording', onClick: startSinging }, icons.mic()),
+        h('button', { class: 'mic-btn', 'aria-label': 'Start recording', onClick: startSinging }, icon('mic', { size: 'lg', tone: 'inverse' })),
         h('span', { class: 'mic-label' }, `Tap to begin · up to ${maxSeconds} seconds`))));
   }
 

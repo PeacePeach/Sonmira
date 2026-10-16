@@ -1,6 +1,7 @@
 // Painting (detail): the saved watercolor, its note and the original audio.
 
-import { h, icons } from '../ui/dom.js';
+import { h } from '../ui/dom.js';
+import { icon } from '../ui/icons.js';
 import { createPainting } from '../ui/painting.js';
 import { createPlayer } from '../ui/player.js';
 import { clock, longDate } from '../format.js';
@@ -29,9 +30,9 @@ export function mountDetail(app, { id }) {
 
   const el = h('div', { class: 'detail', 'data-screen': 'detail' },
     h('div', { class: 'navrow' },
-      h('button', { class: 'icon-btn', 'aria-label': 'Back to diary', onClick: () => app.navigate('diary') }, icons.back()),
+      h('button', { class: 'icon-btn', 'aria-label': 'Back to diary', onClick: () => app.navigate('diary') }, icon('back', { size: 'lg' })),
       h('div', { class: 'nav-actions' },
-        h('button', { class: 'icon-btn', 'aria-label': 'Share', onClick: () => { player.stop(); sheet = openShareSheet(app, { painting: e.painting, note: e.note, date: e.date, audio: e.audio, durationSec: e.durationSec }); } }, icons.share()),
+        h('button', { class: 'icon-btn', 'aria-label': 'Share', onClick: () => { player.stop(); sheet = openShareSheet(app, { painting: e.painting, note: e.note, date: e.date, audio: e.audio, durationSec: e.durationSec }); } }, icon('share')),
         del)),
     h('div', { class: 'art-pad' }, painting.el),
     h('div', { class: 'body' },
