@@ -260,13 +260,10 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .pw-done .pw-lede { max-width: 300px; margin-left: auto; margin-right: auto; }
 .pw-done .actions { padding-top: 26px; }
 .pw-done .pw-dev { margin-top: 16px; }
-/* a small, quiet bloom of colour — the same pigment language as the wash */
-.pw-wash { position: relative; height: 96px; margin: 4px auto 18px; width: 180px; filter: url(#wc); }
-.pw-wash span { position: absolute; border-radius: 50%; mix-blend-mode: multiply; animation: bloom 1.4s ease-out both; }
-.pw-wash span:nth-child(1) { left: 14%; top: 18%; width: 46%; height: 70%; background: radial-gradient(closest-side, oklch(0.84 0.07 235 / .7), oklch(0.84 0.07 235 / .5) 60%, oklch(0.74 0.09 235 / .8) 86%, transparent); }
-.pw-wash span:nth-child(2) { left: 40%; top: 6%; width: 42%; height: 64%; background: radial-gradient(closest-side, oklch(0.86 0.08 60 / .65), oklch(0.86 0.08 60 / .45) 60%, oklch(0.76 0.1 60 / .75) 86%, transparent); animation-delay: .25s; }
-.pw-wash span:nth-child(3) { left: 30%; top: 40%; width: 40%; height: 56%; background: radial-gradient(closest-side, oklch(0.85 0.07 150 / .6), oklch(0.85 0.07 150 / .4) 60%, oklch(0.75 0.09 150 / .7) 86%, transparent); animation-delay: .5s; }
-@media (prefers-reduced-motion: reduce) { .pw-wash span, .pw-why-body { animation: none !important; } }
+/* a real watercolor bloom on cotton paper; multiply lets the paper melt into the sheet */
+.pw-bloom { display: block; width: 240px; max-width: 70%; aspect-ratio: 840 / 681; margin: 0 auto 14px; mix-blend-mode: multiply; -webkit-mask-image: radial-gradient(closest-side, #000 72%, transparent 100%); mask-image: radial-gradient(closest-side, #000 72%, transparent 100%); animation: bloomIn 1.6s ease-out both; }
+@keyframes bloomIn { from { opacity: 0; transform: scale(.96); filter: blur(3px); } }
+@media (prefers-reduced-motion: reduce) { .pw-bloom, .pw-why-body { animation: none !important; } }
 
 /* purchase simulator — looks like a developer tool on purpose */
 .sim-panel { border-top: 2px dashed var(--chevron); }

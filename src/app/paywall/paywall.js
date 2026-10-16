@@ -175,7 +175,7 @@ export function openPaywall(app, { from = 'diary', onContinue } = {}) {
   function showDone({ title, lede: text, simulated }) {
     const go = h('button', { class: 'pill', onClick: () => { layer.close(); onContinue?.(); } }, from === 'sing' ? 'Create painting' : 'Sing a moment');
     layer.body.replaceChildren(h('div', { class: 'pw-done', 'data-paywall-done': '' },
-      h('div', { class: 'pw-wash', 'aria-hidden': 'true' }, h('span'), h('span'), h('span')),
+      h('img', { class: 'pw-bloom', src: 'assets/paywall-bloom.jpg', alt: '', 'aria-hidden': 'true', decoding: 'async' }),
       h('h2', { class: 'serif pw-title' }, title),
       h('p', { class: 'pw-lede' }, text),
       simulated ? h('div', { class: 'pw-dev' }, 'Simulated purchase · nothing was charged') : null,
