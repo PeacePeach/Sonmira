@@ -637,6 +637,26 @@ function switchView(v) {
   $('studio').hidden = v !== 'studio';
   $('library').hidden = v !== 'library';
   $('refs').hidden = v !== 'refs';
+  $('validation').hidden = v !== 'validation';
+  if (v === 'validation') loadValidation();
+}
+
+// ---------- validation runs ----------
+// Saved validation runs (playground/validation/*.json and their images),
+// shown as reference ↔ output pairs. Open directly with ?view=validation.
+let validationShown = false;
+async function loadValidation() {
+  if (validationShown) return;
+  validationShown = true;
+  try {
+    const v = await (await fetch('validation/validation-2.json', { cache: 'no-cache' })).json();
+    $('valTitle').textContent = v.title;
+    const runs = await Promise.all(v.runs.map(async (r) => ({ ...r, png: await (await fetch(r.image)).blob() })));
+    $('valRuns').replaceChildren(...runs.map((r) => pairView(r)));
+  } catch (e) {
+    validationShown = false;
+    $('valTitle').textContent = `Could not load the validation runs: ${e.message}`;
+  }
 }
 
 // ---------- reference check ----------
@@ -698,6 +718,8 @@ async function checkProviders() {
 }
 
 setBusy(false);
+const startView = new URLSearchParams(location.search).get('view');
+if (['library', 'refs', 'validation'].includes(startView)) switchView(startView);
 checkProviders();
 refreshLibrary();
 window.__playground = { ready: true };

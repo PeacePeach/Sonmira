@@ -1,0 +1,366 @@
+{
+ "kind": "sonmira-validation",
+ "id": "validation-2",
+ "title": "Validation 2: same inputs, reference only differs",
+ "made": "2026-10-16T09:47Z",
+ "runs": [
+  {
+   "id": "validation-2-resolved_01",
+   "createdAt": 1792144050000,
+   "groupId": "validation-2",
+   "label": "validation 2 · same inputs, reference only differs",
+   "clip": null,
+   "note": "Moonlight spreading across a calm sea at night, a single silver path of light on the water.",
+   "overrides": {
+    "tier": "resolved",
+    "emotion": "tender",
+    "motif": "water",
+    "family": "R1-graphic-snow",
+    "reference": "resolved_01",
+    "seed": 1
+   },
+   "features": null,
+   "ms": {
+    "provider": 27137
+   },
+   "engine": "ai:openai/gpt-image-2",
+   "result": {
+    "tier": "resolved",
+    "emotion": "tender",
+    "motif": "water",
+    "seed": 1,
+    "energy": "calm",
+    "stylePosition": 1,
+    "controlScore": null,
+    "controlConfidence": null,
+    "interpretation": {
+     "sources": {
+      "completeness": "override",
+      "emotion": "override",
+      "motif": "override"
+     },
+     "controlScore": null,
+     "signals": null
+    },
+    "method": "ai:openai/gpt-image-2",
+    "provider": "openai",
+    "providerLabel": "OpenAI gpt-image-2 (medium)",
+    "model": "gpt-image-2",
+    "quality": "medium",
+    "size": "1024x1536",
+    "family": "R1-graphic-snow",
+    "familyLabel": "Graphic two-tone",
+    "familyRefs": [
+     "resolved_01.jpg",
+     "resolved_14.jpg"
+    ],
+    "swatches": [
+     {
+      "name": "blue",
+      "hex": "#5486b6",
+      "share": 0.393
+     },
+     {
+      "name": "pale blue",
+      "hex": "#d5e3eb",
+      "share": 0.168
+     }
+    ],
+    "prompt": "The attached image is the primary style reference for this painting and the visual authority: it overrides every written description below, including colour, light and composition notes. Controlled by the reference: (1) medium and technique: whether it reads as transparent washes, flat graphic colour, ink-like wash or dry-brush, and its paint behaviour, brush marks, texture, granulation and edges, including whether it has blooms and wet-in-wet at all; (2) dominant palette: its principal colour family, saturation, temperature and supporting accents; (3) colour distribution: the balance of dominant, secondary and accent colour; (4) composition language: visual weight, viewpoint, asymmetry, focal placement and spatial rhythm; (5) negative space: roughly how much open, lightly painted or untouched paper there is, and where; (6) detail distribution: where detail concentrates and where forms dissolve; (7) degree of stylisation and level of finish. Free: the subject and the exact arrangement. Paint a new, original painting in the same artistic language; do not copy or trace its composition, figures or motifs, and do not reproduce any text, titles or watermarks in it. Content never comes from the reference: its subjects, objects, figures, places and setting are not part of its style. Paint only the subject the text below asks for, even when it is unlike anything in the reference, and keep the reference's palette and light while doing so.\nA finished painting of: Moonlight spreading across a calm sea at night, a single silver path of light on the water.\nFrom the sung words — theme: stillness, night; imagery: moonlight, calm sea, silver path on the water.\nStyle — Graphic two-tone: Design the painting with flat, clean shapes in one blue and the white of the paper, seen from a high vantage. Use long, diagonal cast shadows and a fine stippled dry-brush grain for texture. Simplify every form of the subject to a flat silhouette. Place one very small warm accent as the focal point. Painted in watercolor with flat washes and dry-brush stipple. This describes only how it is painted, never what is depicted.\nContent: paint only what the subject above names, in its own setting, and add no objects, scenery or story that it does not ask for. No people anywhere: no human figures, silhouettes, faces or body parts, however small or distant. When the words tell of love, loss or company, carry that through place, light, weather and the traces left behind.\nFinished and fully considered: a clear, recognisable subject, carried as far and as richly as the reference carries its own, with the reference's own finish, edges, detail distribution and composition language. Never a realistic image.\nVertical 4:5 format.\nColour hierarchy, measured from the reference: dominant blue (#5486b6, about 39% of the picture), secondary pale blue (#d5e3eb, about 17% of the picture); no separate accent colour. Overall high-key and light, moderate saturation, cool in temperature; about 39% open or near-white paper and almost no deep darks. Keep these proportions: vary the colour only within this hierarchy, never introduce an unrelated palette.\nMood: tender, leaning toward the softer, gentler end of the reference's own colour and value range.\nPace of the marks, in the reference's own technique: slow and settled.\nGesture, from how the voice moved, made only with the reference's own kind of marks: marks that rise and fall a little; one connected flow; even pressure throughout.\nA hand-made painting in the artistic language of the attached reference: its medium, technique, texture, brushwork, colour treatment, composition language and degree of stylisation. An original composition, not a copy of the reference or of any existing artwork.\nAvoid: text, letters, titles, signature, logo or watermark, a frame, border or mat, a photo of a painting on a table, photorealism or a photograph, a photo-to-painting filter effect, glossy digital or 3D rendering, people, human figures, silhouettes or faces.",
+    "usage": {
+     "input_tokens": 2320,
+     "input_tokens_details": {
+      "image_tokens": 1462,
+      "text_tokens": 858
+     },
+     "output_tokens": 1462,
+     "output_tokens_details": {
+      "image_tokens": 1462,
+      "text_tokens": 0
+     },
+     "total_tokens": 3782
+    },
+    "reference": "resolved_01",
+    "referenceSent": true,
+    "subjectSource": "lyrics",
+    "subject": "Moonlight spreading across a calm sea at night, a single silver path of light on the water.",
+    "settings": {
+     "tier": "resolved",
+     "emotion": "tender",
+     "motif": "water",
+     "energy": "calm",
+     "expression": {
+      "range": "moderate",
+      "flow": "connected",
+      "dynamics": "even",
+      "vibrato": false
+     }
+    },
+    "promptCheck": {
+     "verdict": "ok",
+     "people": [],
+     "leaks": [],
+     "unrequested": [],
+     "inventory": [
+      "person",
+      "fir",
+      "snow"
+     ],
+     "from": "resolved_01"
+    }
+   },
+   "review": {
+    "depicted": "a full moon in a blue sky with a few drawn cloud streaks; a calm sea; a broad broken silver path of moonlight in flat white shapes",
+    "verdict": "ok",
+    "people": [],
+    "leaks": [],
+    "unrequested": [],
+    "at": 1792144189259
+   },
+   "image": "validation/resolved_01-validation-2.jpg"
+  },
+  {
+   "id": "validation-2-resolved_12",
+   "createdAt": 1792144080000,
+   "groupId": "validation-2",
+   "label": "validation 2 · same inputs, reference only differs",
+   "clip": null,
+   "note": "Moonlight spreading across a calm sea at night, a single silver path of light on the water.",
+   "overrides": {
+    "tier": "resolved",
+    "emotion": "tender",
+    "motif": "water",
+    "family": "R2-aerial-shallows",
+    "reference": "resolved_12",
+    "seed": 1
+   },
+   "features": null,
+   "ms": {
+    "provider": 32268
+   },
+   "engine": "ai:openai/gpt-image-2",
+   "result": {
+    "tier": "resolved",
+    "emotion": "tender",
+    "motif": "water",
+    "seed": 1,
+    "energy": "calm",
+    "stylePosition": 1,
+    "controlScore": null,
+    "controlConfidence": null,
+    "interpretation": {
+     "sources": {
+      "completeness": "override",
+      "emotion": "override",
+      "motif": "override"
+     },
+     "controlScore": null,
+     "signals": null
+    },
+    "method": "ai:openai/gpt-image-2",
+    "provider": "openai",
+    "providerLabel": "OpenAI gpt-image-2 (medium)",
+    "model": "gpt-image-2",
+    "quality": "medium",
+    "size": "1024x1536",
+    "family": "R2-aerial-shallows",
+    "familyLabel": "Aerial granulation",
+    "familyRefs": [
+     "resolved_08.jpg",
+     "resolved_12.jpg"
+    ],
+    "swatches": [
+     {
+      "name": "deep vivid blue",
+      "hex": "#09567f",
+      "share": 0.476
+     },
+     {
+      "name": "teal",
+      "hex": "#48a7bc",
+      "share": 0.268
+     },
+     {
+      "name": "orange",
+      "hex": "#c97252",
+      "share": 0.008
+     }
+    ],
+    "prompt": "The attached image is the primary style reference for this painting and the visual authority: it overrides every written description below, including colour, light and composition notes. Controlled by the reference: (1) medium and technique: whether it reads as transparent washes, flat graphic colour, ink-like wash or dry-brush, and its paint behaviour, brush marks, texture, granulation and edges, including whether it has blooms and wet-in-wet at all; (2) dominant palette: its principal colour family, saturation, temperature and supporting accents; (3) colour distribution: the balance of dominant, secondary and accent colour; (4) composition language: visual weight, viewpoint, asymmetry, focal placement and spatial rhythm; (5) negative space: roughly how much open, lightly painted or untouched paper there is, and where; (6) detail distribution: where detail concentrates and where forms dissolve; (7) degree of stylisation and level of finish. Free: the subject and the exact arrangement. Paint a new, original painting in the same artistic language; do not copy or trace its composition, figures or motifs, and do not reproduce any text, titles or watermarks in it. Content never comes from the reference: its subjects, objects, figures, places and setting are not part of its style. Paint only the subject the text below asks for, even when it is unlike anything in the reference, and keep the reference's palette and light while doing so.\nA finished painting of: Moonlight spreading across a calm sea at night, a single silver path of light on the water.\nFrom the sung words — theme: stillness, night; imagery: moonlight, calm sea, silver path on the water.\nStyle — Aerial granulation: Paint as if looking straight down. Make the main field a saturated turquoise-to-deep-teal colour field with strong granulation, dark spatter and white splashes, meeting an ochre edge band. Concentrate the focus in a small area of crisp, precisely painted, bright touches drawn from the subject itself, with a few thin drawn lines for rhythm. Loose, wild texture around a precise focal area. This describes only how it is painted, never what is depicted.\nContent: paint only what the subject above names, in its own setting, and add no objects, scenery or story that it does not ask for. No people anywhere: no human figures, silhouettes, faces or body parts, however small or distant. When the words tell of love, loss or company, carry that through place, light, weather and the traces left behind.\nFinished and fully considered: a clear, recognisable subject, carried as far and as richly as the reference carries its own, with the reference's own finish, edges, detail distribution and composition language. Never a realistic image.\nVertical 4:5 format.\nColour hierarchy, measured from the reference: dominant deep vivid blue (#09567f, about 48% of the picture), secondary teal (#48a7bc, about 27% of the picture); accent orange (#c97252), kept to about 1%. Overall low-key, with deep values, saturated, cool in temperature; about 1% open or near-white paper and about 20% deep darks. Keep these proportions: vary the colour only within this hierarchy, never introduce an unrelated palette.\nMood: tender, leaning toward the softer, gentler end of the reference's own colour and value range.\nPace of the marks, in the reference's own technique: slow and settled.\nGesture, from how the voice moved, made only with the reference's own kind of marks: marks that rise and fall a little; one connected flow; even pressure throughout.\nA hand-made painting in the artistic language of the attached reference: its medium, technique, texture, brushwork, colour treatment, composition language and degree of stylisation. An original composition, not a copy of the reference or of any existing artwork.\nAvoid: text, letters, titles, signature, logo or watermark, a frame, border or mat, a photo of a painting on a table, photorealism or a photograph, a photo-to-painting filter effect, glossy digital or 3D rendering, people, human figures, silhouettes or faces.",
+    "usage": {
+     "input_tokens": 2217,
+     "input_tokens_details": {
+      "image_tokens": 1344,
+      "text_tokens": 873
+     },
+     "output_tokens": 1462,
+     "output_tokens_details": {
+      "image_tokens": 1462,
+      "text_tokens": 0
+     },
+     "total_tokens": 3679
+    },
+    "reference": "resolved_12",
+    "referenceSent": true,
+    "subjectSource": "lyrics",
+    "subject": "Moonlight spreading across a calm sea at night, a single silver path of light on the water.",
+    "settings": {
+     "tier": "resolved",
+     "emotion": "tender",
+     "motif": "water",
+     "energy": "calm",
+     "expression": {
+      "range": "moderate",
+      "flow": "connected",
+      "dynamics": "even",
+      "vibrato": false
+     }
+    },
+    "promptCheck": {
+     "verdict": "ok",
+     "people": [],
+     "leaks": [],
+     "unrequested": [],
+     "inventory": [
+      "boat",
+      "rope",
+      "buoy",
+      "dock"
+     ],
+     "from": "resolved_12"
+    }
+   },
+   "review": {
+    "depicted": "a full moon with a glow; a silver path of broken light on deep blue and teal water; dark spatter and white specks; ochre granulated edges at the sides",
+    "verdict": "ok",
+    "people": [],
+    "leaks": [],
+    "unrequested": [],
+    "at": 1792144189262
+   },
+   "image": "validation/resolved_12-validation-2.jpg"
+  },
+  {
+   "id": "validation-2-resolved_06",
+   "createdAt": 1792144110000,
+   "groupId": "validation-2",
+   "label": "validation 2 · same inputs, reference only differs",
+   "clip": null,
+   "note": "Moonlight spreading across a calm sea at night, a single silver path of light on the water.",
+   "overrides": {
+    "tier": "resolved",
+    "emotion": "tender",
+    "motif": "water",
+    "family": "R4-lyrical-everyday",
+    "reference": "resolved_06",
+    "seed": 1
+   },
+   "features": null,
+   "ms": {
+    "provider": 28755
+   },
+   "engine": "ai:openai/gpt-image-2",
+   "result": {
+    "tier": "resolved",
+    "emotion": "tender",
+    "motif": "water",
+    "seed": 1,
+    "energy": "calm",
+    "stylePosition": 1,
+    "controlScore": null,
+    "controlConfidence": null,
+    "interpretation": {
+     "sources": {
+      "completeness": "override",
+      "emotion": "override",
+      "motif": "override"
+     },
+     "controlScore": null,
+     "signals": null
+    },
+    "method": "ai:openai/gpt-image-2",
+    "provider": "openai",
+    "providerLabel": "OpenAI gpt-image-2 (medium)",
+    "model": "gpt-image-2",
+    "quality": "medium",
+    "size": "1024x1536",
+    "family": "R4-lyrical-everyday",
+    "familyLabel": "Lyrical light washes",
+    "familyRefs": [
+     "resolved_05.jpg",
+     "resolved_06.jpg",
+     "resolved_07.jpg",
+     "resolved_13.jpg"
+    ],
+    "swatches": [
+     {
+      "name": "light ultramarine",
+      "hex": "#b3bbd9",
+      "share": 0.479
+     },
+     {
+      "name": "pale blue",
+      "hex": "#ced5e5",
+      "share": 0.117
+     },
+     {
+      "name": "pale cool grey",
+      "hex": "#d8d6de",
+      "share": 0.082
+     }
+    ],
+    "prompt": "The attached image is the primary style reference for this painting and the visual authority: it overrides every written description below, including colour, light and composition notes. Controlled by the reference: (1) medium and technique: whether it reads as transparent washes, flat graphic colour, ink-like wash or dry-brush, and its paint behaviour, brush marks, texture, granulation and edges, including whether it has blooms and wet-in-wet at all; (2) dominant palette: its principal colour family, saturation, temperature and supporting accents; (3) colour distribution: the balance of dominant, secondary and accent colour; (4) composition language: visual weight, viewpoint, asymmetry, focal placement and spatial rhythm; (5) negative space: roughly how much open, lightly painted or untouched paper there is, and where; (6) detail distribution: where detail concentrates and where forms dissolve; (7) degree of stylisation and level of finish. Free: the subject and the exact arrangement. Paint a new, original painting in the same artistic language; do not copy or trace its composition, figures or motifs, and do not reproduce any text, titles or watermarks in it. Content never comes from the reference: its subjects, objects, figures, places and setting are not part of its style. Paint only the subject the text below asks for, even when it is unlike anything in the reference, and keep the reference's palette and light while doing so.\nA finished painting of: Moonlight spreading across a calm sea at night, a single silver path of light on the water.\nFrom the sung words — theme: stillness, night; imagery: moonlight, calm sea, silver path on the water.\nStyle — Lyrical light washes: Use clear, light, transparent washes with smooth gradients and clean, luminous light. Keep the subject small and low within a large, airy space, caught with a few chosen brushstrokes, as a quiet, fleeting moment. Only a little recognisable detail; the surroundings stay loose and open. This describes only how it is painted, never what is depicted.\nContent: paint only what the subject above names, in its own setting, and add no objects, scenery or story that it does not ask for. No people anywhere: no human figures, silhouettes, faces or body parts, however small or distant. When the words tell of love, loss or company, carry that through place, light, weather and the traces left behind.\nFinished and fully considered: a clear, recognisable subject, carried as far and as richly as the reference carries its own, with the reference's own finish, edges, detail distribution and composition language. Never a realistic image.\nVertical 4:5 format.\nColour hierarchy, measured from the reference: dominant light ultramarine (#b3bbd9, about 48% of the picture), secondary pale blue (#ced5e5, about 12% of the picture), supporting pale cool grey (#d8d6de, about 8% of the picture); no separate accent colour. Overall high-key and light, soft, low saturation, cool in temperature; about 19% open or near-white paper and almost no deep darks. Light: the reference's own quality and direction of light, carried onto the new subject. Keep these proportions: vary the colour only within this hierarchy, never introduce an unrelated palette.\nMood: tender, leaning toward the softer, gentler end of the reference's own colour and value range.\nPace of the marks, in the reference's own technique: slow and settled.\nGesture, from how the voice moved, made only with the reference's own kind of marks: marks that rise and fall a little; one connected flow; even pressure throughout.\nA hand-made painting in the artistic language of the attached reference: its medium, technique, texture, brushwork, colour treatment, composition language and degree of stylisation. An original composition, not a copy of the reference or of any existing artwork.\nAvoid: text, letters, titles, signature, logo or watermark, a frame, border or mat, a photo of a painting on a table, photorealism or a photograph, a photo-to-painting filter effect, glossy digital or 3D rendering, people, human figures, silhouettes or faces.",
+    "usage": {
+     "input_tokens": 2203,
+     "input_tokens_details": {
+      "image_tokens": 1320,
+      "text_tokens": 883
+     },
+     "output_tokens": 1462,
+     "output_tokens_details": {
+      "image_tokens": 1462,
+      "text_tokens": 0
+     },
+     "total_tokens": 3665
+    },
+    "reference": "resolved_06",
+    "referenceSent": true,
+    "subjectSource": "lyrics",
+    "subject": "Moonlight spreading across a calm sea at night, a single silver path of light on the water.",
+    "settings": {
+     "tier": "resolved",
+     "emotion": "tender",
+     "motif": "water",
+     "energy": "calm",
+     "expression": {
+      "range": "moderate",
+      "flow": "connected",
+      "dynamics": "even",
+      "vibrato": false
+     }
+    },
+    "promptCheck": {
+     "verdict": "ok",
+     "people": [],
+     "leaks": [],
+     "unrequested": [],
+     "inventory": [
+      "person",
+      "animal",
+      "beach"
+     ],
+     "from": "resolved_06"
+    }
+   },
+   "review": {
+    "depicted": "a full moon among soft lavender clouds; a calm sea with a horizon; a narrow silver path of moonlight on the water",
+    "verdict": "ok",
+    "people": [],
+    "leaks": [],
+    "unrequested": [],
+    "at": 1792144189264
+   },
+   "image": "validation/resolved_06-validation-2.jpg"
+  }
+ ]
+}

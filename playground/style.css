@@ -121,7 +121,7 @@ textarea { resize: vertical; }
 .review .verdict.ok { color: #4f7a55; }
 .review .verdict.review { color: var(--warn); }
 .review .verdict.leak { color: #a3473b; font-weight: 600; }
-#refs.view { display: block; }
+#refs.view, #validation.view { display: block; }
 #refs[hidden] { display: none; }
 .refsummary { font-weight: 600; margin: 8px 0 14px; }
 .refsummary.good { color: #4f7a55; }
