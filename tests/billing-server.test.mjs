@@ -52,7 +52,7 @@ function setup({ allowXcode = false } = {}) {
     notificationType: type, ...(subtype ? { subtype } : {}), notificationUUID: `n-${++seq}`, version: '2.0', signedDate: clock.now,
     data: { bundleId: 'app.sonmira', environment: 'Sandbox', ...(transaction ? { signedTransactionInfo: chain.sign(transaction) } : {}), ...(renewal ? { signedRenewalInfo: chain.sign(renewal) } : {}) },
   });
-  const charge = createCharge({ ledger, mode: 'native', now });
+  const charge = createCharge({ ledger, mode: 'on', now });
   const paint = async (account, key, day = dayAt(0)) => {
     const r = await charge.reserve({ installId: account, key, endpoint: 'generate', req: { headers: { 'x-sonmira-day': day } } });
     if (r.ok && r.counted) await charge.settle({ installId: account, key, outcome: 'commit' });
@@ -133,12 +133,12 @@ test('a painting held by a function that died is handed back after a while', asy
   assert.equal((await s.status(A)).free, 1);
 });
 
-test('web installs keep their simulated wallet unless every install is billed', async () => {
+test('every install is counted alike when billing is on; nobody when it is off', async () => {
   const s = setup();
   const web = 'i0123456789abcdef0123456789abcdef';
-  for (let i = 0; i < 5; i++) assert.equal((await s.paint(web, `w${i}.generate`)).counted, false);
-  const all = createCharge({ ledger: s.ledger, mode: 'all', now: () => s.clock.now });
-  assert.equal((await all.reserve({ installId: web, key: 'x.generate', endpoint: 'generate', req: { headers: {} } })).source, 'free');
+  assert.equal((await s.paint(web, 'w1.generate')).source, 'free', 'an id the client picks gets no way around paying');
+  const off = createCharge({ ledger: s.ledger, mode: 'off', now: () => s.clock.now });
+  assert.equal((await off.reserve({ installId: A, key: 'x.generate', endpoint: 'generate', req: { headers: {} } })).counted, false);
   const understand = await s.charge.reserve({ installId: A, key: 'u.understand', endpoint: 'understand' });
   assert.equal(understand.counted, false, 'only paintings are counted');
 });
@@ -149,12 +149,15 @@ test('Daily Ritual: one painting per local day, renewals extend, expiry ends it'
   await s.post({ account: A, transactions: [chain.sign(first)] });
   assert.equal((await s.paint(A, 'd1.generate')).source, 'daily');
   assert.equal((await s.paint(A, 'd2.generate')).source, 'free', 'second painting today comes from elsewhere');
+  s.clock.now += DAY;
   assert.equal((await s.paint(A, 'd3.generate', dayAt(1))).source, 'daily', 'a new day, a new painting');
-  // A day the phone reports far from the server's clock isn't believed.
+  // A day no time zone is in right now isn't believed, and a used day never reopens.
   assert.equal((await s.paint(A, 'd4.generate', dayAt(70))).source, 'free');
+  assert.notEqual(await s.ledger.reserve(A, 'd5.generate', dayAt(0)), 'daily', 'yesterday is not reopened');
+  await s.ledger.release('d5.generate', A);
 
   // Renewal (Apple notification) with a later expiry; an older transaction arriving late doesn't shorten it.
-  s.clock.now += 30 * DAY;
+  s.clock.now += 29 * DAY;
   const renewal = s.tx({ productId: SUB, originalTransactionId: first.originalTransactionId, appAccountToken: undefined, expiresDate: s.clock.now + 30 * DAY });
   assert.equal((await s.notify(s.note('DID_RENEW', { transaction: renewal }))).code, 200);
   await s.post({ account: A, transactions: [chain.sign(first)] });
@@ -222,6 +225,15 @@ test('Restore Purchases on a new install brings credits back, never the free pai
   assert.equal((await s.status(A)).account, B);
   assert.equal((await s.paint(A, 'e.generate')).source, 'credits');
   assert.equal((await s.status(B)).credits, 8);
+});
+
+test('account deletion erases the ledger', async () => {
+  const s = setup();
+  await s.post({ account: A, transactions: [chain.sign(s.tx())] });
+  await s.ledger.erase(A);
+  const st = await s.status(A);
+  assert.equal(st.credits, 0);
+  assert.equal(st.free, 3);
 });
 
 test('notifications Sonmira cannot use are still acknowledged; bad signatures are not', async () => {

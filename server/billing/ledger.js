@@ -24,7 +24,6 @@ const LOCK_TTL = 10;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const INSTALL = /^[A-Za-z0-9_-]{16,64}$/; // the guard's install ids (web)
-export const isAppAccount = (id) => UUID.test(String(id ?? ''));
 export function normalizeAccount(id) {
   const v = String(id ?? '').trim();
   if (UUID.test(v)) return v.toLowerCase();
@@ -32,11 +31,15 @@ export function normalizeAccount(id) {
 }
 
 const utcDay = (t) => new Date(t).toISOString().slice(0, 10);
-/** The person's local calendar day as the app reports it, if plausible; else the UTC day. */
+/**
+ * The person's local calendar day as the app reports it, if it is a date some
+ * time zone (UTC−12 to UTC+14) is in right now; else the UTC day. With the
+ * wallet never reopening a day at or before one already used, someone moving
+ * their clock gains at most one early painting, once.
+ */
 export function clientDay(v, now = Date.now()) {
   const s = String(v ?? '');
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s) && Math.abs(Date.parse(`${s}T12:00:00Z`) - now) <= 38 * 3600_000) return s;
-  return utcDay(now);
+  return [utcDay(now - 12 * 3600_000), utcDay(now), utcDay(now + 14 * 3600_000)].includes(s) ? s : utcDay(now);
 }
 
 const busy = () => Object.assign(new Error('ledger busy'), { code: 'ledger_busy' });
@@ -196,8 +199,17 @@ export function createLedger({ kv, now = Date.now, holdTtlMs = 180_000, sleep = 
     return kv.get(`bill:hold:${key}`);
   }
 
+  /** Account deletion: the ledger goes. Apple subscriptions stay Apple's and land here again if renewed. */
+  async function erase(account) {
+    const id = await resolve(account);
+    const unlock = await lock(id);
+    try { await kv.del(`bill:acct:${id}`, `bill:subs:${id}`); } finally { await unlock(); }
+    return true;
+  }
+
   return {
     resolve,
+    erase,
     applyTransaction,
     applyRenewal,
     merge,

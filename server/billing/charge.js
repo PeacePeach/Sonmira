@@ -8,16 +8,19 @@
 // painting was made, 'release' on anything else, so only successful
 // paintings are ever counted, and one take key is counted at most once.
 //
-// SONMIRA_BILLING decides whose paintings are counted:
-//   native (default)  app accounts only (UUIDs from the iOS app); web
-//                     previews keep their local, simulated wallet
-//   all               every install, web included
-//   off               nobody
+// SONMIRA_BILLING decides, per deployment, whether paintings are counted.
+// The client never chooses: any install id it registers is counted alike.
+//   on   every install (the default in Production, which TestFlight and
+//        App Review use too)
+//   off  nobody (the default elsewhere: web previews keep their local,
+//        simulated wallet)
 
-import { clientDay, isAppAccount } from './ledger.js';
+import { clientDay } from './ledger.js';
 
-export function createCharge({ ledger, mode = process.env.SONMIRA_BILLING || 'native', now = Date.now }) {
-  const applies = (installId) => mode === 'all' || (mode === 'native' && isAppAccount(installId));
+export const billingMode = (env = process.env) => env.SONMIRA_BILLING || (env.VERCEL_ENV === 'production' ? 'on' : 'off');
+
+export function createCharge({ ledger, mode = billingMode(), now = Date.now }) {
+  const applies = () => mode === 'on';
   const header = (req, name) => { const v = req?.headers?.[name]; return Array.isArray(v) ? v[0] : v; };
   return {
     async reserve({ installId, key, endpoint, req }) {

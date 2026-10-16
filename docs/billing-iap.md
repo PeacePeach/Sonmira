@@ -50,8 +50,9 @@ diary, recordings, playback and sharing never need a purchase.
 Refunds take back what's left of a pack (never below zero) and end Daily
 Ritual at once. Only Apple's own notification can undo a refund, so a client
 replaying an old signed transaction gets nothing back. The Daily Ritual day is
-the phone's local date, accepted within 38 hours of the server's clock, and a
-day already used never opens again.
+the phone's local date, accepted only if some time zone (UTC−12 to UTC+14)
+is on that date right now, and a day at or before one already used never
+opens again, so moving the clock gains at most one early painting, once.
 
 ## Server configuration
 
@@ -60,7 +61,7 @@ day already used never opens again.
 | `KV_REST_API_URL`, `KV_REST_API_TOKEN` | The same Upstash store as the generation guard. Without it, billing answers `503 not_configured`. |
 | `SONMIRA_APPLE_APP_ID` | The app's numeric Apple ID (App Store Connect → App Information). Needed only for Production purchases; Sandbox works without it. |
 | `SONMIRA_BUNDLE_ID` | Optional, default `app.sonmira`. |
-| `SONMIRA_BILLING` | `native` (default): only iOS accounts are counted; web previews keep their simulated wallet. `all`: every install. `off`. |
+| `SONMIRA_BILLING` | `on` (default in Production, which TestFlight and App Review also use): every install is counted, whatever id it registers. `off` (default elsewhere): web previews keep their simulated wallet. |
 | `SONMIRA_ALLOW_XCODE_STOREKIT=1` | Optional, never in Production: accept Xcode's locally signed test transactions. |
 
 No App Store Connect API key, shared secret or certificate file is needed.
@@ -103,6 +104,8 @@ The guard lives on the Production Readiness branch. When it merges:
   the ledger on the guard's store;
 - `createApiClient({ installId: await app.billing.accountId() })` in the iOS
   app, so the guard and the ledger share the id;
+- the Account thread calls `ledger.merge(guestId, accountId)` on sign-in and
+  `ledger.erase(accountId)` on deletion, then `app.billing.useAccount(id)`;
 - `402 no_paintings` from `/api/generate` opens the paywall, with the take
   kept;
 - in the bundled build, the guard answers CORS for `capacitor://localhost`,

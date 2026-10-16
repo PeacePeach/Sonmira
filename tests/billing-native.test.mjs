@@ -161,6 +161,18 @@ test('Daily Ritual from StoreKit reaches the server on launch; Manage opens Appl
   assert.equal(typeof b.manageSubscriptions, 'function');
 });
 
+test('a new account after sign-in: purchases carry it and the wallet follows its ledger', async () => {
+  const plugin = fakePlugin(), server = fakeServer();
+  const b = make(plugin, server);
+  await b.ready;
+  const other = '7d3f1b52-91c4-4f0e-8a77-2c9e5d1a6b30';
+  await b.useAccount(other);
+  assert.equal(await b.accountId(), other);
+  await b.purchase(PACK);
+  assert.equal(plugin.purchases.at(-1).appAccountToken, other);
+  assert.equal(server.sent.at(-1).account, other);
+});
+
 test('in a browser the simulator stays', async () => {
   const b = createBilling({ ask: async () => 'success' });
   assert.equal(b.simulated, true);

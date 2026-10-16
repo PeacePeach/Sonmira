@@ -39,7 +39,7 @@ export function createBilling({ ask, native, server }) {
   if (native === undefined) { const plugin = nativePlugin('SonmiraStore'); native = plugin ? createNativeStore(plugin) : null; }
   if (server === undefined) server = native ? createBillingServer() : null;
   const store = native ?? createSimulatedStore({ ask });
-  const account = native ? native.accountId().catch((e) => { console.warn('[sonmira] no account id', e); return null; }) : Promise.resolve(null);
+  let account = native ? native.accountId().catch((e) => { console.warn('[sonmira] no account id', e); return null; }) : Promise.resolve(null);
   const today = () => { const d = new Date(); if (!native) d.setDate(d.getDate() + (Number(readJSON(DAY_SHIFT)) || 0)); return dayKey(d); };
   const wallet = createWallet({
     load: () => readJSON(LOCAL) ?? readJSON(ACCOUNT),
@@ -118,6 +118,8 @@ export function createBilling({ ask, native, server }) {
     products: PRODUCTS,
     /** The account id (iOS app) shared with the generation guard and the ledger; null in a browser. */
     accountId: () => account,
+    /** Sign-in, sign-out or deletion changed the device's account: follow it. */
+    useAccount(id) { account = Promise.resolve(id); return refresh(); },
     ready: refresh(),
     /** Ask the store (and, in the app, the server) again. */
     refresh: () => refresh(),
@@ -133,7 +135,7 @@ export function createBilling({ ask, native, server }) {
     /** → { status: 'success' | 'pending' | 'cancelled', product }. Throws StoreError. */
     async purchase(id) {
       const product = productById(id);
-      const r = await store.purchase(id);
+      const r = await store.purchase(id, { appAccountToken: await account });
       if (r.status === 'userCancelled') return { status: 'cancelled', product };
       if (r.status === 'pending') return { status: 'pending', product };
       if (r.transaction.revoked) throw new StoreError('failed');

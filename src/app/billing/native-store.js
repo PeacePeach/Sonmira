@@ -29,9 +29,9 @@ export function createNativeStore(plugin) {
       catch (e) { throw storeError(e); }
     },
 
-    async purchase(id) {
+    async purchase(id, { appAccountToken } = {}) {
       try {
-        const r = await plugin.purchase({ productId: id, appAccountToken: await accountId() });
+        const r = await plugin.purchase({ productId: id, appAccountToken: appAccountToken || await accountId() });
         if (r.status === 'success') return { status: 'success', transaction: tx(r.transaction) };
         return { status: r.status === 'pending' ? 'pending' : 'userCancelled' };
       } catch (e) {
