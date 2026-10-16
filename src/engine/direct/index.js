@@ -1,139 +1,227 @@
 // Layer C: art direction and prompt construction.
 //
-//   direct(spec) → { version, subject, sections, prompt, avoid }
+//   direct(spec) → { version, family, variant, subject, pigments, sections, prompt, avoid }
 //
-// Turns the visual specification into generation instructions that follow
-// Sonmira's global rules and the three-level principles drawn from the 22
-// references (see docs/art-direction.md). Provider-independent: adapters in
-// providers/ decide how to send `sections` / `prompt` to a given model.
+// Three layers of style, applied in order:
+//   A  GLOBAL      the Sonmira universe: paper, transparency, muted palette,
+//                  soft contrast, restraint. Every painting, every provider.
+//   B  FAMILIES    four watercolor voices (abstract experimental, atmospheric
+//                  landscape, lyrical figurative, quiet interior), each with
+//                  its own mark-making, space and subject language.
+//   C  LEVEL       loose / gathered / resolved: how abstract, how formed, how
+//                  finished. Each level samples from the families it allows.
 //
-// Vocal control changes what is painted and how it is arranged (subject
-// legibility, spatial depth, focal hierarchy, edge finish). It never changes
-// palette saturation, darkness or overall craft: every level is asked to be
-// equally beautiful.
+// The seed picks the family (within the level's allowed set), a variant
+// inside it, the subject, the line/wash balance and the composition, so
+// different takes look like different paintings from one collection.
+// Variation never touches the palette or contrast rules. Provider-
+// independent: adapters in providers/ decide how to send this to a model.
 
 import { choosePigments } from '../art/palettes.js';
 import { rng } from '../render/rng.js';
 
-export const DIRECTION_VERSION = 1;
+export const DIRECTION_VERSION = 2;
 
 const PIGMENT_WORDS = {
   mistyBlue: 'misty blue', dustyBlueGrey: 'dusty blue-grey', sage: 'muted sage green',
   blush: 'pale blush', ivory: 'warm ivory', sand: 'soft sand', lavender: 'desaturated lavender',
 };
 
-// One artistic universe: the same paper, transparency, edges and restraint
-// for every painting, whatever the level, mood or provider.
+// ---------- A: the Sonmira universe ----------
 export const GLOBAL_STYLE = [
-  'A traditional transparent watercolor painting on warm ivory cold-press cotton paper',
+  'A traditional transparent watercolor on warm ivory cold-press cotton paper',
   'visible paper grain and gentle pigment granulation',
-  'soft pigment diffusion and natural wet-in-wet blooms',
-  'generous untouched white paper, with the washes fading out into bare paper toward the edges of the sheet',
-  'a gentle, low-contrast tonal range',
-  'quiet, intimate and refined, like a page from a private watercolor diary',
+  'low saturation, soft contrast and a gentle tonal range',
+  'generous untouched paper, with the painting fading out toward the edges of the sheet',
+  'refined, intimate and poetic, quiet enough to sit inside a minimal, elegant app',
   'hand-painted with a real brush',
 ].join(', ') + '.';
 
 export const AVOID = [
   'saturated or vibrant colors', 'neon or fluorescent hues', 'orange', 'hot pink', 'electric blue',
-  'many different colors', 'harsh contrast', 'pure black', 'ink outlines', 'cartoon or anime style', 'sentimental greeting-card or children\'s-book illustration',
-  'photorealism', 'glossy digital illustration', 'decorative patterns', 'text, letters, signature or watermark',
-  'a frame, border or mat', 'a photo of a painting on a table',
+  'many different colors', 'decorative multicolor', 'harsh contrast', 'pure black', 'ink outlines',
+  'cartoon or anime style', 'sentimental greeting-card or children\'s-book illustration',
+  'generic polished stock illustration', 'photorealism', 'glossy digital rendering', 'decorative patterns',
+  'text, letters, signature or watermark', 'a frame, border or mat', 'a photo of a painting on a table',
 ];
 
 const ATMOSPHERE = {
   tender: 'delicate and pale, soft diffused light',
-  bright: 'slightly warmer and lighter, airy morning light',
+  bright: 'slightly warmer and lighter, airy light',
   melancholic: 'cooler and more subdued, hushed grey light',
   intense: 'deeper but still muted tones, a heavier, more weighted atmosphere',
 };
 
-const BRUSHWORK = {
-  calm: 'slow, broad, settled washes',
-  moderate: 'a mix of broad washes and a few lively strokes',
-  lively: 'energetic, quick brushstrokes with a few splashes and drips',
+const ENERGY = {
+  calm: 'slow, settled marks',
+  moderate: 'a mix of settled washes and a few quick strokes',
+  lively: 'quick, energetic marks with flicks and splashes',
 };
 
-// What each level is, from the references (3 loose, 5 gathered, 14 resolved).
+// ---------- B: style families ----------
+// Each family: a mark language (how paint is put down), variants (seeded
+// sub-voices), and subjects by motif. `abstract` subjects are used when the
+// person gave no words, so nothing narrative is invented.
+export const FAMILIES = {
+  abstractExperimental: {
+    label: 'Abstract Experimental',
+    language: 'mixed point, line and wash: thin wandering brush lines, scattered dots and flecks, irregular dragged traces, broken contours that start and stop, diffused stains with soft tide-marks, and occasional drips and backrun blooms',
+    variants: [
+      'a few long, wandering lines drift across pale overlapping stains and lose their way',
+      'clusters of small marks gather in one place and disperse across the rest of the sheet',
+      'one large bleeding stain is crossed by broken lines and a spray of fine flecks',
+      'paint runs downward from a wet upper edge in uneven drips, with stray marks beside them',
+      'torn, horizontal fragments of wash interrupted by dry-brush scratches and loose dots',
+      'looping, scribbled traces float over faint stains, the loops opening and breaking apart',
+    ],
+    subjects: {}, // never depicts anything
+    balance: ['line-led, with washes only as faint grounds', 'an even mix of lines, marks and stains', 'stain-led, with lines and dots scattered through'],
+  },
+  atmosphericLandscape: {
+    label: 'Atmospheric Landscape',
+    language: 'wide wet-in-wet washes, soft gradations of sky and distance, a horizon that dissolves in places, reflections and haze, with the few hard edges kept for the nearest forms',
+    variants: [
+      'a low horizon beneath a vast sky that takes most of the sheet',
+      'layers of distance receding one behind another into mist',
+      'a high horizon, looking down across a broad open foreground',
+      'a scene mirrored in still water, sky and reflection almost meeting',
+    ],
+    subjects: {
+      water: { gathered: 'a calm shoreline and pale sea, the water and sand only suggested', resolved: 'a quiet bay at low tide, wet sand holding the light, a small boat resting near the waterline' },
+      sky: { gathered: 'drifting clouds over a thin strip of land', resolved: 'a great sky of luminous clouds over a low, distant coastline, a few birds crossing' },
+      garden: { gathered: 'soft masses of foliage and blossom dissolving into mist', resolved: 'an orchard in blossom on a gentle slope, the trees fading into morning haze' },
+      landscape: { gathered: 'layered hills fading into haze, a path barely implied', resolved: 'rolling fields and a winding lane toward distant hills, a single farmhouse catching the light' },
+      interior: { gathered: 'a landscape seen through a pale window opening, the view dissolving', resolved: 'a wide view of hills and sky framed by the soft edge of an open window' },
+      abstract: { gathered: 'horizontal bands of wash that suggest distance without naming a place', resolved: 'a composed abstraction of soft horizontal bands and one luminous gap, like distance without a place' },
+    },
+    balance: ['almost all wash, with a few drawn accents', 'washes with a little dry-brush texture in the foreground'],
+  },
+  lyricalFigurative: {
+    label: 'Lyrical Figurative',
+    language: 'a poetic, fully composed scene, a small human presence or living subject painted with economy, lost-and-found edges, a clear focal point and calm surrounding space',
+    variants: [
+      'the living subject kept small within a large, quiet space',
+      'a close, intimate view of the subject with the surroundings dissolving',
+      'the subject seen from slightly above, long soft shadows across the ground',
+      'a quiet moment caught mid-gesture, with generous space around it',
+    ],
+    subjects: {
+      water: { resolved: 'two figures walking along the tide line of a calm sea, their reflections on the wet sand' },
+      sky: { resolved: 'a figure on a hilltop beneath a vast evening sky, a scarf lifted by the wind' },
+      garden: { resolved: 'a woman reading on a bench beneath a flowering tree, petals on the path' },
+      landscape: { resolved: 'a lone walker on a country road between fields, distant hills beyond' },
+      interior: { resolved: 'a figure by a tall window, a cup in their hands, morning light across the floor' },
+    },
+    balance: ['wash-led, with fine brush drawing only in the focal subject'],
+  },
+  quietInterior: {
+    label: 'Quiet Interior / Structural',
+    language: 'still, sparse and geometric: translucent planes, window and wall edges, soft rectangles of light, long shadows, a few ruled or hand-drawn straight lines, lots of calm empty paper',
+    variants: [
+      'tall vertical planes and one soft rectangle of light',
+      'a single still shape set against broad, empty planes',
+      'overlapping translucent rectangles, slightly misaligned',
+      'a long horizontal edge, a shadow, and silence above it',
+    ],
+    subjects: {
+      water: { loose: 'translucent rectangles that drift out of alignment', gathered: 'a window opening onto pale water, the frame and view both dissolving', resolved: 'a quiet room with a tall window opening onto the sea, a chair in the light' },
+      sky: { loose: 'pale planes and a broken frame edge', gathered: 'a window full of sky, its frame half painted', resolved: 'an empty room, a large window of soft cloud, light lying across the floor' },
+      garden: { loose: 'soft planes and the edge of a shadow', gathered: 'a doorway onto a garden, foliage only suggested beyond', resolved: 'a sunroom with a potted plant and a garden glimpsed through glass' },
+      landscape: { loose: 'misaligned planes and a horizon-like line', gathered: 'a window with distant hills suggested beyond', resolved: 'a quiet room with a window onto distant hills, a table with a single cup' },
+      interior: { loose: 'soft rectangles of light and a few straight lines', gathered: 'a corner of a room, a window and a table only blocked in', resolved: 'a still corner of a room, sheer curtains, a vase of dried flowers on the sill' },
+      abstract: { loose: 'misaligned translucent planes and a few straight lines', gathered: 'quiet geometric planes beginning to settle into balance', resolved: 'a composed geometric abstraction of a few translucent planes and one quiet focal shape' },
+    },
+    balance: ['wash planes with a few straight lines', 'mostly flat, quiet planes'],
+  },
+};
+
+// ---------- C: levels ----------
+// Allowed families per level, with weights (Han's guidance).
+export const LEVEL_FAMILIES = {
+  loose: [['abstractExperimental', 0.75], ['quietInterior', 0.25]],
+  gathered: [['atmosphericLandscape', 0.65], ['quietInterior', 0.35]],
+  resolved: [['atmosphericLandscape', 0.4], ['lyricalFigurative', 0.45], ['quietInterior', 0.15]],
+};
+// With no words, nothing narrative: no figures.
+const NO_WORDS = { resolved: [['atmosphericLandscape', 0.5], ['quietInterior', 0.5]] };
+
 export const LEVELS = {
   loose: {
-    label: 'abstract watercolor study',
-    form: 'No recognizable objects, figures or scene. Loose, fragmented washes, scattered pigment, wet-in-wet blooms, a few wandering, broken brush lines and accidental drips. No horizon and no focal point; shapes float with loose spatial relationships.',
-    finish: 'Open and airy, still balanced and beautiful, like a painter freely testing colors on good paper.',
+    label: 'abstract watercolor experiment',
+    form: 'This is an abstract experiment, not a landscape: no horizon, no sky, no ground, no water, no objects or figures, nothing to recognise. The visual logic is unstable and incomplete: marks drift, collide and break off, edges appear and vanish, and accidents are left as they happened.',
+    finish: 'Disordered, drifting and uncontrolled, yet still beautiful: the elegance comes from the paper, the restraint of the palette and the space left empty.',
   },
   gathered: {
-    label: 'semi-abstract atmospheric watercolor',
-    form: 'The scene is suggested rather than described: you can tell what kind of place it is, but nothing is drawn in detail. Forms are blocked in only as broad, soft washes that bleed into one another; there are no small details, no defined contours and no crisp edges anywhere. A soft horizon or spatial depth begins to form, foreground and background separate gently, and one focal area is only emerging.',
-    finish: 'Painted quickly and spontaneously, left about half finished: whole parts of the scene stay unpainted bare paper, washes stop mid-stroke, with splashes, dry-brush scratches and hard-edged blooms where wet washes meet. Deliberate, but still ambiguous.',
+    label: 'semi-abstract watercolor',
+    form: 'Partially formed: you can tell what kind of place it is, but nothing is drawn in detail. Forms are blocked in as broad soft washes that bleed into one another, with no small details or crisp contours. Space and depth are beginning to form and one focal area is only emerging.',
+    finish: 'Painted quickly and left about half finished: whole areas stay bare paper, washes stop mid-stroke, with blooms where wet washes meet. More coherent than an abstract study, clearly less complete than a finished painting.',
   },
   resolved: {
-    label: 'finished watercolor composition',
-    form: 'Clear foreground, middle ground and background with cohesive spatial organization. One intentional focal point carries the most detail and the crispest edges, and the rest dissolves into soft washes and white paper.',
-    finish: 'Complete but simplified, like a finished piece by an accomplished watercolorist: few elements, large calm areas of bare paper or a single quiet wash, and the subject painted with economy in a few precise strokes rather than rendered in detail. Still painterly and loose, not a detailed illustration.',
+    label: 'finished watercolor painting',
+    form: 'A mature, fully considered composition: clear foreground, middle ground and background, one strong focal point that carries the finest drawing and the crispest edges, and a deliberate path for the eye through the picture. Lost-and-found edges and considered negative space.',
+    finish: 'Refined and collectible, like a gallery piece by a master of the medium: the subject treated with poetry and economy, a sophisticated but soft value structure, and complete, confident brushwork. Painterly and alive, never a generic polished illustration.',
   },
-};
-
-// Subjects per motif. The same seed picks the same subject at every level,
-// so a three-tier set shows one place moving from study to finished piece.
-// `loose` names only the rhythm or colour the abstract study echoes.
-export const SUBJECTS = {
-  water: [
-    { resolved: 'two small figures walking along the shallow tide line of a calm sea, their reflections on the wet sand', gathered: 'a calm shoreline with pale water and a low horizon, two small dabs of color that might be figures', loose: 'the horizontal drift of shallow water over wet sand' },
-    { resolved: 'a single wooden rowboat moored beside a narrow wooden jetty on still water', gathered: 'still water with the soft shapes of a small boat and a jetty dissolving into mist', loose: 'reflections breaking on still water' },
-    { resolved: 'a grey heron standing in reed-fringed shallows at the edge of a quiet lake', gathered: 'misty shallows with reeds and the faint shape of a standing bird', loose: 'reeds and ripples' },
-  ],
-  sky: [
-    { resolved: 'a wide sky of soft cumulus clouds over a low distant coastline, with a few small birds', gathered: 'a vast sky of drifting clouds above a thin line of land', loose: 'billowing cloud shapes' },
-    { resolved: 'a lone tree on a gentle hill beneath a large, glowing evening sky', gathered: 'a gentle hill and a suggested tree under a broad evening sky', loose: 'a soft glow spreading through damp washes' },
-  ],
-  garden: [
-    { resolved: 'a narrow garden path between flowering shrubs leading to a small wooden gate', gathered: 'a garden suggested by soft masses of foliage and blossoms around a pale path', loose: 'the colors and dabs of foliage and blossom' },
-    { resolved: 'a slender birch grove after rain, wildflowers in the grass between the trunks', gathered: 'pale vertical trunks and soft green foliage in a damp garden', loose: 'vertical drips and soft green blooms' },
-  ],
-  landscape: [
-    { resolved: 'a winding country road through rolling hills toward distant blue mountains', gathered: 'layered hills fading into haze with a road barely suggested', loose: 'layered horizontal bands of land and haze' },
-    { resolved: 'a small village of snow-covered roofs at the foot of a forested slope', gathered: 'a hillside with soft roof shapes and trees emerging from snow and mist', loose: 'cool shadows on snow' },
-  ],
-  interior: [
-    { resolved: 'a window with sheer curtains, a small vase of dried flowers on the sill and morning light falling into a quiet room', gathered: 'a window, a curtain and soft light suggested inside a quiet room', loose: 'soft rectangles of window light' },
-    { resolved: 'a wooden table by a window with a teacup and an open book in afternoon light', gathered: 'a table near a window, its objects only suggested by soft shapes and light', loose: 'warm light pooling on a surface' },
-  ],
-  // No words: stay neutral and abstract at every level, never invent a story.
-  abstract: [
-    { resolved: 'a fully composed abstract arrangement of a few large translucent overlapping forms, one clear focal shape, deliberate balance and considered layering, with no recognizable objects', gathered: 'overlapping translucent shapes beginning to settle into a balanced arrangement that suggests depth, with no recognizable objects', loose: 'free washes with no subject' },
-  ],
 };
 
 const PLACEMENTS = [
-  'the focal subject sits in the lower left third, with open space above and to the right',
-  'the focal subject sits in the lower right third, with open space above and to the left',
-  'the focal subject sits low and slightly off-centre beneath a large open area',
+  'the focal point sits in the lower left third, with open space above and to the right',
+  'the focal point sits in the lower right third, with open space above and to the left',
+  'the focal point sits low and slightly off-centre beneath a large open area',
+  'the focal point sits high in the sheet above a wide, quiet foreground',
+];
+const LOOSE_SPREAD = [
+  'marks gather toward one side and thin out across the rest of the sheet',
+  'marks drift diagonally across the sheet, leaving large empty corners',
+  'marks scatter unevenly from the centre outward',
 ];
 
+function pickWeighted(list, r) {
+  const total = list.reduce((s, [, w]) => s + w, 0);
+  let x = r() * total;
+  for (const [k, w] of list) if ((x -= w) <= 0) return k;
+  return list[list.length - 1][0];
+}
+const pick = (arr, r) => arr[Math.floor(r() * arr.length)];
+
+export function familiesFor(level, motif) {
+  if (motif === 'abstract' && NO_WORDS[level]) return NO_WORDS[level];
+  return LEVEL_FAMILIES[level] || LEVEL_FAMILIES.gathered;
+}
+
 export function direct(spec) {
+  const level = LEVELS[spec.completeness] ? spec.completeness : 'gathered';
+  const L = LEVELS[level];
+  const motif = spec.motif || 'abstract';
   const r = rng((spec.seed ^ 0x5a17) >>> 0);
-  const level = LEVELS[spec.completeness] || LEVELS.gathered;
-  const list = SUBJECTS[spec.motif] || SUBJECTS.abstract;
-  const subject = list[Math.floor(r() * list.length)];
-  const placement = PLACEMENTS[Math.floor(r() * PLACEMENTS.length)];
-  const pigments = choosePigments(spec.emotion, spec.motif, r).map((p) => PIGMENT_WORDS[p]);
+  // Draw every choice in a fixed order, so overriding one keeps the rest.
+  const famDraw = pickWeighted(familiesFor(level, motif), r);
+  // An explicit family (developer override) wins over the seeded draw.
+  const familyId = FAMILIES[spec.family] ? spec.family : famDraw;
+  const F = FAMILIES[familyId];
+  const variant = pick(F.variants, r);
+  const balance = pick(F.balance, r);
+  const placement = level === 'loose' ? pick(LOOSE_SPREAD, r) : pick(PLACEMENTS, r);
+  const pigments = choosePigments(spec.emotion, motif, r).map((p) => PIGMENT_WORDS[p]);
   const energy = spec.energy?.value || 'calm';
 
-  const what = spec.completeness === 'loose'
-    ? `An ${level.label} whose washes loosely echo ${subject.loose}.`
-    : spec.completeness === 'gathered'
-      ? `A ${level.label} of ${subject.gathered}.`
-      : `A ${level.label} of ${subject.resolved}.`;
+  // Subject: loose never depicts; other levels take the family's subject for
+  // the motif, falling back to the family's abstract subject.
+  const subj = F.subjects[motif]?.[level] ?? F.subjects.abstract?.[level] ?? null;
+  const subject = level === 'loose'
+    ? (familyId === 'quietInterior' ? subj : null)
+    : subj ?? F.subjects[motif]?.resolved ?? null;
+
+  const article = /^[aeiou]/i.test(L.label) ? 'An' : 'A';
   const sections = {
-    subject: what,
-    form: level.form,
-    composition: spec.completeness === 'loose' ? 'Vertical 4:5 format with an open, uneven distribution of marks.' : `Vertical 4:5 format; ${placement}.`,
-    finish: level.finish,
+    subject: subject ? `${article} ${L.label} of ${subject}.` : `${article} ${L.label}.`,
+    family: `Visual voice — ${F.label}: ${F.language}. In this piece, ${variant}.`,
+    form: L.form,
+    composition: `Vertical 4:5 format; ${placement}. Balance of line and wash: ${balance}.`,
+    finish: L.finish,
     palette: `A limited palette of only ${pigments.length} pigments: ${pigments.join(', ')}, on warm ivory paper. Darks are the same pigments layered, never black.`,
-    atmosphere: `Atmosphere: ${ATMOSPHERE[spec.emotion] || ATMOSPHERE.tender}.`,
-    brushwork: `Brushwork: ${BRUSHWORK[energy]}.`,
+    atmosphere: `Atmosphere: ${ATMOSPHERE[spec.emotion] || ATMOSPHERE.tender}. Marks: ${ENERGY[energy]}.`,
     style: GLOBAL_STYLE,
   };
-  const prompt = [sections.subject, sections.form, sections.composition, sections.finish, sections.palette, sections.atmosphere, sections.brushwork, sections.style, `Avoid: ${AVOID.join(', ')}.`].join('\n');
-  return { version: DIRECTION_VERSION, subject, pigments, sections, prompt, avoid: AVOID.slice() };
+  const prompt = [sections.subject, sections.family, sections.form, sections.composition, sections.finish, sections.palette, sections.atmosphere, sections.style, `Avoid: ${AVOID.join(', ')}.`].join('\n');
+  return { version: DIRECTION_VERSION, level, family: familyId, familyLabel: F.label, variant, subject, pigments, sections, prompt, avoid: AVOID.slice() };
 }

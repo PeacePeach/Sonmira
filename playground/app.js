@@ -174,6 +174,7 @@ function readOverrides() {
     position: tier === 'custom' ? Number($('ovPos').value) : null,
     emotion: $('ovEmotion').value === 'auto' ? null : $('ovEmotion').value,
     motif: $('ovMotif').value === 'auto' ? null : $('ovMotif').value,
+    family: $('ovFamily').value === 'auto' ? null : $('ovFamily').value,
     seed,
   };
 }
@@ -197,6 +198,7 @@ const engineOpts = (a, ov, control) => ({
   vocalControlOverride: control,
   emotionOverride: ov.emotion ?? undefined,
   motifOverride: ov.motif ?? undefined,
+  familyOverride: ov.family ?? undefined,
   seed: ov.seed,
   width: W, height: H,
 });
@@ -235,6 +237,7 @@ async function paintAI(a, ov, control, provider) {
   const png = await (await fetch(g.image)).blob();
   const meta = {
     ...plan.summary, focus: '50% 50%', method: `ai:${g.provider}/${g.model}`,
+    family: g.family ?? plan.summary.family, familyLabel: g.familyLabel ?? plan.summary.familyLabel,
     provider: g.provider, providerLabel: `OpenAI ${g.model} (${g.quality})`, model: g.model, prompt: g.prompt, usage: g.usage ?? null,
   };
   return { meta, canvas, png, features: a?.features ?? null, ms: { analyze: a?.ms ?? null, paint: performance.now() - t0, provider: g.ms } };
@@ -301,7 +304,7 @@ $('tiersBtn').addEventListener('click', () => guarded(async () => {
 
 const measuredTierOf = (score) => (score >= CALIBRATION.resolvedAt ? 'resolved' : score >= CALIBRATION.gatheredAt ? 'gathered' : 'loose');
 function captionFor(m, extra = '') {
-  return `<span><span style="text-transform:capitalize">${esc(m.tier)}<b>${extra}</b></span> · ${esc(m.providerLabel || 'Procedural renderer (JS, no AI)')}</span><span>position ${fmt(m.stylePosition)} · seed ${m.seed}</span>`;
+  return `<span><span style="text-transform:capitalize">${esc(m.tier)}<b>${extra}</b></span> · ${esc(m.providerLabel || 'Procedural renderer (JS, no AI)')}${m.familyLabel && m.provider !== 'procedural' ? ` · ${esc(m.familyLabel)}` : ''}</span><span>position ${fmt(m.stylePosition)} · seed ${m.seed}</span>`;
 }
 function showArtwork(items, trio = false) {
   const el = $('artwork');
@@ -371,6 +374,7 @@ function showResults(run, { compareTiers = false } = {}) {
     <div class="sect"><h3>Painting</h3><dl class="kv">
       <dt>Pigments</dt><dd><div class="swatches">${pig}</div></dd>
       <dt>Seed</dt><dd>${m.seed}</dd>
+      ${m.familyLabel && m.provider !== 'procedural' ? `<dt>Style family</dt><dd>${esc(m.familyLabel)}</dd>` : ''}
       <dt>Provider</dt><dd>${esc(m.providerLabel || 'Procedural renderer (JS, no AI)')}</dd>
       <dt>Method</dt><dd>${esc(m.method)}</dd>
       ${m.energy ? `<dt>Energy</dt><dd>${esc(m.energy)}</dd>` : ''}
@@ -472,6 +476,7 @@ async function loadRun(r) {
   if (ov.position != null) { $('ovPos').value = ov.position; $('posOut').textContent = Number(ov.position).toFixed(2); }
   $('ovEmotion').value = ov.emotion || 'auto';
   $('ovMotif').value = ov.motif || 'auto';
+  $('ovFamily').value = ov.family || 'auto';
   $('seed').value = String(r.result.seed);
   const prov = r.result.provider || 'procedural';
   if (!$('provider').querySelector(`option[value=${prov}]`)?.disabled) $('provider').value = prov;

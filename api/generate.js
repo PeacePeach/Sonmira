@@ -8,7 +8,7 @@
 // The browser sends the visual spec (layer B); the prompt is built here from
 // it by the provider-independent art direction (layer C).
 
-import { direct } from '../src/engine/direct/index.js';
+import { direct, FAMILIES } from '../src/engine/direct/index.js';
 import { generateOpenAI, openaiConfig } from '../src/engine/providers/openai.js';
 
 const LEVELS = ['loose', 'gathered', 'resolved'];
@@ -18,7 +18,9 @@ const MOTIFS = ['water', 'sky', 'garden', 'landscape', 'interior', 'abstract'];
 function cleanSpec(s) {
   if (!s || !LEVELS.includes(s.completeness) || !EMOTIONS.includes(s.emotion) || !MOTIFS.includes(s.motif)) return null;
   const energy = ['calm', 'moderate', 'lively'].includes(s.energy?.value) ? s.energy.value : 'calm';
-  return { completeness: s.completeness, emotion: s.emotion, motif: s.motif, seed: Number(s.seed) >>> 0, energy: { value: energy } };
+  const out = { completeness: s.completeness, emotion: s.emotion, motif: s.motif, seed: Number(s.seed) >>> 0, energy: { value: energy } };
+  if (Object.hasOwn(FAMILIES, s.family)) out.family = s.family;
+  return out;
 }
 
 export default async function handler(req, res) {
@@ -36,7 +38,7 @@ export default async function handler(req, res) {
   const direction = direct(spec);
   try {
     const g = await generateOpenAI(direction);
-    res.status(200).json({ ok: true, provider: g.provider, model: g.model, quality: g.quality, size: g.size, ms: g.ms, usage: g.usage, prompt: direction.prompt, image: `data:${g.mime};base64,${g.b64}` });
+    res.status(200).json({ ok: true, provider: g.provider, model: g.model, quality: g.quality, size: g.size, ms: g.ms, usage: g.usage, prompt: direction.prompt, family: direction.family, familyLabel: direction.familyLabel, image: `data:${g.mime};base64,${g.b64}` });
   } catch (e) {
     res.status(e.code === 'not_configured' ? 503 : 502).json({ ok: false, error: e.message, code: e.code || 'error' });
   }
