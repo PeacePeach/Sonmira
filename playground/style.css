@@ -176,3 +176,10 @@ table.calib th { white-space: nowrap; font-weight: 600; }
 .scroll { overflow-x: auto; }
 #stCopyBox { margin-top: 8px; font-family: ui-monospace, monospace; font-size: 11px; }
 @media (max-width: 640px) { header, .view { padding-left: 16px; padding-right: 16px; } nav { flex-wrap: wrap; } }
+
+.tierstrip { margin: 8px 0 20px; }
+.tierstrip h3 { font-size: 13px; font-weight: 600; margin: 0 0 8px; }
+.tierrow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.tierrow figure { margin: 0; }
+.tierrow img { width: 100%; display: block; border-radius: 4px; }
+.tierrow figcaption { font-size: 12px; color: var(--muted, #777); margin-top: 4px; }

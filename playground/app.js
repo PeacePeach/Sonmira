@@ -665,7 +665,7 @@ async function loadValidation() {
       const grid = document.createElement('div');
       grid.className = 'compare paired';
       grid.replaceChildren(...runs.map((r) => pairView(r)));
-      sec.append(h, grid);
+      sec.append(h, ...(v.strips ?? []).map((st) => tierStrip(st, runs)), grid);
       return sec;
     }));
     box.replaceChildren(...shown);
@@ -675,6 +675,28 @@ async function loadValidation() {
     h.textContent = `Could not load the validation runs: ${e.message}`;
     box.replaceChildren(h);
   }
+}
+
+// Same words and seed at each tier, the generated images side by side.
+function tierStrip(st, runs) {
+  const box = document.createElement('div');
+  box.className = 'tierstrip';
+  const h = document.createElement('h3');
+  h.textContent = st.title;
+  const row = document.createElement('div');
+  row.className = 'tierrow';
+  for (const id of st.runs) {
+    const r = runs.find((x) => x.id === id);
+    if (!r) continue;
+    const fig = document.createElement('figure');
+    const img = document.createElement('img');
+    const u = URL.createObjectURL(r.png); urls.push(u); img.src = u;
+    img.alt = `${r.result.tier} · ${r.result.familyLabel ?? r.result.family}`;
+    fig.append(img, Object.assign(document.createElement('figcaption'), { textContent: `${r.result.tier} · ${r.result.familyLabel ?? r.result.family} · ${r.result.reference}` }));
+    row.append(fig);
+  }
+  box.append(h, row);
+  return box;
 }
 
 // ---------- reference check ----------
