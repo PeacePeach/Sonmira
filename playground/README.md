@@ -15,3 +15,7 @@ Needs Node 18 or newer and nothing else. Use Chrome, Safari or Edge on the Mac (
 - **Library:** every run (audio, note, overrides, features, result, PNG) is kept in this browser's IndexedDB. Load restores a run into the studio with its seed; PNG, JSON and audio download; tick runs to compare them side by side.
 
 Browser check: `npm run playground -- --no-open &` then `node tools/playground-e2e.mjs` (needs Playwright and ffmpeg).
+
+## Hosted preview
+
+The repo is connected to Vercel, which builds a preview for each pushed branch and posts the link on its PR. The Playground lives at `<preview>/playground/`. `vercel.json` serves the files as they are (no build), marks every page noindex, and turns off deployments from `main`. Keep Vercel Authentication on in Deployment Protection so only signed-in project members can open previews.
