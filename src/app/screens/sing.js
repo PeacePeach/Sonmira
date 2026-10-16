@@ -3,6 +3,7 @@
 
 import { h, icons } from '../ui/dom.js';
 import { createPainting } from '../ui/painting.js';
+import { illustration } from '../ui/illustration.js';
 import { createPlayer } from '../ui/player.js';
 import { createRecorder, MicError } from '../recorder.js';
 import { clock, dayKey, longDate } from '../format.js';
@@ -251,7 +252,7 @@ export function mountSing(app) {
     phase = 'error';
     const [title, body] = MIC_COPY[kind] || MIC_COPY.error;
     show(h('div', { class: 'phase centered', 'data-phase': 'error', 'data-kind': kind },
-      h('div', { class: 'error-copy' }, h('h1', { class: 'serif', style: 'font-size:30px' }, title), h('div', { class: 'lede' }, body)),
+      h('div', { class: 'error-copy' }, illustration('mic-off', 's'), h('h1', { class: 'serif', style: 'font-size:30px' }, title), h('div', { class: 'lede' }, body)),
       h('div', { class: 'actions', style: 'width:100%' },
         h('button', { class: 'pill', onClick: () => ready() }, 'Try again'),
         h('button', { class: 'quiet-btn', onClick: close }, 'Back to diary'))));
@@ -263,6 +264,7 @@ export function mountSing(app) {
     painting.setArtwork(null);
     show(h('div', { class: 'phase centered', 'data-phase': 'gen-error' },
       h('div', { class: 'error-copy' },
+        illustration('gen-failed', 's'),
         h('h1', { class: 'serif', style: 'font-size:30px' }, 'The painting didn’t come through.'),
         h('div', { class: 'lede' }, 'Nothing was used. Your song is still here, so you can try again.')),
       h('div', { class: 'actions', style: 'width:100%' },

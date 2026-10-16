@@ -260,10 +260,11 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .pw-done .pw-lede { max-width: 300px; margin-left: auto; margin-right: auto; }
 .pw-done .actions { padding-top: 26px; }
 .pw-done .pw-dev { margin-top: 16px; }
-/* a real watercolor bloom on cotton paper; multiply lets the paper melt into the sheet */
-.pw-bloom { display: block; width: 168px; max-width: 50%; aspect-ratio: 540 / 436; margin: 6px auto 16px; mix-blend-mode: multiply; -webkit-mask-image: radial-gradient(closest-side, #000 86%, transparent 100%); mask-image: radial-gradient(closest-side, #000 86%, transparent 100%); animation: bloomIn 1.6s ease-out both; }
+/* watercolor illustrations (ui/illustration.js): multiply melts the paper into the surface */
+.illo { display: block; height: 136px; width: auto; max-width: 60%; margin: 6px auto 16px; mix-blend-mode: multiply; -webkit-mask-image: radial-gradient(closest-side, #000 86%, transparent 100%); mask-image: radial-gradient(closest-side, #000 86%, transparent 100%); animation: bloomIn 1.6s ease-out both; }
+.illo-s { height: 104px; margin-bottom: 10px; }
 @keyframes bloomIn { from { opacity: 0; transform: scale(.96); filter: blur(3px); } }
-@media (prefers-reduced-motion: reduce) { .pw-bloom, .pw-why-body { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .illo, .pw-why-body { animation: none !important; } }
 
 /* purchase simulator — looks like a developer tool on purpose */
 .sim-panel { border-top: 2px dashed var(--chevron); }
