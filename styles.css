@@ -261,8 +261,10 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .pw-done .actions { padding-top: 26px; }
 .pw-done .pw-dev { margin-top: 16px; }
 /* watercolor illustrations (ui/illustration.js): multiply melts the paper into the surface */
-.illo { display: block; height: 136px; width: auto; max-width: 60%; margin: 6px auto 16px; mix-blend-mode: multiply; -webkit-mask-image: radial-gradient(closest-side, #000 86%, transparent 100%); mask-image: radial-gradient(closest-side, #000 86%, transparent 100%); animation: bloomIn 1.6s ease-out both; }
+.illo { display: block; height: 136px; width: auto; max-width: 60%; margin: 6px auto 28px; mix-blend-mode: multiply; -webkit-mask-image: radial-gradient(closest-side, #000 86%, transparent 100%); mask-image: radial-gradient(closest-side, #000 86%, transparent 100%); animation: bloomIn 1.6s ease-out both; }
 .illo-s { height: 104px; margin-bottom: 10px; }
+/* the bird is wider than the drops; match their visual size */
+.illo[data-illo=mic-off] { height: 118px; margin-top: 15px; }
 @keyframes bloomIn { from { opacity: 0; transform: scale(.96); filter: blur(3px); } }
 @media (prefers-reduced-motion: reduce) { .illo, .pw-why-body { animation: none !important; } }
 

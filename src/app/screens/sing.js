@@ -252,7 +252,7 @@ export function mountSing(app) {
     phase = 'error';
     const [title, body] = MIC_COPY[kind] || MIC_COPY.error;
     show(h('div', { class: 'phase centered', 'data-phase': 'error', 'data-kind': kind },
-      h('div', { class: 'error-copy' }, illustration('mic-off', 's'), h('h1', { class: 'serif', style: 'font-size:30px' }, title), h('div', { class: 'lede' }, body)),
+      h('div', { class: 'error-copy' }, illustration('mic-off'), h('h1', { class: 'serif', style: 'font-size:30px' }, title), h('div', { class: 'lede' }, body)),
       h('div', { class: 'actions', style: 'width:100%' },
         h('button', { class: 'pill', onClick: () => ready() }, 'Try again'),
         h('button', { class: 'quiet-btn', onClick: close }, 'Back to diary'))));
