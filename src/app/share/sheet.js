@@ -1,13 +1,16 @@
-// The Share sheet: a quiet bottom panel with a preview of the card, one
-// primary action (share image), and an optional video export. Files are made
-// on the device and handed to the system share sheet.
+// The Share sheet: a quiet bottom panel with a choice of three formats
+// (Feed 3:4, Story 9:16, Square 1:1), a preview of the card, Share (the
+// system share sheet), Save image, and an optional video export. Files are
+// made on the device; nothing is uploaded or regenerated.
 
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { clock } from '../format.js';
-import { renderShareImage } from './image.js';
+import { renderShareCard, FORMATS, DEFAULT_FORMAT } from './card.js';
 import { createExportAudioContext, renderShareVideo, videoMimeType, VideoExportError } from './video.js';
-import { canShareFiles, deliverFile, fileName } from './deliver.js';
+import { canShareFiles, deliverFile, saveFile, fileName } from './deliver.js';
+
+const PREVIEW_H = 320; // css px, the same for every format (.share-preview.card)
 
 const VIDEO_ERRORS = {
   decode: 'This recording can’t be turned into a video on this device. You can still share the image.',
@@ -29,8 +32,14 @@ export function openShareSheet(app, item) {
 
   let state = 'preparing'; // preparing | image | exporting | video
   let imageFile = null, videoFile = null, previewUrl = null, abort = null, closed = false;
+  let format = DEFAULT_FORMAT;
+  const made = {}; // format -> Promise<{ file, url }>, each drawn once
 
-  const preview = h('img', { class: 'share-preview', alt: 'Share card preview' });
+  const preview = h('img', { class: 'share-preview card', alt: 'Share card preview' });
+  const formatBtns = Object.entries(FORMATS).map(([key, f]) => h('button', {
+    class: 'share-format', role: 'radio', 'data-format': key, onClick: () => choose(key),
+  }, h('span', {}, f.label), h('span', { class: 'share-format-hint' }, f.hint)));
+  const formats = h('div', { class: 'share-formats', role: 'radiogroup', 'aria-label': 'Format' }, formatBtns);
   const previewBox = h('div', { class: 'share-preview-box' }, preview);
   const message = h('div', { class: 'share-message', role: 'status' });
   const fill = h('div', { class: 'rec-fill' });
@@ -40,17 +49,26 @@ export function openShareSheet(app, item) {
     h('div', { class: 'rec-track' }, fill),
     h('div', { class: 'rec-times tabular' }, progressLabel, h('span', {}, clock(Math.min(30, item.durationSec)))));
   const primary = h('button', { class: 'pill', disabled: true, onClick: onPrimary }, 'Preparing…');
+  // Save image sits under Share wherever Share opens the system sheet; elsewhere the primary already saves.
+  const saveBtn = h('button', { class: 'quiet-btn', 'data-save': '', hidden: true, onClick: () => imageFile && save(imageFile) }, 'Save image');
   const secondary = h('button', { class: 'quiet-btn', onClick: onSecondary, hidden: !canVideo }, `Make a video · ${clock(Math.min(30, item.durationSec))}`);
 
   const panel = h('div', { class: 'share-panel', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Share' },
     h('div', { class: 'share-head' }, h('span', { class: 'serif share-title' }, 'Share'), h('button', { class: 'icon-btn', 'aria-label': 'Close', onClick: close }, icon('close'))),
-    previewBox, progress, message,
-    h('div', { class: 'actions' }, primary, secondary));
+    formats, previewBox, progress, message,
+    h('div', { class: 'actions' }, primary, saveBtn, secondary));
   const scrim = h('div', { class: 'share-scrim', onClick: close });
   const el = h('div', { class: 'share-layer', 'data-share': '' }, scrim, panel);
   app.root.append(el);
 
   function render() {
+    for (const b of formatBtns) {
+      const on = b.dataset.format === format;
+      b.classList.toggle('on', on); b.setAttribute('aria-checked', String(on));
+      b.disabled = state === 'exporting' || state === 'video';
+    }
+    formats.hidden = state === 'exporting' || state === 'video';
+    saveBtn.hidden = !(sharesNatively && !showInPlace && state === 'image');
     progress.hidden = state !== 'exporting';
     primary.disabled = state === 'preparing' || state === 'exporting';
     primary.textContent = state === 'preparing' ? 'Preparing…'
@@ -62,19 +80,33 @@ export function openShareSheet(app, item) {
   }
   const say = (t) => { message.textContent = t || ''; };
 
-  // Prepare the image right away so the Share tap can open the sheet instantly.
-  renderShareImage(item).then((blob) => {
-    if (closed) return;
-    imageFile = new File([blob], fileName(item.date, 'jpg'), { type: 'image/jpeg' });
-    previewUrl = URL.createObjectURL(blob);
-    preview.src = previewUrl;
-    state = 'image'; render();
-  }).catch((e) => {
-    console.warn('[sonmira] share image failed', e);
-    if (closed) return;
-    say('The image couldn’t be prepared on this device. Please try again.');
-    primary.textContent = 'Try again'; primary.disabled = false; state = 'retry-image';
-  });
+  // Each format is drawn when first chosen (the default right away), so the
+  // Share tap can open the system sheet instantly.
+  function make(key) {
+    return (made[key] ??= renderShareCard(item, key).then((blob) => ({
+      file: new File([blob], fileName(item.date, 'jpg', key), { type: 'image/jpeg' }),
+      url: URL.createObjectURL(blob),
+    })));
+  }
+  function choose(key) {
+    if (state === 'exporting' || state === 'video' || !FORMATS[key]) return;
+    format = key;
+    preview.style.width = `${Math.round((PREVIEW_H * FORMATS[key].W) / FORMATS[key].H)}px`;
+    if (state !== 'retry-image') state = 'preparing';
+    say(''); render();
+    make(key).then(({ file, url }) => {
+      if (closed || format !== key) return;
+      imageFile = file; previewUrl = url; preview.src = url;
+      state = 'image'; render();
+    }).catch((e) => {
+      console.warn('[sonmira] share image failed', e);
+      delete made[key];
+      if (closed || format !== key) return;
+      say('The image couldn’t be prepared on this device. Please try again.');
+      primary.textContent = 'Try again'; primary.disabled = false; state = 'retry-image';
+    });
+  }
+  choose(DEFAULT_FORMAT);
 
   async function send(file) {
     say('');
@@ -97,8 +129,13 @@ export function openShareSheet(app, item) {
     }
   }
 
+  async function save(file) {
+    say('');
+    try { await saveFile(file); say('Image saved.'); } catch (e) { console.warn('[sonmira] save failed', e); say('The image couldn’t be saved. Please try again.'); }
+  }
+
   function onPrimary() {
-    if (state === 'retry-image') { close(); openShareSheet(app, item); return; }
+    if (state === 'retry-image') { choose(format); return; }
     if (state === 'image' && imageFile) send(imageFile);
     else if (state === 'video' && videoFile) send(videoFile);
   }
@@ -138,7 +175,7 @@ export function openShareSheet(app, item) {
     closed = true;
     abort?.abort();
     el.classList.add('leaving');
-    setTimeout(() => { el.remove(); if (previewUrl) URL.revokeObjectURL(previewUrl); }, 220);
+    setTimeout(() => { el.remove(); for (const p of Object.values(made)) p.then(({ url }) => URL.revokeObjectURL(url), () => {}); }, 220);
   }
 
   render();

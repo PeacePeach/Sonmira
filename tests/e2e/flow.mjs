@@ -157,7 +157,25 @@ async function run() {
   await page.click('[data-share] .pill');
   const img = await lastShared(page);
   assert.equal(img.type, 'image/jpeg');
-  assert.deepEqual([img.width, img.height], [2160, 2700], 'share image is high resolution');
+  assert.deepEqual([img.width, img.height], [1080, 1440], 'the default share image is the 3:4 feed card');
+  await page.waitForSelector('[data-share]', { state: 'detached' });
+  for (const [format, size] of [['story', [1080, 1920]], ['square', [1080, 1080]]]) {
+    await page.click('[data-screen=sing] [aria-label="Share"]');
+    await page.click(`[data-share] [data-format=${format}]`);
+    await page.waitForSelector(`[data-share] [data-format=${format}][aria-checked=true]`);
+    await page.waitForSelector('[data-share] .pill:not([disabled])');
+    await page.click('[data-share] .pill');
+    const card = await lastShared(page);
+    assert.deepEqual([card.width, card.height], size, `the ${format} card`);
+    await page.waitForSelector('[data-share]', { state: 'detached' });
+  }
+  // Save image downloads the chosen card (in the iOS app it opens the share sheet's Save Image)
+  await page.click('[data-screen=sing] [aria-label="Share"]');
+  await page.waitForSelector('[data-share] .pill:not([disabled])');
+  const [download] = await Promise.all([page.waitForEvent('download'), page.click('[data-share] [data-save]')]);
+  assert.match(download.suggestedFilename(), /^sonmira-\d{4}-\d{2}-\d{2}-feed\.jpg$/);
+  assert.match(await page.textContent('[data-share] .share-message'), /Image saved/);
+  await page.click('[data-share] [aria-label=Close]');
   await page.waitForSelector('[data-share]', { state: 'detached' });
   await page.click('[data-screen=sing] [aria-label="Share"]');
   await page.waitForSelector('[data-share] .pill:not([disabled])');
