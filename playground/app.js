@@ -580,6 +580,31 @@ function renderCompare() {
   $('compare').classList.toggle('paired', paired.length > 0);
   $('compare').hidden = picked.length < 1 || (picked.length < 2 && !paired.length);
 }
+// Imports runs made elsewhere (e.g. a validation script) from a JSON bundle
+// { kind: 'sonmira-runs', runs: [run with png as a data URL] }, so they can
+// be compared here like runs painted in this page. Imported runs are
+// selected for comparison.
+async function importRuns(file) {
+  const data = JSON.parse(await file.text());
+  if (data?.kind !== 'sonmira-runs' || !Array.isArray(data.runs)) throw new Error('not a Sonmira runs file');
+  let n = 0;
+  for (const r of data.runs) {
+    if (typeof r?.id !== 'string' || !r.result || typeof r.png !== 'string' || !r.png.startsWith('data:image/')) continue;
+    const png = await (await fetch(r.png)).blob();
+    await saveRun({ ...r, png, audio: null, imported: { from: file.name, at: Date.now() } });
+    selected.add(r.id); n++;
+  }
+  await refreshLibrary();
+  if (n) { renderCompare(); $('compare').scrollIntoView({ behavior: 'smooth' }); }
+  return n;
+}
+$('importRuns').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try { const n = await importRuns(f); $('libHint').textContent = `Imported ${n} run${n === 1 ? '' : 's'} from ${f.name}; they are selected for comparison below.`; }
+  catch (err) { $('libHint').textContent = `Could not import ${f.name}: ${err.message}`; }
+  e.target.value = '';
+});
 $('compareBtn').addEventListener('click', () => { renderCompare(); $('compare').scrollIntoView({ behavior: 'smooth' }); });
 $('clearSel').addEventListener('click', () => { selected.clear(); $('compare').hidden = true; refreshLibrary(); });
 

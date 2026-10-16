@@ -131,3 +131,5 @@ textarea { resize: vertical; }
 .refcard.bad { outline: 2px solid #a3473b; }
 .refcard img { width: 100%; height: 150px; object-fit: contain; background: #eee8dc; border-radius: 4px; display: block; }
 .refcard figcaption { margin-top: 6px; color: var(--ink); }
+.libbar .importrun { font-size: 12px; border: 1px solid var(--line); border-radius: 7px; padding: 6px 10px; background: var(--card); cursor: pointer; }
+.libbar .importrun input { display: none; }

@@ -93,6 +93,18 @@ console.log(summary);
 assert.match(summary, /^22 of 22 active references load and display/);
 await page.screenshot({ path: `${S}/references.png`, fullPage: true });
 await page.click('.tab[data-view=library]');
+// Import: runs made elsewhere (IMPORT=file, else a one-run file built here).
+const bundle = process.env.IMPORT || join(S, 'import.json');
+if (!process.env.IMPORT) {
+  const one = await page.evaluate(async () => { const r = (await (await import('./store.js')).listRuns())[0]; const png = await new Promise((res) => { const f = new FileReader(); f.onload = () => res(f.result); f.readAsDataURL(r.png); }); return { ...r, id: 'imported-1', png, audio: null }; });
+  (await import('node:fs')).writeFileSync(bundle, JSON.stringify({ kind: 'sonmira-runs', version: 1, runs: [one] }));
+}
+await page.click('#clearSel');
+await page.setInputFiles('#importRuns', bundle);
+await page.waitForFunction(() => /^Imported \d+ run/.test(document.getElementById('libHint').textContent), null, { timeout: 15000 });
+console.log(await page.textContent('#libHint'));
+await page.waitForFunction(() => document.querySelectorAll('#compare .pair').length > 0 && [...document.querySelectorAll('#compare .pair img')].every((i) => i.naturalWidth > 0), null, { timeout: 20000 });
+await page.locator('#compare').screenshot({ path: `${S}/imported-compare.png` });
 await page.setViewportSize({ width: 390, height: 900 });
 await page.locator('#compare .pair').first().screenshot({ path: `${S}/compare-phone.png` });
 assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'no horizontal scroll at phone width');
