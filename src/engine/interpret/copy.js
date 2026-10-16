@@ -17,7 +17,7 @@ export function summaryLine(completeness, label) {
 }
 
 export function dryingLine(completeness) {
-  if (completeness === 'resolved') return 'That was lovely. Something is appearing…';
+  if (completeness === 'resolved') return 'Something is appearing…';
   if (completeness === 'gathered') return 'Almost. A place is half-showing…';
   return 'Letting it dry…';
 }

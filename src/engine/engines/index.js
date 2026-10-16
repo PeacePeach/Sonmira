@@ -2,17 +2,19 @@
 // Switch implementations with ?engine=<id> or by changing DEFAULT_ENGINE —
 // no UI component needs to change.
 //
-// Track B: add `real: () => import('./real.js').then(m => m.createRealEngine())`
-// below once engines/real.js exists.
+// ai    real audio analysis → OpenAI reference-guided painting (server)
+// real  real audio analysis → procedural watercolour renderer (offline)
+// mock  stand-in paintings from the bundled set
 
 import { validateEngine } from '../contract.js';
 import { createMockEngine } from './mock.js';
 
-const DEFAULT_ENGINE = 'mock';
+const DEFAULT_ENGINE = 'ai';
 
 const REGISTRY = {
   mock: async () => createMockEngine(),
   real: async () => (await import('./real.js')).createRealEngine(),
+  ai: async () => (await import('./ai.js')).createAIEngine(),
 };
 
 let cached = null;

@@ -4,6 +4,8 @@
 //
 //   npm i -D playwright && npx playwright install chromium   (once)
 //   node server.js &  then  npm run e2e        (SHOTS=dir saves screenshots)
+// The default engine (ai) calls /api/generate; here it is answered in the
+// browser by a stand-in, so the run makes no paid generations.
 
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';
@@ -53,6 +55,24 @@ async function run() {
     navigator.canShare = (d) => !!(d && d.files && d.files.length);
     navigator.share = async (d) => { window.__shared.push(d.files[0]); };
   });
+  // Stand-in for the server's OpenAI pipeline (no paid calls): records what
+  // the app sends and answers like /api/generate. FAIL_NEXT makes one call fail.
+  const apiCalls = [];
+  let failNext = false;
+  const jpg = (await import('node:fs')).readFileSync(fileURLToPath(new URL('../../assets/art/impression-1.png', import.meta.url))).toString('base64');
+  await ctx.route('**/api/generate', async (route) => {
+    const body = JSON.parse(route.request().postData() || '{}');
+    apiCalls.push(body);
+    if (failNext) { failNext = false; return route.fulfill({ status: 502, json: { ok: false, error: 'upstream', code: 'provider_error' } }); }
+    return route.fulfill({ json: { ok: true, provider: 'openai', model: 'gpt-image-2', quality: 'medium', size: '1024x1536', ms: 1, family: 'R5-light-as-subject', familyLabel: 'Light as subject', reference: 'resolved_04', referenceSent: true, libraryVersion: 'test', seed: body.spec?.seed, prompt: 'P', image: `data:image/png;base64,${jpg}` } });
+  });
+  // /api/understand: the recording is a hum, so no words.
+  const understandCalls = [];
+  await ctx.route('**/api/understand', async (route) => {
+    const body = JSON.parse(route.request().postData() || '{}');
+    understandCalls.push({ mime: body.mime, bytes: body.audio?.length ?? 0 });
+    return route.fulfill({ json: { ok: true, transcript: { text: '', wordCount: 0, lexicalWords: 0, distinctLexicalWords: 0, nonLexicalWords: 0, lexicalRatio: 0, musicTags: 0, hallucination: false, asrConfidence: null, model: 'mock' }, lyrics: null, ms: 1 } });
+  });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -92,8 +112,19 @@ async function run() {
   assert.match(recorded, /0:1[45]/, 'auto-stop at 15 s, got ' + recorded);
   // 5. note
   await page.fill('.caption-input', 'Rain on the window');
-  // 6. generate
-  await page.click('text=Create painting');
+  // 6. generate (the first attempt fails: a clear error, no substitute painting, then a retry)
+  const engineQ = process.env.ENGINE_ID || 'ai';
+  if (engineQ === 'ai') {
+    failNext = true;
+    await page.click('text=Create painting');
+    await page.waitForSelector('[data-phase=error][data-kind=generation]', { timeout: 8000 });
+    assert.ok(!(await page.$('.painting img.art')), 'no artwork is shown when generation fails');
+    await shot(page, '05-generation-error');
+    await page.waitForTimeout(600); // let the error screen settle, as a person would
+    await page.click('[data-kind=generation] .pill');
+  } else {
+    await page.click('text=Create painting');
+  }
   await page.waitForSelector('[data-phase=generating]');
   await page.waitForTimeout(400);
   await shot(page, '05-generating');
@@ -103,6 +134,16 @@ async function run() {
   // 7. result contents
   assert.equal(await page.inputValue('.caption-input'), 'Rain on the window');
   assert.ok(await page.$('.painting img.art'), 'result shows artwork');
+  if (engineQ === 'ai') {
+    assert.equal(apiCalls.length, 2, 'one failed and one successful generation request');
+    const s = apiCalls[1].spec;
+    assert.ok(['loose', 'gathered', 'resolved'].includes(s.completeness) && Number.isInteger(s.seed) && typeof s.motif === 'string', 'spec from the real analysis: ' + JSON.stringify(s));
+    assert.ok(understandCalls.length >= 1 && understandCalls.every((c) => c.bytes > 0), 'the recording was sent for transcription');
+    assert.equal(s.completeness, 'loose', 'a hum with no words is Loose');
+    // No sung words, so the note carries the feeling (a Loose painting still depicts nothing).
+    assert.deepEqual(s.concept, { text: 'Rain on the window', theme: [], imagery: [], figurative: [], source: 'note' }, 'the note is the subject');
+    assert.ok(!s.soundOnly, 'not sound-only when there is a note');
+  }
   await page.fill('.caption-input', 'Rain on the window, again');
 
   // share right after generating: image, then video

@@ -22,16 +22,17 @@ export function createWashBuilder(seed) {
     walk.y = clamp(walk.y + (r() - 0.5) * 24, 12, 88);
     const w = 22 + level * 42;
     return { x: walk.x, y: walk.y, w, h: w * (0.6 + r() * 0.5), hue: hue + (r() - 0.5) * 20,
-      l: 0.84 - level * 0.2, c: 0.06 + level * 0.09, a: 0.28 + level * 0.3, rot: r() * 360, br: organic(r) };
+      l: 0.86 - level * 0.16, c: 0.03 + level * 0.04, a: 0.26 + level * 0.26, rot: r() * 360, br: organic(r) };
   };
 }
 
 // Emotion → colour. Hue the wash leans toward, and how saturated it gets.
+// Kept inside the unified muted colour system (see ../art/palettes.js).
 export const EMOTION_TINT = {
-  tender: { hue: 350, chroma: 0.95 },      // rose, lilac
-  bright: { hue: 80, chroma: 1.1 },        // warm yellow, sunlit
-  melancholic: { hue: 250, chroma: 0.8 },  // grey-blue
-  intense: { hue: 25, chroma: 1.25 },      // crimson
+  tender: { hue: 20, chroma: 0.8 },        // pale blush
+  bright: { hue: 230, chroma: 0.85 },      // misty blue
+  melancholic: { hue: 245, chroma: 0.7 },  // dusty blue-grey
+  intense: { hue: 290, chroma: 0.9 },      // desaturated lavender
 };
 
 function mixHue(a, b, t) {
@@ -56,7 +57,7 @@ export function groundWash(emotion, seed = 1) {
   for (let i = 0; i < 3; i++) {
     const w = 30 + r() * 30;
     out.push({ x: 25 + r() * 50, y: 25 + r() * 50, w, h: w * (0.6 + r() * 0.5), hue: hue + (r() - 0.5) * 30,
-      l: 0.82, c: 0.05, a: 0.25, rot: r() * 360, br: organic(r) });
+      l: 0.84, c: 0.035, a: 0.25, rot: r() * 360, br: organic(r) });
   }
   return out;
 }

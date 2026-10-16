@@ -41,6 +41,7 @@ function wav(samples, sr) {
 }
 
 export async function seed(app) {
+  if (app.engine.paid && !confirm(`This makes ${SAMPLES.length} paid image generations. Continue?`)) return;
   const sr = 22050;
   for (const [offset, note, completeness, hz, secs] of SAMPLES) {
     const samples = tone(sr, secs, hz);
@@ -55,16 +56,99 @@ export async function seed(app) {
 }
 
 export function mountDevPanel(app) {
+  const diag = h('div', { class: 'devdiag', style: 'margin-top:8px;border-top:1px solid #555;padding-top:6px;word-break:break-all' }, 'last generation: none yet');
   const sel = h('select', { onChange: (e) => { app.dev.completeness = e.target.value || null; } },
     h('option', { value: '' }, 'auto (from voice)'), COMPLETENESS.map((c) => h('option', { value: c }, c)));
   const sim = h('input', { type: 'checkbox', onChange: (e) => { app.dev.simulate = e.target.checked; } });
+  // Temporary: the labelled lyrics-completeness cases through the server's
+  // text model (no audio, no image; about 16 short text calls).
+  const evalOut = h('div', { class: 'deveval', style: 'margin-top:6px;word-break:break-word' });
+  const evalBtn = h('button', { onClick: async () => {
+    evalBtn.disabled = true; evalOut.replaceChildren(h('div', {}, 'running lyrics evaluation…'));
+    try {
+      const res = await fetch('/api/understand', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: 'eval' }) });
+      const j = await res.json().catch(() => null);
+      if (!j?.ok) { evalOut.replaceChildren(h('div', {}, `blocked: ${j?.code ?? `http_${res.status}`}${j?.status ? ` (OpenAI ${j.status})` : ''}, ${j?.error ?? 'no response'}`)); return; }
+      const word = (b) => (b == null ? 'error' : b ? 'complete' : 'incomplete');
+      evalOut.replaceChildren(h('div', {}, `${j.passed}/${j.total} pass · ${j.model} · ${(j.ms / 1000).toFixed(1)} s`),
+        ...j.results.map((r) => h('div', { 'data-pass': String(r.pass), style: `margin-top:4px;${r.pass ? '' : 'color:#e66'}` },
+          `${r.pass ? '✓' : '✗'} ${r.text} · expected ${word(r.expected)} · actual ${word(r.actual)}`,
+          h('div', { style: 'opacity:.7' }, r.error ? `error ${r.error}` : `${r.model.structure}, unfinished ${r.model.unfinished}, linked ${r.model.linked}, model says ${r.model.phraseComplete} (${r.model.confidence})${r.overridden ? ', overridden' : ''}`))));
+      console.info('[sonmira] lyrics evaluation', j);
+    } catch (e) { evalOut.replaceChildren(h('div', {}, `blocked: ${e.message}`)); } finally { evalBtn.disabled = false; }
+  } }, 'Run lyrics evaluation');
+  const only = h('input', { type: 'checkbox', onChange: (e) => { app.dev.analyzeOnly = e.target.checked; } });
   const refresh = () => app.current?.name === 'diary' ? app.navigate('diary') : null;
   document.body.append(h('details', { class: 'devpanel' },
     h('summary', {}, `dev · ${app.engine.id}`),
     h('label', {}, 'completeness ', sel),
     h('label', {}, sim, ' sample voice (no mic)'),
+    h('label', {}, only, ' analyze only (no image call)'),
     h('button', { onClick: async () => { await seed(app); refresh(); } }, 'add sample entries'),
+    evalBtn, evalOut,
     h('button', { onClick: async () => { if (confirm('Clear the whole diary?')) { await clearEntries(); app.entries = []; refresh(); } } }, 'clear diary'),
     h('div', { style: 'margin-top:6px' }, h('a', { href: 'dev/gallery.html' + location.search, target: '_blank' }, 'engine gallery ↗')),
-    h('div', { style: 'margin-top:6px;opacity:.7' }, 'engine: ', h('a', { href: '?dev&engine=mock' }, 'mock'), ' · ', h('a', { href: '?dev&engine=real' }, 'real'))));
+    h('div', { style: 'margin-top:6px;opacity:.7' }, 'engine: ', h('a', { href: '?dev&engine=ai' }, 'ai'), ' · ', h('a', { href: '?dev&engine=real' }, 'real'), ' · ', h('a', { href: '?dev&engine=mock' }, 'mock')),
+    diag));
+  // Diagnostics for one painting: how the recording was understood and what
+  // made it. Ids and measurements only; no keys or storage URLs reach here.
+  // The panel shows either the take just made on the Sing screen or the saved
+  // artwork that is open, always from that painting's own record.
+  const render = (g, { title, engineId, entryId = null }) => {
+    const rows = (pairs) => pairs.filter(([, v]) => v !== undefined).map(([k, v]) => h('div', {}, `${k}: ${v == null ? '—' : typeof v === 'object' ? JSON.stringify(v) : v}`));
+    const section = (title, pairs, open = false) => h('details', open ? { open: '' } : {}, h('summary', {}, title), ...rows(pairs));
+    const u = g?.understanding;
+    const out = [h('div', { style: 'opacity:.7' }, title)];
+    diag.dataset.entry = entryId ?? '';
+    if (!g) out.push(...rows([['engine', engineId], ['provider', 'none (local renderer)']]));
+    else {
+      if (g.error) out.push(...rows([['error', g.error], ['status', g.status], ['detail', g.detail]]));
+      if (u) {
+        const q = u.singing?.quality, v = u.singing?.vocal, t = u.transcript, l = u.lyrics, s = u.semantics;
+        out.push(section(`decision: ${u.tier}${u.tierSource === 'override' ? ' (forced)' : ''}`, [['tier', u.tier], ['stage', u.decision?.stage], ['reason', u.decision?.reason], ['decided tier', u.decision?.tier]], true));
+        out.push(section('audio', [['duration', u.audio?.durationSec], ['sounding s', u.audio?.soundingSec], ['voiced s', u.audio?.voicedSec], ['voiced ratio', u.audio?.voicedRatio], ['pauses', u.audio?.pauses], ['pitch continuity', u.audio?.pitchContinuity], ['median Hz', u.audio?.medianHz], ['dynamic dB', u.audio?.dynamicRangeDb],
+          ['sung', v?.sung], ...(v?.sungChecks ?? []).map((c) => [`  ${c.ok ? '✓' : '✗'} ${c.id}`, `${c.value} (need ${c.need})`]),
+          ['notes', v?.noteCount], ['note s', v?.noteSec], ['sustained ratio', v?.sustainedRatio], ['ending', v?.ending]]));
+        out.push(section('lyrics', [['requested', u.wordsRequested], ['skipped', u.wordsSkipped ?? undefined], ['transcript', t?.text], ['asr confidence', t?.asrConfidence], ['words / lexical / vocables', t ? `${t.wordCount} / ${t.lexicalWords} / ${t.nonLexicalWords}` : null], ['hallucination', t?.hallucination],
+          ['asr model', t?.model], ['lexical', l?.lexical], ['coherent', l?.coherent], ['structure', l ? `${l.structure ?? '—'}, unfinished ${l.unfinished}, linked ${l.linked}` : null], ['missing', l?.missing || undefined],
+          ['model says complete', l ? `${l.phraseComplete} (${l.completionConfidence})` : null], ['why', l?.completionReason], ['text model', l?.model],
+          ['gate', u.gate ? `${u.gate.pass ? 'PASS' : 'FAIL'} (confidence ${u.gate.confidence})` : null], ['failed checks', u.gate?.failed?.join(', ')],
+          ...(u.gate?.checks ?? []).map((c) => [`  ${c.ok ? '✓' : '✗'} ${c.id}`, `${typeof c.value === 'object' ? JSON.stringify(c.value) : c.value} (need ${c.need})`])]));
+        out.push(section('singing', [['score (settled notes)', q?.score], ['confidence (evidence × consistency)', q?.confidence], ['evidence', q?.evidence], ['consistency', q?.consistency], ['strong', q?.strong],
+          ...(q?.strongChecks ?? []).map((c) => [`  ${c.ok ? '✓' : '✗'} ${c.id}`, `${c.value} (need ${c.need})`]),
+          ...Object.entries(q?.components ?? {}).filter(([k]) => k !== 'performance').map(([k, c]) => [k, c]), ['unavailable', q?.unavailable?.join('; ')], ['expression', u.expression]]));
+        const p = q?.components?.performance;
+        if (p) out.push(section('whole performance', [['voiced s', p.voicedSec], ['controlled share', p.controlledShare], ['seconds by kind', p.labels], ['weakest windows (p25)', p.windowP25], ['weak window share', p.weakWindowShare],
+          ['windows', p.windows.map((w) => `${w.t0}–${w.t1}s ${w.controlled}`).join(' · ')], ['key drift cents', p.tuning?.driftCents], ['grid per window', p.tuning?.localOffsets?.join(' ')]]));
+        out.push(section('semantics', [['source', s?.source], ['why', s?.reason], ['concept', s?.concept?.text], ['theme', s?.concept?.theme?.join(', ')], ['imagery', s?.concept?.imagery?.join(', ')], ['figurative', s?.concept?.figurative], ['mood', u.emotion?.value + ' · ' + u.emotion?.source], ['motif', u.motif?.value + ' · ' + u.motif?.source]]));
+      }
+      if (!g.error) out.push(section('generation', [['engine', engineId], ['provider', g.provider], ['model', g.model], ['quality', g.quality], ['tier', g.tier], ['family', g.family], ['subject from', g.subjectSource],
+        ['reference', g.reference], ['ref sent', g.referenceSent], ['library', g.libraryVersion], ['seed', g.seed], ['time', g.ms ? `${(g.ms / 1000).toFixed(1)} s` : null]], true));
+      else out.push(...rows([['engine', engineId]]));
+    }
+    diag.replaceChildren(...out);
+  };
+  let last = null; // the latest take on this page load, restored when an artwork closes
+  const showLast = () => (last ? render(last.g, { title: 'last generation', engineId: last.engineId }) : diag.replaceChildren('last generation: none yet'));
+  app.dev.onGeneration = (g) => {
+    last = { g, engineId: app.engine.id };
+    showLast();
+    console.info('[sonmira] generation', g);
+  };
+  // A saved artwork: its own saved metadata, never the latest take's. Entries
+  // saved before generation metadata existed (or by an engine that keeps
+  // none) say so instead of borrowing another painting's values.
+  app.dev.onArtworkOpen = (entry) => {
+    const g = entry?.painting?.generation ?? null;
+    const engineId = entry?.painting?.engineId ?? 'unknown';
+    if (!g) {
+      diag.dataset.entry = entry?.id ?? '';
+      diag.replaceChildren(h('div', { style: 'opacity:.7' }, 'opened artwork'), h('div', { 'data-diag': 'unavailable' }, 'Diagnostics unavailable'), h('div', {}, `engine: ${engineId}`));
+      return;
+    }
+    render(g, { title: 'opened artwork', engineId, entryId: entry.id });
+  };
+  // Screens mount before the previous one is destroyed, so closing artwork A
+  // after opening B must not replace B's diagnostics.
+  app.dev.onArtworkClose = (entry) => { if (diag.dataset.entry === (entry?.id ?? '')) showLast(); };
 }

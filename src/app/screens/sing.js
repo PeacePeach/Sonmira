@@ -13,6 +13,14 @@ import { usesLabel } from '../paywall/copy.js';
 
 const SINGING_LINES = ['Keep going…', 'Let it out.', 'Softly, softly.', 'That’s it.'];
 const FINDING = 'Finding the shape of your song…';
+// Loading copy for the processing steps an engine reports (onStage). An
+// engine that reports none keeps the neutral FINDING line throughout.
+const STAGE_COPY = {
+  listening: (i) => (i?.words ? 'Listening to your words…' : 'Listening…'),
+  feeling: () => 'Finding the feeling…',
+  painting: () => 'Letting colours take shape…',
+};
+const MIN_LINE_MS = 1400; // each line stays readable; steps are never invented
 
 const MIC_COPY = {
   denied: ['The microphone is off.', 'Sonmira needs to hear you to paint. Allow microphone access for this page in your browser settings, then try again.'],
@@ -76,6 +84,7 @@ export function mountSing(app) {
     phase = 'starting';
     hint = '';
     painting.setStrokes([]); painting.setArtwork(null);
+    painting.el.classList.add('alive'); // the washes live until the artwork covers them
     const line = h('div', { class: 'line serif' }, SINGING_LINES[0]);
     const note = h('div', { class: 'hint' }, 'Waiting for the microphone…');
     const halo = h('div', { class: 'halo', style: { background: 'oklch(0.78 0.1 240 / 0.55)' } });
@@ -100,6 +109,7 @@ export function mountSing(app) {
         let sig;
         try { sig = session.push(samples); } catch (e) { console.warn('[sonmira] engine push failed', e); return; }
         painting.addStroke(sig.stroke, true);
+        painting.setVoice(sig.level);
         halo.style.transform = `scale(${(1 + sig.level * 0.55).toFixed(3)})`;
         halo.style.background = `oklch(0.78 0.1 ${sig.hue.toFixed(0)} / 0.55)`;
       },
@@ -116,6 +126,7 @@ export function mountSing(app) {
   async function stopSinging() {
     if (phase !== 'singing') return;
     phase = 'stopping';
+    painting.setVoice(0); // the wash settles as the voice stops
     const rec = await recorder.stop();
     recorder = null;
     if (phase === 'gone') return;
@@ -163,6 +174,44 @@ export function mountSing(app) {
   }
 
   // ── generating ───────────────────────────────────────────────────────────
+  // The card keeps the take's own wash and slowly "develops" (CSS only:
+  // .painting.developing) while the engine works; the line follows the real
+  // processing steps; a hairline shows activity without a percentage.
+  // The same card and wash as the recording: 'developing' slows it into a
+  // long diffusion; 'resting' holds it where it is (error) without a jump.
+  const developing = (on) => { painting.el.classList.toggle('developing', on); painting.el.classList.remove('resting'); };
+  const resting = () => painting.el.classList.add('resting');
+
+  // Shows each reported step in order, each readable for at least
+  // MIN_LINE_MS (a quick step such as "feeling" still gets its line while
+  // the next one is already running).
+  function captions(line) {
+    const born = performance.now();
+    let shownAt = born, queue = [], timer = null, last = line.textContent;
+    const pump = () => {
+      timer = null;
+      if (!queue.length) return;
+      const wait = MIN_LINE_MS - (performance.now() - shownAt);
+      if (wait > 0) { timer = setTimeout(pump, wait); timers.push(timer); return; }
+      const text = queue.shift();
+      shownAt = performance.now() + 450;
+      line.style.opacity = '0';
+      later(() => { line.textContent = text; line.style.opacity = '1'; }, 450);
+      if (queue.length) { timer = setTimeout(pump, MIN_LINE_MS + 450); timers.push(timer); }
+    };
+    return {
+      set(text) {
+        if (text === last) return;
+        last = text;
+        // The first step reported at once replaces the neutral line directly.
+        if (performance.now() - born < 300 && !queue.length) { line.textContent = text; return; }
+        queue.push(text);
+        if (!timer) pump();
+      },
+      stop() { clearTimeout(timer); timer = null; queue = []; },
+    };
+  }
+
   async function generate() {
     if (phase !== 'preview') return;
     // Set a painting aside; it's only counted once the painting exists.
@@ -172,27 +221,55 @@ export function mountSing(app) {
     }
     usesEl = null;
     phase = 'generating';
-    const line = h('div', { class: 'line serif' }, FINDING);
-    show(h('div', { class: 'drying', 'data-phase': 'generating' }, line));
+    const line = h('div', { class: 'line serif', role: 'status', 'aria-live': 'polite' }, FINDING);
+    const track = h('div', { class: 'develop-track', 'aria-hidden': 'true' }, h('div', { class: 'develop-run' }));
+    show(h('div', { class: 'drying', 'data-phase': 'generating' }, h('div', { class: 'drying-inner' }, line, track)));
+    developing(true);
+    const cap = captions(line);
     const started = performance.now();
     try {
       result = await app.engine.generate({
         analysis: take.analysis, note: noteDraft.trim(), audioBlob: take.audio,
-        overrides: app.dev.completeness ? { completeness: app.dev.completeness } : {},
+        overrides: { ...(app.dev.completeness ? { completeness: app.dev.completeness } : {}), ...(app.dev.analyzeOnly ? { analyzeOnly: true } : {}) },
+        onStage: (stage, info) => { if (phase === 'generating' && STAGE_COPY[stage]) cap.set(STAGE_COPY[stage](info)); },
       });
     } catch (e) {
-      console.warn('[sonmira] engine generate failed', e);
-      result = { engineId: 'fallback', contractVersion: 1, completeness: 'loose', emotion: { label: 'tender', source: 'default' }, motif: { label: 'abstract', source: 'default' }, artwork: null, wash: take.analysis.wash, interpretation: { voiceLabel: '', summary: 'colour, still moving', dryingLine: 'Letting it dry…' } };
+      // No silent fallback: say what happened and keep the take for a retry.
+      if (e?.code !== 'analyze_only') console.warn('[sonmira] engine generate failed', e);
+      app.dev.onGeneration?.({ error: e.code || e.message, status: e.status, detail: e.detail, understanding: e.understanding });
+      cap.stop();
+      if (phase !== 'generating') return;
+      resting();
+      if (e?.code === 'analyze_only') analyzed();
+      else generationError(e);
+      return;
     }
+    app.dev.onGeneration?.(result.generation);
+    cap.stop();
     if (phase !== 'generating') return;
     const wait = Math.max(0, 1300 - (performance.now() - started));
-    later(() => {
+    later(async () => {
+      // The loading state stays until the artwork is decoded; then it fades
+      // in over the developing wash (existing 1.6 s .art transition).
+      await painting.setArtwork(result.artwork, { fade: true });
+      if (phase !== 'generating') return;
+      track.classList.add('done');
       line.style.opacity = '0';
       later(() => { line.textContent = result.interpretation.dryingLine; line.style.opacity = '1'; }, 450);
-      painting.setStrokes(result.wash);
-      painting.setArtwork(result.artwork, { fade: true });
+      later(() => { painting.setStrokes(result.wash); developing(false); painting.el.classList.remove('alive'); }, 1700); // under the opaque artwork
       later(showResult, 2000);
     }, wait);
+  }
+
+  // Dev "analyze only" (set only from the ?dev panel): the decision is made
+  // and shown in the dev panel; the main UI stays neutral and product-like.
+  function analyzed() {
+    phase = 'gen-error';
+    show(h('div', { class: 'phase centered', 'data-phase': 'analyzed' },
+      h('div', { class: 'error-copy' }, h('h1', { class: 'serif', style: 'font-size:30px' }, 'Analysis complete')),
+      h('div', { class: 'actions', style: 'width:100%' },
+        h('button', { class: 'pill', onClick: () => { phase = 'preview'; generate(); } }, 'Run again'),
+        h('button', { class: 'quiet-btn', onClick: singAgain }, 'Sing again'))));
   }
 
   // ── result ───────────────────────────────────────────────────────────────
@@ -246,6 +323,17 @@ export function mountSing(app) {
   }
 
   // ── errors / reset ───────────────────────────────────────────────────────
+  function generationError(e) {
+    phase = 'gen-error';
+    show(h('div', { class: 'phase centered', 'data-phase': 'error', 'data-kind': 'generation' },
+      h('div', { class: 'error-copy' },
+        h('h1', { class: 'serif', style: 'font-size:30px' }, 'The painting didn’t come through.'),
+        h('div', { class: 'lede' }, e?.name === 'GenerationError' ? e.message : 'Something went wrong while painting. Please try again.')),
+      h('div', { class: 'actions', style: 'width:100%' },
+        h('button', { class: 'pill', onClick: () => { phase = 'preview'; generate(); } }, 'Try again'),
+        h('button', { class: 'quiet-btn', onClick: singAgain }, 'Sing again'))));
+  }
+
   function micError(kind) {
     phase = 'error';
     const [title, body] = MIC_COPY[kind] || MIC_COPY.error;
@@ -259,7 +347,7 @@ export function mountSing(app) {
   function singAgain() {
     timers.forEach(clearTimeout); timers = [];
     take = null; result = null; hint = '';
-    painting.setStrokes([]); painting.setArtwork(null);
+    painting.setStrokes([]); painting.setArtwork(null); developing(false); painting.el.classList.remove('alive');
     ready();
   }
 

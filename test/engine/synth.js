@@ -53,3 +53,113 @@ export const scenes = {
   silence: () => voice([silence(5)]),
   noise: () => noiseBursts(5),
 };
+
+// A voice whose pitch follows centsAt(t) (cents relative to A440; null =
+// silence). Used to synthesise singing of known quality for the singing
+// analysis: the curve, not a note list, is what the analysis measures.
+export function sing(centsAt, sec, { sr = SR, amp = 0.25, ampAt = null, noise = 0.003, seed = 1 } = {}) {
+  const out = new Float32Array(Math.round(sec * sr));
+  const r = rng(seed);
+  let phase = 0, env = 0;
+  for (let i = 0; i < out.length; i++) {
+    const t = i / sr, c = centsAt(t);
+    env += ((c == null ? 0 : 1) - env) * (1 / (0.015 * sr)); // ~15 ms attack/release
+    if (c != null) phase += (2 * Math.PI * 440 * 2 ** (c / 1200)) / sr;
+    const a = amp * env * (ampAt ? ampAt(t) : 1);
+    out[i] = a * (Math.sin(phase) + 0.5 * Math.sin(2 * phase) + 0.25 * Math.sin(3 * phase)) / 1.75 + (r() - 0.5) * 2 * noise;
+  }
+  return out;
+}
+
+// Melody as semitone steps from A3 (−1200 cents); each note { st, sec }, st = null rest.
+function melodyCurve(notes, { detune = () => 0, drift = 0, wobble = null, vibrato = null, glideSec = 0.06, overshoot = 0 } = {}) {
+  const segs = [];
+  let t = 0;
+  notes.forEach((n, i) => { segs.push({ ...n, t0: t, t1: t + n.sec, off: n.st == null ? 0 : detune(i) }); t += n.sec; });
+  return {
+    sec: t,
+    at(time) {
+      const k = segs.findIndex((s) => time < s.t1);
+      const s = segs[k < 0 ? segs.length - 1 : k];
+      if (s.st == null) return null;
+      const target = -1200 + 100 * s.st + s.off, u = time - s.t0;
+      let c = target;
+      const prev = segs[k - 1];
+      if (prev && prev.st != null && u < glideSec) {
+        const from = -1200 + 100 * prev.st + prev.off, x = u / glideSec;
+        c = from + (target - from) * x + overshoot * Math.sign(target - from) * Math.sin(Math.PI * x);
+      } else if (prev && prev.st != null && overshoot && u < glideSec + 0.12) {
+        c = target + overshoot * 0.6 * Math.sign(target - (-1200 + 100 * prev.st + prev.off)) * Math.cos(Math.PI * (u - glideSec) / 0.24);
+      }
+      c += drift * (u - s.sec / 2);
+      if (wobble) c += wobble(time);
+      if (vibrato && u > vibrato.delay) c += vibrato.cents * Math.sin(2 * Math.PI * vibrato.hz * u);
+      return c;
+    },
+  };
+}
+
+const TUNE = [0, 2, 4, 5, 4, 2, 0, null, 4, 5, 7, 9, 7, 5, 4, null, 2, 4, 2, 0];
+const tune = (sec = 0.55) => TUNE.map((st) => ({ st, sec: st == null ? 0.35 : sec }));
+
+export const singers = {
+  // In tune with itself, held notes steady, regular ~5.5 Hz vibrato, clean arrivals.
+  strong: () => { const m = melodyCurve(tune(), { vibrato: { hz: 5.5, cents: 30, delay: 0.18 } }); return sing(m.at, m.sec); },
+  // Same tune, notes ±40 cents off, sagging inside notes, slow irregular wobble, overshooting arrivals.
+  weak: () => {
+    const r = rng(5), off = TUNE.map(() => (r() - 0.5) * 80);
+    const m = melodyCurve(tune(), { detune: (i) => off[i], drift: -110, overshoot: 90,
+      wobble: (t) => 22 * Math.sin(2 * Math.PI * 1.3 * t) + 14 * Math.sin(2 * Math.PI * 2.1 * t + 1) });
+    return sing(m.at, m.sec, { ampAt: (t) => 0.6 + 0.4 * Math.abs(Math.sin(2 * Math.PI * 0.9 * t)) });
+  },
+  // A smooth hum: one or two very stable long notes, no words.
+  hum: () => { const m = melodyCurve([{ st: 3, sec: 2.6 }, { st: 5, sec: 2.6 }], {}); return sing(m.at, m.sec); },
+  // Speech-like: short syllables with continuously falling/rising pitch and gaps.
+  speech: () => {
+    const r = rng(11), syl = [];
+    let t = 0;
+    for (let i = 0; i < 22; i++) { const d = 0.12 + r() * 0.12; syl.push({ t0: t, t1: t + d, c0: -1500 + r() * 400, slope: (r() < 0.7 ? -1 : 1) * (800 + r() * 900) }); t += d + (r() < 0.3 ? 0.18 : 0.04); }
+    return sing((time) => { const s = syl.find((x) => time >= x.t0 && time < x.t1); return s ? s.c0 + s.slope * (time - s.t0) : null; }, t);
+  },
+};
+
+// Sung lyrics: one syllable per note (0.3–0.45 s by default), unvoiced
+// consonant noise between some syllables, a short slide into each note and
+// vibrato from 0.12 s. vib = depth in cents (±); amp = loudness.
+export function sungLyrics({ vib = 30, vibHz = 5.5, gap = 0.06, amp = 0.25, seed = 2, syl = [0.3, 0.45], glide = 0.08 } = {}) {
+  const r = rng(seed), melody = [0, 2, 4, 4, 2, 0, -1, 0, 2, 4, 5, 4, 2, 0, 0, 2, 4, 2, 0, -3];
+  const segs = [];
+  let t = 0.3;
+  for (const st of melody) {
+    const d = syl[0] + r() * (syl[1] - syl[0]);
+    segs.push({ t0: t, t1: t + d, st });
+    t += d + (r() < 0.6 ? gap : 0);
+    if (segs.length === 10) t += 0.5; // a breath between two lines
+  }
+  const at = (time) => {
+    const k = segs.findIndex((s) => time >= s.t0 && time < s.t1);
+    if (k < 0) return null;
+    const s = segs[k], u = time - s.t0, target = -900 + 100 * s.st, prev = segs[k - 1];
+    const c = prev && u < glide ? -900 + 100 * prev.st + (target - (-900 + 100 * prev.st)) * (u / glide) : target;
+    return c + (u > 0.12 ? vib * Math.sin(2 * Math.PI * vibHz * u) : 0);
+  };
+  const x = sing(at, t + 0.4, { amp });
+  const rn = rng(seed + 9);
+  for (let i = 1; i < segs.length; i++) {
+    for (let j = Math.round(segs[i - 1].t1 * SR); j < Math.round(segs[i].t0 * SR); j++) x[j] += (rn() - 0.5) * 0.08 * (amp / 0.25);
+  }
+  return x;
+}
+
+// Spoken lyrics: short syllables whose pitch glides continuously (speech
+// intonation), with word gaps. slow = longer, drawn-out syllables.
+export function spokenLyrics({ seed = 11, amp = 0.25, slow = false } = {}) {
+  const r = rng(seed), syl = [];
+  let t = 0.3;
+  for (let i = 0; i < (slow ? 18 : 30); i++) {
+    const d = slow ? 0.15 + r() * 0.25 : 0.1 + r() * 0.16;
+    syl.push({ t0: t, t1: t + d, c0: -1400 + r() * 300, slope: (r() < 0.7 ? -1 : 1) * (slow ? 300 + r() * 500 : 500 + r() * 900) });
+    t += d + (r() < 0.25 ? 0.2 : 0.04);
+  }
+  return sing((time) => { const s = syl.find((x) => time >= x.t0 && time < x.t1); return s ? s.c0 + s.slope * (time - s.t0) : null; }, t + 0.3, { amp });
+}
