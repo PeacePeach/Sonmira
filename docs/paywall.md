@@ -3,6 +3,14 @@
 Sonmira charges for making new paintings, never for keeping, revisiting,
 listening to or sharing the ones someone already has.
 
+> **Development only, not production billing.** Every purchase is simulated
+> and nothing is charged. The wallet and usage limits are kept in the
+> browser's localStorage, so anyone can edit or reset them; they shape the
+> experience but enforce nothing. Real billing needs StoreKit 2 with signed
+> transactions verified by a server, and a server-side ledger that the
+> generation service checks before it paints (see *Restoring after a
+> reinstall* below).
+
 ## Model
 
 | | |

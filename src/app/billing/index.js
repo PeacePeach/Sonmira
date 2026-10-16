@@ -1,6 +1,11 @@
 // Billing for the app: the wallet (what can be made now) + the store (how
 // more is bought), persisted on the device.
 //
+// DEVELOPMENT ONLY. Purchases are simulated and nothing is charged. The
+// wallet and its limits live in localStorage, so anyone can edit or reset
+// them: this is presentation and flow logic, not secure billing. Production
+// needs the server-side ledger and signed StoreKit transactions below.
+//
 // Production plan (see docs/paywall.md): the ledger lives with the
 // generation service, keyed by an anonymous id kept in iCloud Keychain, so
 // credits survive reinstalls and new devices without an account. Here the
