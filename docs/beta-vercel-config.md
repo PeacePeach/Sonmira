@@ -20,8 +20,6 @@ Without it, Production refuses paid requests (`503 not_configured`); the in-memo
 
 Nothing else is required. Optional later: `SONMIRA_COST_IMAGE_USD` once the real per-image price is known from OpenAI usage, and `SONMIRA_LIMIT_<NAME>` to tune a limit (`GENERATE_HOUR`, `GENERATE_DAY`, `UNDERSTAND_HOUR`, `UNDERSTAND_DAY`, `INVITE_GENERATE_DAY`, `INSTALLS_PER_INVITE`, `IP_HOUR`, `SESSION_IP_HOUR`).
 
-Transcription check before the merge: when `OPENAI_API_KEY` is added for the beta, also add it for the Preview of `engine/procedural-watercolor` (PR #2), so the Playground Singing test can be re-run once (about $0.04, transcription only, no images). That branch has no guard, so keep Deployment Protection on its Preview and remove the key from Preview once the check is done.
-
 Never set in Production: `SONMIRA_FAKE_PROVIDER` and `SONMIRA_PROTECT` (both are ignored there anyway), `SONMIRA_REFERENCE_VIEW`.
 
 ## 3. Project settings
@@ -35,7 +33,18 @@ Never set in Production: `SONMIRA_FAKE_PROVIDER` and `SONMIRA_PROTECT` (both are
 
 Remove the branch-name switch in `server/dev/mode.js` (Previews of `claude/production-readiness*` turn the fake provider on by themselves). With it gone, a Preview is free only with `SONMIRA_FAKE_PROVIDER=1` in the Preview environment; without that, and without Preview's own secret, codes and store, a Preview refuses paid requests.
 
-## 5. Check after setting it up
+## 5. Beta setup task: transcription check (Engine)
+
+A separate setup task; it does not block Engine V1. When `OPENAI_API_KEY` is added for the beta, before the merge into main:
+
+1. Add the same key to the Preview of `engine/procedural-watercolor` (PR #2). That Preview has no invitation guard, so keep it behind Deployment Protection.
+2. Open its Playground **Singing test** in the browser that holds the 9 saved takes. Each take's words are transcribed once, with no re-recording (about $0.04, no images).
+3. Tap **Copy results for Claude** and paste them into the Engine thread. Confirm that no words are invented for the hum, that the unfinished line fails the words gate, and that the sung lines with words (takes 1 and 3) pass it and keep their tiers.
+4. Take the key off that Preview.
+
+Details: `docs/engine-v1.md`, "Beta setup: transcription check".
+
+## 6. Check after setting it up
 
 1. `POST /api/generate` with no token: `401 invite_required`.
 2. Open the app, enter a code, sing, paint once: the painting arrives; the function log shows one `sonmira.guard` line with `outcome: "ok"` and `dayUsd` of about 0.16.
