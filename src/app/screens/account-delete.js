@@ -2,7 +2,8 @@
 // diary on this iPhone) are said plainly; erasing the diary too is a separate,
 // unticked choice. Two taps, then Apple confirms it's the same person.
 
-import { h, icons } from '../ui/dom.js';
+import { h } from '../ui/dom.js';
+import { icon } from '../ui/icons.js';
 import { clearEntries } from '../storage.js';
 
 const ERRORS = {
@@ -69,7 +70,7 @@ export function mountAccountDelete(app) {
   }
 
   const el = h('div', { class: 'settings legal account', 'data-screen': 'account-delete' },
-    h('div', { class: 'navrow' }, h('button', { class: 'icon-btn', 'aria-label': 'Back to account', onClick: () => !busy && app.navigate('account') }, icons.back()), h('div')),
+    h('div', { class: 'navrow' }, h('button', { class: 'icon-btn', 'aria-label': 'Back to account', onClick: () => !busy && app.navigate('account') }, icon('back', { size: 'lg' })), h('div')),
     h('h1', {}, 'Delete account'),
     h('div', { class: 'prose' },
       h('p', {}, 'This removes your account from Sonmira: the link to your Apple ID, the paintings you have left, your Little Moments credits and your beta access. It can’t be undone.'),

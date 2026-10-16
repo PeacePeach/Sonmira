@@ -2,13 +2,16 @@
 // means, sign out and delete. Built from the Settings layout; confirmations
 // use the paywall's sheet. Sign-in is never asked for anywhere else.
 
-import { h, icons, svg } from '../ui/dom.js';
+import { h } from '../ui/dom.js';
+import { icon } from '../ui/icons.js';
 import { openLayer } from '../paywall/layer.js';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const sinceLabel = (t) => { const d = new Date(t); return `Since ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; };
 
-export const appleLogo = () => svg(`<svg width="15" height="18" viewBox="0 0 17 20" aria-hidden="true"><path fill="#FFFFFF" d="M14.05 10.63c-.02-2.2 1.8-3.26 1.88-3.31-1.03-1.5-2.62-1.7-3.18-1.73-1.35-.14-2.65.8-3.33.8-.7 0-1.75-.78-2.88-.76-1.48.02-2.85.86-3.61 2.19-1.54 2.67-.39 6.62 1.11 8.79.73 1.06 1.6 2.25 2.75 2.2 1.1-.04 1.52-.71 2.85-.71 1.33 0 1.7.71 2.87.69 1.19-.02 1.94-1.08 2.66-2.14.84-1.23 1.19-2.42 1.2-2.48-.02-.01-2.3-.88-2.32-3.54zM11.86 4.16c.6-.74 1.01-1.75.9-2.77-.87.04-1.93.58-2.55 1.31-.56.64-1.05 1.69-.92 2.68.97.08 1.96-.49 2.57-1.22z"/></svg>`);
+// Apple's logo on the Sign in with Apple button is Apple's mark, required by its
+// button guidelines, so it is a brand asset rather than an icon from the registry.
+export const appleLogo = () => h('img', { class: 'apple-mark', src: 'assets/apple-logo.svg', alt: '', 'aria-hidden': 'true', width: 15, height: 18 });
 
 export const ERRORS = {
   network: 'You seem to be offline. Nothing has changed, and your diary is safe. Try again when you’re connected.',
@@ -33,7 +36,7 @@ export function mountAccount(app) {
   const el = h('div', { class: 'settings account', 'data-screen': 'account' });
   let busy = false;
 
-  const back = h('div', { class: 'navrow' }, h('button', { class: 'icon-btn', 'aria-label': 'Back to settings', onClick: () => !busy && app.navigate('settings') }, icons.back()), h('div'));
+  const back = h('div', { class: 'navrow' }, h('button', { class: 'icon-btn', 'aria-label': 'Back to settings', onClick: () => !busy && app.navigate('settings') }, icon('back', { size: 'lg' })), h('div'));
 
   function guest() {
     const message = h('div', { class: 'share-message pw-message', role: 'status' });
@@ -81,7 +84,7 @@ export function mountAccount(app) {
       h('div', { class: 'section' }, 'Your account'),
       h('div', { class: 'group' },
         action('Sign out', confirmSignOut, { 'data-sign-out': '' }),
-        h('button', { class: 'row action', 'data-delete-account': '', onClick: () => app.navigate('accountDelete') }, h('span', {}, 'Delete account'), icons.chevron())),
+        h('button', { class: 'row action', 'data-delete-account': '', onClick: () => app.navigate('accountDelete') }, h('span', {}, 'Delete account'), icon('forward', { size: 'sm', tone: 'subtle' }))),
       h('div', { class: 'foot' }, 'Your paintings and purchases are linked to your Apple ID. We never see your name or email.'),
       acc.simulated ? h('div', { class: 'section' }, 'Development · sign-in simulation') : null,
       acc.simulated ? h('div', { class: 'group' }, action('Remove Sonmira from my Apple ID', () => { acc.dev.revokeAtApple(); app.toast('Removed at Apple (simulated). Reopen the app to see what happens.'); }, { 'data-dev-revoke': '' })) : null,

@@ -81,7 +81,7 @@ export function mountSettings(app) {
     paintings,
     h('div', { class: 'section' }, 'Account'),
     h('div', { class: 'group' },
-      h('button', { class: 'row action', 'data-account-row': '', onClick: () => app.navigate('account') }, h('span', {}, 'Account'), h('span', { class: 'row-end' }, accountVal, icons.chevron()))),
+      h('button', { class: 'row action', 'data-account-row': '', onClick: () => app.navigate('account') }, lead('Account', 'account'), h('span', { class: 'row-end' }, accountVal, icon('forward', { size: 'sm', tone: 'subtle' })))),
     h('div', { class: 'section' }, 'About'),
     h('div', { class: 'group' },
       soon('Rate Sonmira', 'rate'),

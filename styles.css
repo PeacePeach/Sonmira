@@ -316,7 +316,7 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 /* Settings sets serif on everything inside; buttons and fine print stay as in Sing and the paywall */
 .account .pill, .account .quiet-btn, .account .pw-fine { font-family: var(--sans); font-weight: 450; }
 .apple-btn { gap: 9px; font-family: -apple-system, 'SF Pro Text', var(--sans); font-weight: 500; font-size: 17px; letter-spacing: -0.01em; }
-.apple-btn svg { margin-top: -2px; }
+.apple-btn .apple-mark { margin-top: -2px; }
 .acct-erase-wrap { padding: 8px 18px 0; }
 .acct-erase.on { border-color: var(--ink); background: var(--paper); }
 .acct-erase .pw-mark { border-radius: 5px; }
