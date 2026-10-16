@@ -197,7 +197,8 @@ function syncRecButtons() {
 async function analyse(slot) {
   const t = state.get(slot);
   if (!t?.blob) return;
-  const fetchWords = !t.words && !t.wordsSkipped;
+  await serverChecked;
+  const fetchWords = wordsAvailable && !t.words && !t.wordsSkipped;
   view.set(slot, { busy: fetchWords ? 'Listening to the words and measuring the singing…' : 'Measuring the singing…' });
   renderTake(slot);
   renderSummary();
@@ -217,12 +218,12 @@ async function analyse(slot) {
         return null;
       }
     };
-    const u = await understandTake({ samples: audio.samples, sampleRate: audio.sampleRate, words });
+    let u = await understandTake({ samples: audio.samples, sampleRate: audio.sampleRate, words });
     if (fetchWords && !u.wordsRequested) t.wordsSkipped = true; // too little sound: no call was made
     await saveTake(t);
-    view.set(slot, wordsError
-      ? { error: `Transcription failed (${wordsError}), so no tier was decided. Press “Re-analyse” to try the words again.`, wordsError }
-      : { u, track: pitchTrack(audio.samples, audio.sampleRate), durationSec: audio.durationSec });
+    const noWords = !t.words && !t.wordsSkipped;
+    if (noWords) u = singingOnly(u, wordsError ? `transcription failed: ${wordsError}` : 'this server has no transcription key');
+    view.set(slot, { u, track: pitchTrack(audio.samples, audio.sampleRate), durationSec: audio.durationSec });
   } catch (err) {
     view.set(slot, { error: `This take couldn’t be analysed (${err.message || err}).` });
   }
@@ -230,12 +231,24 @@ async function analyse(slot) {
   renderSummary();
 }
 
+// Without the words (no transcription on this server, or it failed), the
+// decision is made from the singing alone, as if the words had passed: not
+// sung → Loose, sung → Gathered, confidently strong → Resolved. The words
+// checks are left out and the result is marked as singing only.
+function singingOnly(u, why) {
+  const sung = u.singing?.vocal?.sung, q = u.singing?.quality;
+  const decision = !sung ? { tier: 'loose', stage: 1, reason: 'not sung on held notes' }
+    : q?.strong ? { tier: 'resolved', stage: 2, reason: 'confidently strong singing' }
+    : { tier: 'gathered', stage: 2, reason: 'sung, but not confidently strong' };
+  return { ...u, tier: decision.tier, decision, gate: { ...u.gate, checks: (u.gate?.checks ?? []).filter((c) => c.id === 'sung') }, wordsChecked: false, wordsWhy: why };
+}
+
 // A take the analysis barely heard is a recording problem, not a tier result.
 function soundProblem(t, v) {
   const a = v.u.audio ?? {}, rec = t.recordedSec, dec = v.durationSec;
   const where = `${t.mime || 'unknown type'}, ${Math.round((t.bytes ?? t.blob?.size ?? 0) / 1024)} KB`;
   if (rec && dec < rec - 1) return `this browser decoded only ${fmt(dec, 1)} s of the ${fmt(rec, 1)} s recorded (${where}). Please tell Claude which browser and device you used.`;
-  if ((a.soundingSec ?? 0) < 1) return `only ${fmt(a.soundingSec ?? 0, 1)} s of sound reached the analysis in ${fmt(dec, 1)} s (${where}), so the words were not sent for transcription. Play the take back: if it is silent or very faint, the browser is using another microphone or the input level is very low.`;
+  if ((a.soundingSec ?? 0) < 1) return `only ${fmt(a.soundingSec ?? 0, 1)} s of sound reached the analysis in ${fmt(dec, 1)} s (${where}), so there was almost nothing to analyse. Play the take back: if it is silent or very faint, the browser is using another microphone or the input level is very low.`;
   return null;
 }
 
@@ -245,14 +258,14 @@ function explain(u) {
   const val = (c) => (c.value == null || c.value === '' ? '' : ` (${typeof c.value === 'number' ? fmt(c.value) : c.value})`);
   if (u.tier === 'loose') {
     const failed = (g?.checks ?? []).filter((c) => !c.ok);
-    return { head: 'Loose, because the take is not a complete sung phrase.', lines: failed.map((c) => `✗ ${CHECK_TEXT[c.id] || c.id}${val(c)}`) };
+    return { head: u.wordsChecked === false ? 'Loose, because the take is not sung on held notes.' : 'Loose, because the take is not a complete sung phrase.', lines: failed.map((c) => `✗ ${CHECK_TEXT[c.id] || c.id}${val(c)}`) };
   }
   const sc = q?.strongChecks ?? [];
   if (u.tier === 'gathered') {
-    return { head: 'Gathered: a complete sung phrase, but the singing is not consistently strong enough for Resolved.', lines: sc.filter((c) => !c.ok).map((c) => `✗ ${CHECK_TEXT[c.id] || c.id}: ${fmt(c.value)}, needs ${c.need}`) };
+    return { head: u.wordsChecked === false ? 'Gathered: sung, but the singing is not consistently strong enough for Resolved.' : 'Gathered: a complete sung phrase, but the singing is not consistently strong enough for Resolved.', lines: sc.filter((c) => !c.ok).map((c) => `✗ ${CHECK_TEXT[c.id] || c.id}: ${fmt(c.value)}, needs ${c.need}`) };
   }
   const tight = closest(sc, 3);
-  return { head: 'Resolved: a complete sung phrase, and every singing check passed.', lines: tight.map((c) => `✓ ${CHECK_TEXT[c.id] || c.id}: ${fmt(c.value)}, needs ${c.need}`) };
+  return { head: u.wordsChecked === false ? 'Resolved: every singing check passed.' : 'Resolved: a complete sung phrase, and every singing check passed.', lines: tight.map((c) => `✓ ${CHECK_TEXT[c.id] || c.id}: ${fmt(c.value)}, needs ${c.need}`) };
 }
 
 // Numeric margin of a check from its need text (≥ x or ≤ x).
@@ -340,11 +353,12 @@ function renderTake(slot) {
   if (!v.u) { out.innerHTML = t.blob ? '<p class="hint">Not analysed yet.</p>' : `<p class="hint">Not recorded yet. Suggested expectation: ${TIER_LABEL[meta.expect]}.</p>`; return; }
   const u = v.u, why = explain(u), tr = u.transcript, d = disagreement(t, u);
   const sound = soundProblem(t, v);
-  const words = !u.wordsRequested ? `<em>${esc(u.wordsSkipped || 'not transcribed')}</em>`
+  const words = u.wordsChecked === false ? `<em>not checked (${esc(u.wordsWhy)}). The tier comes from the singing alone, as if the words formed a complete phrase.</em>`
+    : !u.wordsRequested ? `<em>${esc(u.wordsSkipped || 'not transcribed')}</em>`
     : tr?.text ? `“${esc(tr.text)}” <span class="hint">(${tr.lexicalWords} words, confidence ${fmt(tr.asrConfidence)}${tr.hallucination ? ', known transcription hallucination' : ''})</span>` : '<em>no words heard</em>';
   const ly = u.lyrics;
   out.innerHTML = `
-    <div class="verdict">${pill(u.tier)} <span class="hint">stage ${u.decision.stage} · ${u.decision.stage === 1 ? 'words gate' : 'singing control'}</span></div>
+    <div class="verdict">${pill(u.tier)} <span class="hint">${u.wordsChecked === false ? 'singing only, words not checked' : `stage ${u.decision.stage} · ${u.decision.stage === 1 ? 'words gate' : 'singing control'}`}</span></div>
     ${sound ? `<p class="disagree"><b>Recording problem:</b> ${esc(sound)}</p>` : ''}
     <p class="why"><b>${esc(why.head)}</b></p>
     ${why.lines.length ? `<ul class="whylist">${why.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : ''}
@@ -403,7 +417,7 @@ function resultsJson() {
     const q = u.singing?.quality, C = q?.components ?? {}, P = C.performance ?? {};
     return {
       slot, title, expected: t.expected, judged: t.judged || null, comment: t.comment || null,
-      engine: u.tier, stage: u.decision.stage, reason: u.decision.reason,
+      engine: u.tier, stage: u.decision.stage, reason: u.decision.reason, wordsChecked: u.wordsChecked !== false,
       audio: u.audio, mime: t.mime, bytes: t.bytes ?? null, recordedSec: t.recordedSec ?? null, decodedSec: view.get(slot).durationSec,
       words: u.transcript ? { text: u.transcript.text, lexicalWords: u.transcript.lexicalWords, asrConfidence: u.transcript.asrConfidence, hallucination: u.transcript.hallucination } : (u.wordsSkipped || null),
       reading: u.lyrics ? { structure: u.lyrics.structure, phraseComplete: u.lyrics.phraseComplete, completionConfidence: u.lyrics.completionConfidence, unfinished: u.lyrics.unfinished, linked: u.lyrics.linked, lexical: u.lyrics.lexical, coherent: u.lyrics.coherent } : null,
@@ -480,21 +494,23 @@ export async function initSingingTest() {
     started = false; state.clear(); view.clear();
     initSingingTest();
   });
-  checkServer();
+  serverChecked = checkServer();
   // Saved takes are re-measured with the current code (free: the saved word
   // reading is reused, nothing is sent).
   for (const { slot } of TAKES) if (state.get(slot).blob) await analyse(slot);
 }
 
+let wordsAvailable = false, serverChecked = null;
 async function checkServer() {
   try {
     const r = await fetch('/api/understand');
     const j = r.ok ? await r.json() : null;
+    wordsAvailable = Boolean(j?.configured);
     $('stServer').textContent = j?.configured
       ? `Words are transcribed on the server with ${j.transcribeModel} and read with ${j.textModel}: about $0.004 per take, under $0.05 for all nine. No image is generated.`
-      : 'The server has no OpenAI key for transcription, so every take will stop at the words step.';
+      : 'This deployment can’t transcribe (no OpenAI key on the server), so the words aren’t checked: each tier comes from the singing alone, as if the words formed a complete phrase. Nothing is billed.';
   } catch {
-    $('stServer').textContent = 'No transcription server here, so every take will stop at the words step.';
+    $('stServer').textContent = 'No transcription server here, so the words aren’t checked: each tier comes from the singing alone. Nothing is billed.';
   }
 }
 

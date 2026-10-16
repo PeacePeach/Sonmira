@@ -82,17 +82,17 @@ assert.match(t1, /Loose/);
 assert.match(t1, /Words were heard/);
 assert.equal(posts, 2);
 
-// Take 2: transcription fails → an error, no tier; Re-analyse tries the words again.
+// Take 2: transcription fails → singing-only result, marked; Re-analyse tries the words again.
 nextWords = 'fail';
 const t2 = await record(2, 3);
-assert.match(t2, /Transcription failed .*Invalid file format/);
-assert.equal(await page.evaluate(() => window.__singingTest.view.get(2).u), undefined);
-assert.match(await page.innerText('#stSummary'), /error/);
+assert.match(t2, /transcription failed: .*Invalid file format/);
+assert.match(t2, /singing only, words not checked/);
+assert.equal(await page.evaluate(() => window.__singingTest.view.get(2).u.wordsChecked), false);
 const failedJson = JSON.parse(await page.evaluate(() => window.__singingTest.resultsJson())).takes.find((t) => t.slot === 2);
-assert.equal(failedJson.state, 'error'); assert.match(failedJson.error, /Invalid file format/);
+assert.equal(failedJson.wordsChecked, false);
 nextWords = 'line';
 await page.click('#take-2 .rerun');
-await page.waitForFunction(() => window.__singingTest.view.get(2)?.u);
+await page.waitForFunction(() => window.__singingTest.view.get(2)?.u?.wordsChecked !== false && !window.__singingTest.view.get(2)?.busy);
 assert.equal(posts, 4, 'the failed words are fetched again');
 posts = 2; // the counts below are about take 7 and 1 again
 
@@ -132,6 +132,30 @@ const overflow = await page.evaluate(() => document.documentElement.scrollWidth 
 await page.screenshot({ path: `${S}/2-phone.png`, fullPage: false });
 const wide = await page.evaluate(() => [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right > innerWidth + 1 && !e.closest('.scroll')).slice(0, 8).map((e) => `${e.tagName}.${e.className}`));
 assert.ok(overflow <= 1, `page overflows by ${overflow}px at phone width: ${wide.join(', ')}`);
+
+// A deployment without a transcription key: the tier comes from the singing
+// alone, and nothing is sent.
+const page2 = await ctx.newPage();
+page2.on('pageerror', (e) => errors.push(String(e)));
+let posts2 = 0;
+await page2.route('**/api/understand', (route) => {
+  if (route.request().method() === 'GET') return route.fulfill({ json: { configured: false } });
+  posts2++; return route.fulfill({ status: 503, json: { ok: false, code: 'not_configured' } });
+});
+await page2.goto(`${BASE}?view=singing`);
+await page2.waitForFunction(() => [1, 2, 7].every((n) => window.__singingTest?.view.get(n)?.u), null, { timeout: 60000 });
+const only = await page2.evaluate(() => [7, 1].map((n) => ({ tier: window.__singingTest.view.get(n).u.tier, checked: window.__singingTest.view.get(n).u.wordsChecked })));
+console.log('no key, saved takes →', JSON.stringify(only));
+const t7b = await page2.innerText('#take-7 .out');
+assert.ok(only[0].checked === false || /moon lies quiet/.test(t7b), 'saved words are reused; otherwise singing only');
+await page2.click('#take-9 .recbtn'); await page2.waitForTimeout(6000); await page2.click('#take-9 .recbtn');
+await page2.waitForFunction(() => document.querySelector('#take-9 .verdict'), null, { timeout: 60000 });
+const t9 = await page2.innerText('#take-9 .out');
+console.log('no key, new take 9 →', t9.split('\n').slice(0, 3).join(' | '));
+assert.match(t9, /singing only, words not checked/);
+assert.match(t9, /Resolved|Gathered/);
+assert.equal(posts2, 0, 'no transcription call without a key');
+assert.match(await page2.textContent('#stServer'), /singing alone/);
 
 assert.deepEqual(errors, []);
 console.log('singing test ok; screenshots in', S);
