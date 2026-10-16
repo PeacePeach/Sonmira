@@ -15,9 +15,9 @@ import { referenceStoreFromEnv } from '../src/engine/providers/reference-store.j
 // References come from private Vercel Blob in production (registry and
 // images), or SONMIRA_REFS_DIR locally. The selected primary reference's
 // bytes are read here and sent with the prompt (edits endpoint, streamed).
-// With no store, text-only generation that still uses the bundled
-// registry's measured palette. Nothing about the store reaches the client
-// beyond the reference id.
+// Without a store or an eligible reference the request fails with
+// no_reference: there is no silent text-only fallback. Nothing about the
+// store reaches the client beyond the reference id.
 // createHandler takes its dependencies so tests can run it with mocks.
 
 const LEVELS = ['loose', 'gathered', 'resolved'];
@@ -47,6 +47,10 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
   try {
     const library = store ? createLibrary(await store.loadRegistry()) : undefined;
     const direction = direct({ ...spec, library });
+    if (!store || !direction.reference) {
+      res.status(503).json({ ok: false, error: store ? `no active reference for ${direction.family}` : 'no reference store configured', code: 'no_reference' });
+      return;
+    }
     const g = await generateFromDirection(direction, { loadReference: store?.loadImage, stream: true, env, fetchImpl });
     res.status(200).json({ ok: true, provider: g.provider, model: g.model, quality: g.quality, size: g.size, ms: g.ms, usage: g.usage, prompt: direction.prompt, family: direction.family, familyLabel: direction.familyLabel, familyRefs: direction.refs, reference: direction.reference?.id ?? null, referenceSent: Boolean(g.reference), seed: direction.seed, libraryVersion: direction.libraryVersion, swatches: direction.swatches, image: `data:${g.mime};base64,${g.b64}` });
   } catch (e) {

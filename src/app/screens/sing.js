@@ -167,9 +167,13 @@ export function mountSing(app) {
         overrides: app.dev.completeness ? { completeness: app.dev.completeness } : {},
       });
     } catch (e) {
+      // No silent fallback: say what happened and keep the take for a retry.
       console.warn('[sonmira] engine generate failed', e);
-      result = { engineId: 'fallback', contractVersion: 1, completeness: 'loose', emotion: { label: 'tender', source: 'default' }, motif: { label: 'abstract', source: 'default' }, artwork: null, wash: take.analysis.wash, interpretation: { voiceLabel: '', summary: 'colour, still moving', dryingLine: 'Letting it dry…' } };
+      app.dev.onGeneration?.({ error: e.code || e.message, status: e.status, detail: e.detail });
+      if (phase === 'generating') generationError(e);
+      return;
     }
+    app.dev.onGeneration?.(result.generation);
     if (phase !== 'generating') return;
     const wait = Math.max(0, 1300 - (performance.now() - started));
     later(() => {
@@ -229,6 +233,17 @@ export function mountSing(app) {
   }
 
   // ── errors / reset ───────────────────────────────────────────────────────
+  function generationError(e) {
+    phase = 'gen-error';
+    show(h('div', { class: 'phase centered', 'data-phase': 'error', 'data-kind': 'generation' },
+      h('div', { class: 'error-copy' },
+        h('h1', { class: 'serif', style: 'font-size:30px' }, 'The painting didn’t come through.'),
+        h('div', { class: 'lede' }, e?.name === 'GenerationError' ? e.message : 'Something went wrong while painting. Please try again.')),
+      h('div', { class: 'actions', style: 'width:100%' },
+        h('button', { class: 'pill', onClick: () => { phase = 'preview'; generate(); } }, 'Try again'),
+        h('button', { class: 'quiet-btn', onClick: singAgain }, 'Sing again'))));
+  }
+
   function micError(kind) {
     phase = 'error';
     const [title, body] = MIC_COPY[kind] || MIC_COPY.error;

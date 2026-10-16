@@ -41,6 +41,7 @@ function wav(samples, sr) {
 }
 
 export async function seed(app) {
+  if (app.engine.paid && !confirm(`This makes ${SAMPLES.length} paid image generations. Continue?`)) return;
   const sr = 22050;
   for (const [offset, note, completeness, hz, secs] of SAMPLES) {
     const samples = tone(sr, secs, hz);
@@ -55,6 +56,7 @@ export async function seed(app) {
 }
 
 export function mountDevPanel(app) {
+  const diag = h('div', { class: 'devdiag', style: 'margin-top:8px;border-top:1px solid #555;padding-top:6px;word-break:break-all' }, 'last generation: none yet');
   const sel = h('select', { onChange: (e) => { app.dev.completeness = e.target.value || null; } },
     h('option', { value: '' }, 'auto (from voice)'), COMPLETENESS.map((c) => h('option', { value: c }, c)));
   const sim = h('input', { type: 'checkbox', onChange: (e) => { app.dev.simulate = e.target.checked; } });
@@ -66,5 +68,16 @@ export function mountDevPanel(app) {
     h('button', { onClick: async () => { await seed(app); refresh(); } }, 'add sample entries'),
     h('button', { onClick: async () => { if (confirm('Clear the whole diary?')) { await clearEntries(); app.entries = []; refresh(); } } }, 'clear diary'),
     h('div', { style: 'margin-top:6px' }, h('a', { href: 'dev/gallery.html' + location.search, target: '_blank' }, 'engine gallery ↗')),
-    h('div', { style: 'margin-top:6px;opacity:.7' }, 'engine: ', h('a', { href: '?dev&engine=mock' }, 'mock'), ' · ', h('a', { href: '?dev&engine=real' }, 'real'))));
+    h('div', { style: 'margin-top:6px;opacity:.7' }, 'engine: ', h('a', { href: '?dev&engine=ai' }, 'ai'), ' · ', h('a', { href: '?dev&engine=real' }, 'real'), ' · ', h('a', { href: '?dev&engine=mock' }, 'mock')),
+    diag));
+  // Last generation: what actually made the painting.
+  app.dev.onGeneration = (g) => {
+    const rows = !g ? [['engine', app.engine.id], ['provider', 'none (local renderer)']]
+      : g.error ? [['engine', app.engine.id], ['error', g.error], ['status', g.status ?? '—'], ['detail', g.detail ?? '—']]
+      : [['engine', app.engine.id], ['provider', g.provider ?? 'local'], ['model', g.model ?? '—'], ['quality', g.quality ?? '—'],
+        ['family', g.family ?? '—'], ['reference', g.reference ?? '—'], ['ref sent', g.referenceSent == null ? '—' : String(g.referenceSent)],
+        ['library', g.libraryVersion ?? '—'], ['seed', g.seed ?? '—'], ['tier', g.tier ?? '—'], ['time', g.ms ? `${(g.ms / 1000).toFixed(1)} s` : '—']];
+    diag.replaceChildren(h('div', { style: 'opacity:.7' }, 'last generation'), ...rows.map(([k, v]) => h('div', {}, `${k}: ${v}`)));
+    console.info('[sonmira] generation', g);
+  };
 }

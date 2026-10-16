@@ -126,3 +126,14 @@ test('storage errors reach the client as a code, without store details', async (
   assert.equal(r.json.code, 'reference_store');
   assert.doesNotMatch(JSON.stringify(r.json), /secret|vercel-storage/);
 });
+
+test('no store or an empty library is an explicit error, never a text-only painting', async () => {
+  const { sent, fetchImpl } = mockOpenAI();
+  const body = { spec: { completeness: 'resolved', emotion: 'tender', motif: 'garden', seed: 1, family: R4, energy: { value: 'calm' } } };
+  const none = await call(createHandler({ store: null, env: { OPENAI_API_KEY: 'k' }, fetchImpl }), body);
+  assert.equal(none.code, 503);
+  assert.equal(none.json.code, 'no_reference');
+  const empty = await call(createHandler({ store: blobStore({ client: fakeBlob() }), env: { OPENAI_API_KEY: 'k' }, fetchImpl }), body);
+  assert.equal(empty.json.code, 'no_reference');
+  assert.equal(sent.length, 0, 'no OpenAI call was made');
+});
