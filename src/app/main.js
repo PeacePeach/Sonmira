@@ -13,6 +13,9 @@ import { mountLegal } from './screens/legal.js';
 import { createBilling } from './billing/index.js';
 import { askSimulator } from './paywall/simulator.js';
 import { openPaywall } from './paywall/paywall.js';
+import { installApiClient } from './protect/client.js';
+import { askInviteCode } from './protect/invite-sheet.js';
+import { createDrafts } from './drafts/index.js';
 
 const SCREENS = { diary: mountDiary, sing: mountSing, detail: mountDetail, settings: mountSettings, legal: mountLegal };
 const ENTER = { diary: 'enter-fade', sing: 'enter-modal', detail: 'enter-push', settings: 'enter-push', legal: 'enter-push' };
@@ -97,6 +100,12 @@ async function boot() {
   });
   try { app.entries = await listEntries(); }
   catch (e) { console.warn(e); app.storage = { persistent: false, loadFailed: true }; }
+  // Paid requests carry the install token and the take's key (server/protect).
+  app.api = installApiClient({ askInvite: (o) => askInviteCode(app, o) });
+  // Paintings not kept yet, outside the diary.
+  app.drafts = createDrafts();
+  await app.drafts.init();
+  await app.drafts.reconcile(app.entries.map((e) => e.id)).catch(() => {});
   if (app.dev.preview) await seedPreview();
   app.navigate('diary');
   if (app.dev.enabled) (await import('./dev.js')).mountDevPanel(app);

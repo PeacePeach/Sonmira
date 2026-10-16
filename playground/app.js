@@ -14,6 +14,11 @@ import { REFERENCE_LIBRARY } from '../src/engine/direct/references.js';
 import { checkLeakage } from '../src/engine/direct/leakage.js';
 import { saveRun, deleteRun, listRuns } from './store.js';
 import { initSingingTest } from './singing-test.js';
+import { installApiClient } from '../src/app/protect/client.js';
+
+// The painting service needs an invitation (server/protect); a developer tool,
+// so a plain prompt is enough.
+installApiClient({ askInvite: async ({ error } = {}) => window.prompt(error ? `That didn’t work (${error}). Invitation code:` : 'Invitation code for the painting service:') });
 
 const MAX_SEC = 30;
 const W = 720, H = 900;

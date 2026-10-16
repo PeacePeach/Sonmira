@@ -6,8 +6,10 @@ export const DOCS = {
   privacy: {
     title: 'Privacy policy',
     body: [
-      'Sonmira is a personal diary. In this prototype, your recordings, notes and paintings are stored only in this browser, on this device.',
-      'Nothing is uploaded. There are no accounts, analytics or advertising.',
+      'Sonmira is a personal diary. Your diary (recordings, notes and paintings) is stored only in this browser, on this device.',
+      'To make a painting, your recording and note are sent to Sonmira’s painting service and to OpenAI, which listens for the words and paints the image. OpenAI handles them under its API data policy and does not use them to train its models.',
+      'Sonmira’s painting service keeps the finished painting and the reading of your words for 24 hours, so a painting isn’t lost if the app closes while it is being made. It keeps no recordings.',
+      'An anonymous install id and your invitation code are used only to limit how many paintings can be made. There are no accounts, analytics or advertising.',
       'The microphone is used only while you are singing, after you tap to begin.',
       'Clearing this site’s data in your browser removes your diary permanently. Backup is not available yet.',
       'Purchases are handled by Apple. Sonmira never sees your payment details. In this prototype, purchases are simulated and nothing is charged.',

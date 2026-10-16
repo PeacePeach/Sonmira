@@ -1,3 +1,5 @@
+import { fakeProviderOn } from '../dev/mode.js';
+
 // Small key-value layer for the generation guard. Every operation that has
 // to be atomic across concurrent function instances is one Lua script on
 // Redis (Upstash / Vercel KV over REST), and one synchronous step in the
@@ -82,12 +84,13 @@ export function memoryKV({ now = Date.now } = {}) {
 
 let shared = null;
 // Upstash / Vercel KV when configured. Off Vercel, one in-memory store per
-// process. On Vercel without KV: null, and the guard refuses paid work.
+// process. On Vercel without KV: null, and the guard refuses paid work,
+// except in no-cost mode (server/dev/mode.js), where nothing paid is at stake.
 export function kvFromEnv(env = process.env, { fetchImpl = fetch } = {}) {
   const url = env.KV_REST_API_URL || env.UPSTASH_REDIS_REST_URL;
   const token = env.KV_REST_API_TOKEN || env.UPSTASH_REDIS_REST_TOKEN;
   if (url && token) return redisKV(upstashExec({ url, token, fetchImpl }));
-  if (env.VERCEL) return null;
+  if (env.VERCEL && !fakeProviderOn(env)) return null;
   shared ??= memoryKV();
   return shared;
 }

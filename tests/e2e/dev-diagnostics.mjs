@@ -17,6 +17,8 @@ const png = readFileSync(fileURLToPath(new URL('../../assets/art/impression-1.pn
 
 const browser = await chromium.launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${wav}`] });
 const ctx = await browser.newContext({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+// The API is mocked below, so any install token will do (no invitation sheet).
+await ctx.addInitScript(() => localStorage.setItem('sonmira.access', 'e2e-mocked-api'));
 // Each generation answers with the next reference, seed and time.
 const RUNS = [{ reference: 'resolved_04', seed: 111, ms: 4200 }, { reference: 'gathered_07', seed: 222, ms: 9900 }];
 let n = 0;

@@ -14,6 +14,8 @@
 import { transcribeAudio, interpretLyrics, understandConfig, audioExtension } from '../src/engine/providers/openai-understand.js';
 import { analyzeTranscript } from '../src/engine/interpret/lyrics.js';
 import { LYRICS_EVAL_CASES, scoreCase } from '../src/engine/interpret/lyrics-eval.js';
+import { protect, timedFetch } from '../server/protect/index.js';
+import { fakeProviderOn, fakeOpenAIFetch } from '../server/dev/fake-openai.js';
 
 const MAX_BASE64 = 4_000_000; // under Vercel's 4.5 MB request limit (~45 s of compressed audio)
 
@@ -65,4 +67,9 @@ async function runEval(res, env, fetchImpl) {
   res.status(200).json({ ok: true, model: understandConfig(env).textModel, passed: results.filter((r) => r.pass).length, total: results.length, ms: Date.now() - t0, results });
 }
 
-export default createHandler();
+// Guarded like /api/generate; the provider calls are bounded under the
+// function's 60 s. SONMIRA_FAKE_PROVIDER=1 (not in Production): no cost.
+const fake = fakeProviderOn() ? fakeOpenAIFetch({ delayMs: Number(process.env.SONMIRA_FAKE_DELAY_MS ?? 4000) / 4 }) : null;
+export default protect('understand', createHandler(fake
+  ? { fetchImpl: fake, env: { ...process.env, OPENAI_API_KEY: 'fake' } }
+  : { fetchImpl: timedFetch(50_000) }));

@@ -143,7 +143,8 @@ async function run() {
   assert.equal((await status(page)).credits, 10);
   await page.click('[data-paywall-done] .pill'); // Sing a moment
 
-  // F. a failed generation uses nothing (the app shows its usual wash-only fallback)
+  // F. a failed generation uses nothing (with the engine work merged, the app
+  // shows its "didn't come through" screen instead of a wash-only fallback)
   await record(page);
   assert.equal(await page.textContent('[data-uses]'), 'Uses 1 of your 10 paintings');
   await page.evaluate(() => {
@@ -151,7 +152,7 @@ async function run() {
     eng.generate = async () => { eng.generate = real; throw new Error('simulated engine failure'); };
   });
   await page.click('text=Create painting');
-  await page.waitForSelector('[data-phase=result]', { timeout: 8000 });
+  await page.waitForSelector('[data-phase=error][data-kind=generation]', { timeout: 8000 });
   await settle(page);
   await shot(page, 'p09-generation-failed');
   assert.equal((await status(page)).credits, 10, 'failure uses nothing');

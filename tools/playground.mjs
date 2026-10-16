@@ -31,7 +31,7 @@ async function api(req, res, name) {
     end: (body) => res.end(body),
   };
   const query = Object.fromEntries(new URL(req.url, 'http://x').searchParams);
-  await handle({ method: req.method, url: req.url, query, body: raw ? JSON.parse(raw) : {} }, shim);
+  await handle({ method: req.method, url: req.url, headers: req.headers, socket: req.socket, query, body: raw ? JSON.parse(raw) : {} }, shim);
 }
 
 async function handler(req, res) {

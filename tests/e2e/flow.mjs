@@ -49,6 +49,8 @@ async function run() {
     args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${wav}`, '--autoplay-policy=no-user-gesture-required'],
   });
   const ctx = await browser.newContext({ viewport, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+  // The API is mocked below, so any install token will do (no invitation sheet).
+  await ctx.addInitScript(() => localStorage.setItem('sonmira.access', 'e2e-mocked-api'));
   // Stand-in for the system share sheet: records what would be shared.
   await ctx.addInitScript(() => {
     window.__shared = [];

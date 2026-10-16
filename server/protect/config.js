@@ -10,6 +10,8 @@
 //   SONMIRA_PROTECT=off      local development only; ignored in Production
 //   KV_REST_API_URL + KV_REST_API_TOKEN (or UPSTASH_REDIS_REST_*)
 
+import { fakeProviderOn, PREVIEW_INVITE, PREVIEW_SECRET } from '../dev/mode.js';
+
 export const MICRO = 1_000_000;
 
 const LIMITS = {
@@ -34,8 +36,8 @@ export function protectConfig(env = process.env) {
   const limits = Object.fromEntries(Object.entries(LIMITS).map(([k, d]) => [k, int(env[`SONMIRA_LIMIT_${k}`], d)]));
   return {
     off: env.SONMIRA_PROTECT === 'off' && env.VERCEL_ENV !== 'production',
-    secret: env.SONMIRA_TOKEN_SECRET || '',
-    invites: String(env.SONMIRA_INVITE_CODES || '').split(',').map(normalizeInvite).filter((c) => c.length >= 6),
+    secret: env.SONMIRA_TOKEN_SECRET || (fakeProviderOn(env) ? PREVIEW_SECRET : ''),
+    invites: String(env.SONMIRA_INVITE_CODES || (fakeProviderOn(env) ? PREVIEW_INVITE : '')).split(',').map(normalizeInvite).filter((c) => c.length >= 6),
     capMicros: usd(env.SONMIRA_DAILY_CAP_USD, 3),
     cost: {
       image: usd(env.SONMIRA_COST_IMAGE_USD, 0.15),

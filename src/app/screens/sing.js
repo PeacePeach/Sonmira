@@ -10,6 +10,8 @@ import { clock, dayKey, longDate } from '../format.js';
 import { openShareSheet } from '../share/sheet.js';
 import { openPaywall } from '../paywall/paywall.js';
 import { usesLabel } from '../paywall/copy.js';
+import { takeOf } from '../drafts/index.js';
+import { withGenerationKey, guardMessage } from '../protect/client.js';
 
 const SINGING_LINES = ['Keep going…', 'Let it out.', 'Softly, softly.', 'That’s it.'];
 const FINDING = 'Finding the shape of your song…';
@@ -31,7 +33,8 @@ const MIC_COPY = {
   error: ['Something interrupted the microphone.', 'Please try again.'],
 };
 
-export function mountSing(app) {
+// params.draft: the key of a draft to return to (from the diary's "waiting" sheet).
+export function mountSing(app, { draft: draftKey = null } = {}) {
   const maxSeconds = app.settings.maxSeconds;
   const painting = createPainting({ ratio: '32' });
   const fill = h('div', { class: 'rec-fill' });
@@ -56,6 +59,8 @@ export function mountSing(app) {
   let phase = 'ready', sheet = null, recorder = null, session = null, take = null, result = null, player = null, timers = [], noteDraft = '';
   let hint = '';
   let usesEl = null;
+  // When the take was sung (a draft opened later keeps its own day).
+  let takeDate = null, takeCreatedAt = null;
   // What Create painting will use, kept current if a purchase lands meanwhile.
   const offBilling = app.billing.onChange(() => { if (usesEl) usesEl.textContent = usesLabel(app.billing.status()); });
 
@@ -139,7 +144,9 @@ export function mountSing(app) {
       painting.setStrokes([]);
       return ready();
     }
-    // key: one per take, so a retried generation is never counted twice.
+    // key: one per take, so a retried generation is never counted twice, and
+    // never paid twice (it is also the painting service's idempotency key).
+    takeDate = dayKey(); takeCreatedAt = Date.now();
     take = { key: app.billing.newKey(), audio: rec.blob, durationSec: Math.round(rec.durationSec * 10) / 10, analysis };
     preview();
   }
@@ -221,6 +228,11 @@ export function mountSing(app) {
     }
     usesEl = null;
     phase = 'generating';
+    // The take this run paints, even if Sing is closed or sung again meanwhile.
+    const run = take, note = noteDraft.trim();
+    // The recording is kept before any paid call (a failed write never blocks painting).
+    await app.drafts.begin(run, { note, date: takeDate ?? dayKey() });
+    if (phase !== 'generating') return;
     const line = h('div', { class: 'line serif', role: 'status', 'aria-live': 'polite' }, FINDING);
     const track = h('div', { class: 'develop-track', 'aria-hidden': 'true' }, h('div', { class: 'develop-run' }));
     show(h('div', { class: 'drying', 'data-phase': 'generating' }, h('div', { class: 'drying-inner' }, line, track)));
@@ -228,15 +240,18 @@ export function mountSing(app) {
     const cap = captions(line);
     const started = performance.now();
     try {
-      result = await app.engine.generate({
-        analysis: take.analysis, note: noteDraft.trim(), audioBlob: take.audio,
+      result = await withGenerationKey(run.key, () => app.engine.generate({
+        analysis: run.analysis, note, audioBlob: run.audio,
         overrides: { ...(app.dev.completeness ? { completeness: app.dev.completeness } : {}), ...(app.dev.analyzeOnly ? { analyzeOnly: true } : {}) },
         onStage: (stage, info) => { if (phase === 'generating' && STAGE_COPY[stage]) cap.set(STAGE_COPY[stage](info)); },
-      });
+      }));
     } catch (e) {
       // No silent fallback: say what happened and keep the take for a retry.
       if (e?.code !== 'analyze_only') console.warn('[sonmira] engine generate failed', e);
       app.dev.onGeneration?.({ error: e.code || e.message, status: e.status, detail: e.detail, understanding: e.understanding });
+      // Nothing was made: the reservation goes back, the take stays a draft.
+      app.billing.release(run.key);
+      app.drafts.failed(run.key, e?.code);
       cap.stop();
       if (phase !== 'generating') return;
       resting();
@@ -246,6 +261,9 @@ export function mountSing(app) {
     }
     app.dev.onGeneration?.(result.generation);
     cap.stop();
+    // The painting exists: it stays a draft until Keep it, even if Sing was
+    // closed meanwhile (then it is counted when the draft is first opened).
+    app.drafts.ready(run.key, result, note);
     if (phase !== 'generating') return;
     const wait = Math.max(0, 1300 - (performance.now() - started));
     later(async () => {
@@ -297,10 +315,10 @@ export function mountSing(app) {
       phase = 'saving';
       keep.disabled = true;
       player?.stop();
+      // The entry's id comes from the take key, so keeping twice can't make two.
       const entry = {
-        id: `e${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
-        createdAt: Date.now(),
-        date: dayKey(),
+        createdAt: takeCreatedAt ?? Date.now(),
+        date: takeDate ?? dayKey(),
         note: noteDraft.trim(),
         durationSec: take.durationSec,
         audio: take.audio,
@@ -308,7 +326,7 @@ export function mountSing(app) {
         painting: result,
       };
       try {
-        await app.addEntry(entry);
+        await app.drafts.keep(take.key, entry, (e) => app.addEntry(e));
       } catch (e) {
         console.warn('[sonmira] save failed', e);
         phase = 'result';
@@ -325,10 +343,10 @@ export function mountSing(app) {
   // ── errors / reset ───────────────────────────────────────────────────────
   function generationError(e) {
     phase = 'gen-error';
-    show(h('div', { class: 'phase centered', 'data-phase': 'error', 'data-kind': 'generation' },
+    show(h('div', { class: 'phase centered', 'data-phase': 'error', 'data-kind': 'generation', 'data-code': e?.code || 'error' },
       h('div', { class: 'error-copy' },
         h('h1', { class: 'serif', style: 'font-size:30px' }, 'The painting didn’t come through.'),
-        h('div', { class: 'lede' }, e?.name === 'GenerationError' ? e.message : 'Something went wrong while painting. Please try again.')),
+        h('div', { class: 'lede' }, guardMessage(e?.code) ?? (e?.name === 'GenerationError' ? e.message : 'Something went wrong while painting. Please try again.'))),
       h('div', { class: 'actions', style: 'width:100%' },
         h('button', { class: 'pill', onClick: () => { phase = 'preview'; generate(); } }, 'Try again'),
         h('button', { class: 'quiet-btn', onClick: singAgain }, 'Sing again'))));
@@ -346,7 +364,10 @@ export function mountSing(app) {
 
   function singAgain() {
     timers.forEach(clearTimeout); timers = [];
-    take = null; result = null; hint = '';
+    // A take that never got its painting is let go; a painted one stays a
+    // draft until it is kept or discarded.
+    if (take && !result) app.drafts.discard(take.key).catch(() => {});
+    take = null; result = null; hint = ''; takeDate = null; takeCreatedAt = null;
     painting.setStrokes([]); painting.setArtwork(null); developing(false); painting.el.classList.remove('alive');
     ready();
   }
@@ -357,11 +378,41 @@ export function mountSing(app) {
   const onHide = () => { if (document.hidden && phase === 'singing') stopSinging(); };
   document.addEventListener('visibilitychange', onHide);
 
-  ready();
+  // ── a draft, opened from the diary ──────────────────────────────────────
+  async function resume(key) {
+    phase = 'resuming';
+    const d = await app.drafts.get(key).catch(() => null);
+    if (phase !== 'resuming') return;
+    if (!d) return ready();
+    take = takeOf(d); noteDraft = d.note || ''; takeDate = d.date ?? null; takeCreatedAt = d.createdAt ?? null;
+    progress.style.display = 'none';
+    painting.setStrokes(d.painting?.wash ?? d.analysis?.wash ?? []);
+    if (d.status === 'ready' && d.painting) {
+      // Shown now, so counted now by showResult(); once per take, so a
+      // painting already counted on its result screen isn't counted again.
+      if (!app.billing.reserve(take.key)) {
+        preview();
+        openPaywall(app, { from: 'sing', onContinue: () => { if (phase === 'preview') resume(key); } });
+        return;
+      }
+      result = d.painting;
+      await painting.setArtwork(result.artwork);
+      if (phase !== 'resuming') return;
+      phase = 'generating';
+      return showResult();
+    }
+    preview();
+    // It was still painting when Sonmira closed: carry on. The painting
+    // service returns the painting it already made for this take, if any.
+    if (d.status === 'painting') generate();
+  }
+
+  if (draftKey) resume(draftKey); else ready();
   return {
     el,
     destroy() {
       if (phase === 'generating' && take) app.billing.release(take.key);
+      if (phase === 'result' && take) app.drafts.setNote(take.key, noteDraft.trim());
       phase = 'gone';
       offBilling();
       sheet?.close();
