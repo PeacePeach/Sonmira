@@ -57,7 +57,7 @@ src/
     paywall/              paywall sheet, purchase simulator, legal sheet, balance copy
     main.js               state + navigation
     screens/              diary, sing, detail, settings, legal
-    ui/                   painting card, playback row, dom helpers, icons
+    ui/                   painting card, playback row, dom helpers, icon registry (docs/icons.md)
     recorder.js           getUserMedia + MediaRecorder + AnalyserNode frames
     storage.js            IndexedDB (memory fallback)
     dev.js                developer panel (only with ?dev)

@@ -1,7 +1,8 @@
 // A bottom sheet in the Share sheet's style (scrim, paper panel, slide up).
 // Used by the paywall, the purchase simulator and the legal sheet.
 
-import { h, icons } from '../ui/dom.js';
+import { h } from '../ui/dom.js';
+import { icon } from '../ui/icons.js';
 
 /**
  * @param {any} app
@@ -10,7 +11,7 @@ import { h, icons } from '../ui/dom.js';
 export function openLayer(app, { label, title = null, cls = '', onClose, dismissable = () => true }) {
   let closed = false;
   const body = h('div', { class: 'layer-body' });
-  const closeBtn = h('button', { class: 'icon-btn', 'aria-label': 'Close', onClick: () => dismissable() && close() }, icons.close());
+  const closeBtn = h('button', { class: 'icon-btn', 'aria-label': 'Close', onClick: () => dismissable() && close() }, icon('close'));
   const panel = h('div', { class: `share-panel ${cls}`, role: 'dialog', 'aria-modal': 'true', 'aria-label': label },
     h('div', { class: 'share-head' }, title ? h('span', { class: 'serif share-title' }, title) : h('span'), closeBtn),
     body);
