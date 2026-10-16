@@ -649,14 +649,28 @@ let validationShown = false;
 async function loadValidation() {
   if (validationShown) return;
   validationShown = true;
+  const box = $('valSets');
   try {
-    const v = await (await fetch('validation/validation-2.json', { cache: 'no-cache' })).json();
-    $('valTitle').textContent = v.title;
-    const runs = await Promise.all(v.runs.map(async (r) => ({ ...r, png: await (await fetch(r.image)).blob() })));
-    $('valRuns').replaceChildren(...runs.map((r) => pairView(r)));
+    const { sets } = await (await fetch('validation/index.json', { cache: 'no-cache' })).json();
+    const shown = await Promise.all(sets.map(async (file) => {
+      const v = await (await fetch(`validation/${file}`, { cache: 'no-cache' })).json();
+      const runs = await Promise.all(v.runs.map(async (r) => ({ ...r, png: await (await fetch(r.image)).blob() })));
+      const sec = document.createElement('section');
+      sec.className = 'valset';
+      const h = document.createElement('h2');
+      h.textContent = v.title;
+      const grid = document.createElement('div');
+      grid.className = 'compare paired';
+      grid.replaceChildren(...runs.map((r) => pairView(r)));
+      sec.append(h, grid);
+      return sec;
+    }));
+    box.replaceChildren(...shown);
   } catch (e) {
     validationShown = false;
-    $('valTitle').textContent = `Could not load the validation runs: ${e.message}`;
+    const h = document.createElement('h2');
+    h.textContent = `Could not load the validation runs: ${e.message}`;
+    box.replaceChildren(h);
   }
 }
 
