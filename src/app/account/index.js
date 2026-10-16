@@ -34,15 +34,16 @@ function fromRemote(e) {
 const fromApple = (e) => new AccountError(e?.kind === 'network' || e?.kind === 'notAvailable' ? e.kind : 'failed');
 
 /**
- * @param {{ apple: any, remote: any, box?: { read: () => any, write: (v: any) => void }, now?: () => number }} deps
+ * @param {{ apple: any, remote: any, box?: { read: () => any, write: (v: any) => void }, newId?: () => string, now?: () => number }} deps
+ *   newId makes a fresh guest id (on iOS a UUID, to match the Keychain id StoreKit uses)
  */
-export function createAccount({ apple, remote, box = localStorageBox, now = Date.now }) {
+export function createAccount({ apple, remote, box = localStorageBox, newId = randomId, now = Date.now }) {
   let s = box.read();
-  if (!s || typeof s.id !== 'string') { s = { id: randomId(), token: null, user: null, since: null }; box.write(s); }
+  if (!s || typeof s.id !== 'string') { s = { id: newId(), token: null, user: null, since: null }; box.write(s); }
   const listeners = new Set();
   const save = (patch) => { s = { ...s, ...patch }; box.write(s); listeners.forEach((fn) => fn(status())); };
   const status = () => ({ signedIn: !!s.token, since: s.since, id: s.id });
-  const becomeGuest = () => save({ id: randomId(), token: null, user: null, since: null });
+  const becomeGuest = () => save({ id: newId(), token: null, user: null, since: null });
 
   async function askApple(opts) {
     const rawNonce = randomId();

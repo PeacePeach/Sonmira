@@ -8,15 +8,36 @@
 //   APPLE_TEAM_ID, APPLE_SIGNIN_KEY_ID, APPLE_SIGNIN_PRIVATE_KEY
 //                              the Sign in with Apple key, for revoking tokens on deletion
 // Locally (no VERCEL_ENV) a memory store is allowed so the endpoints can be tried.
+//
+// The integration composes this without editing it, through buildFromEnv's
+// second argument:
+//   ledger, seats   the hooks described in accounts.js
+//   authorize       (req, accountId) → boolean, the guard's install-token check.
+//                   Deployed (VERCEL set) and not supplied, sign-in answers
+//                   503 not_configured; locally every caller is allowed.
+//   limit           (req, name) → boolean; defaults to a per-address limit
+//                   per minute on the account store (LIMITS below).
 
 import { createAccounts, AccountError } from './accounts.js';
 import { createAppleKeys, verifyIdentityToken, verifyAppleNotification, createRevoker } from './apple.js';
 import { createMemoryStore, createUpstashStore } from './stores.js';
 import { createAccountHandlers } from './http.js';
 
-let built = null;
+// Requests per address per minute. apple and delete each call Apple, so they
+// stay tight; Apple's notifications get room for bursts (Apple retries a 429).
+export const LIMITS = { apple: 10, session: 60, delete: 5, notifications: 600 };
 
-export function buildFromEnv(env = process.env, { fetchImpl = fetch } = {}) {
+export const clientAddress = (req) => String(req.headers?.['x-real-ip'] || req.headers?.['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim() || 'unknown';
+
+export function perAddressLimit(store, { limits = LIMITS, now = Date.now } = {}) {
+  return async (req, name) => {
+    if (!store?.hit) return true;
+    try { return (await store.hit(`acct:rate:${name}:${clientAddress(req)}:${Math.floor(now() / 60_000)}`, 90)) <= (limits[name] ?? 30); }
+    catch { return true; } // the store being down shouldn't lock everyone out; Apple's checks still apply
+  };
+}
+
+export function buildFromEnv(env = process.env, { fetchImpl = fetch, ledger, seats, authorize, limit } = {}) {
   const deployed = !!env.VERCEL_ENV;
   const secret = env.SONMIRA_ACCOUNT_SECRET;
   const kv = env.KV_REST_API_URL && env.KV_REST_API_TOKEN;
@@ -33,15 +54,30 @@ export function buildFromEnv(env = process.env, { fetchImpl = fetch } = {}) {
     secret,
     verifyIdentity: (token, rawNonce) => verifyIdentityToken(token, { audience, rawNonce, getKey }),
     revokeApple: createRevoker({ clientId: audience, teamId: env.APPLE_TEAM_ID, keyId: env.APPLE_SIGNIN_KEY_ID, privateKey: env.APPLE_SIGNIN_PRIVATE_KEY, fetchImpl }),
-    // Agreed hooks, wired once those branches land (see accounts.js):
-    //   ledger: { merge, erase } from the Payments thread's server/billing
-    //   seats:  { adoptSeat, eraseAccount } from Production Readiness's server/protect
+    // Until the integration passes them: no-ops (see accounts.js).
+    ledger,
+    seats,
   });
-  return { accounts, verifyNotification: (payload) => verifyAppleNotification(payload, { audience, getKey }) };
+  return {
+    accounts,
+    verifyNotification: (payload) => verifyAppleNotification(payload, { audience, getKey }),
+    authorize: authorize ?? (env.VERCEL || env.VERCEL_ENV ? null : async () => true),
+    limit: limit ?? perAddressLimit(store),
+  };
 }
 
-export const handlers = createAccountHandlers(async () => {
-  built ||= buildFromEnv();
-  if (!built) throw new AccountError('not_configured', 503);
-  return built;
-});
+/**
+ * Handlers built lazily from the environment plus the integration's pieces,
+ * so each api/account/*.js file stays a single line:
+ *   export default createDeployedHandlers({ authorize, ledger, seats }).apple;
+ */
+export function createDeployedHandlers(options = {}, env = process.env) {
+  let deps = null;
+  return createAccountHandlers(async () => {
+    deps ||= buildFromEnv(env, options);
+    if (!deps) throw new AccountError('not_configured', 503);
+    return deps;
+  });
+}
+
+export const handlers = createDeployedHandlers();

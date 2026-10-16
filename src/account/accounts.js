@@ -107,11 +107,25 @@ export function createAccounts({ store, secret, verifyIdentity, revokeApple = as
      *   linked     this Apple ID is now tied to the device's account id
      *   returning  this Apple ID already had an account; the device's guest
      *              data was merged into it and the device should adopt accountId
+     * deviceProven: whether the caller proved it holds accountId (the HTTP layer
+     * asks deps.authorize). When false, only an existing account is returned.
      */
-    async signInWithApple({ identityToken, rawNonce, accountId }) {
+    async signInWithApple({ identityToken, rawNonce, accountId, deviceProven = true }) {
       if (typeof accountId !== 'string' || !ID_PATTERN.test(accountId)) throw new AccountError('bad_request', 400);
       const { sub } = await apple(identityToken, rawNonce);
       const appleKey = await appleKeyOf(sub);
+
+      // The caller couldn't prove it holds accountId (no live install token):
+      // the id is ignored. An Apple ID that already has an account still gets
+      // it back (recovery on a fresh install needs no invite code), but
+      // nothing is linked to or merged from an id nobody has shown is theirs.
+      if (!deviceProven) {
+        const linked = await store.get(K.apple(appleKey));
+        const rec = linked && await store.get(K.rec(linked.accountId));
+        if (!rec) throw new AccountError('unauthorized', 401);
+        return { status: rec.id === accountId ? 'linked' : 'returning', accountId: rec.id, token: await session(rec) };
+      }
+
       const deviceId = await resolve(accountId);
 
       const deviceRec = await store.get(K.rec(deviceId));
