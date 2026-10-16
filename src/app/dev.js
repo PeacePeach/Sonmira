@@ -60,6 +60,23 @@ export function mountDevPanel(app) {
   const sel = h('select', { onChange: (e) => { app.dev.completeness = e.target.value || null; } },
     h('option', { value: '' }, 'auto (from voice)'), COMPLETENESS.map((c) => h('option', { value: c }, c)));
   const sim = h('input', { type: 'checkbox', onChange: (e) => { app.dev.simulate = e.target.checked; } });
+  // Temporary: the labelled lyrics-completeness cases through the server's
+  // text model (no audio, no image; about 16 short text calls).
+  const evalOut = h('div', { class: 'deveval', style: 'margin-top:6px;word-break:break-word' });
+  const evalBtn = h('button', { onClick: async () => {
+    evalBtn.disabled = true; evalOut.replaceChildren(h('div', {}, 'running lyrics evaluation…'));
+    try {
+      const res = await fetch('/api/understand', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: 'eval' }) });
+      const j = await res.json().catch(() => null);
+      if (!j?.ok) { evalOut.replaceChildren(h('div', {}, `blocked: ${j?.code ?? `http_${res.status}`}${j?.status ? ` (OpenAI ${j.status})` : ''}, ${j?.error ?? 'no response'}`)); return; }
+      const word = (b) => (b == null ? 'error' : b ? 'complete' : 'incomplete');
+      evalOut.replaceChildren(h('div', {}, `${j.passed}/${j.total} pass · ${j.model} · ${(j.ms / 1000).toFixed(1)} s`),
+        ...j.results.map((r) => h('div', { 'data-pass': String(r.pass), style: `margin-top:4px;${r.pass ? '' : 'color:#e66'}` },
+          `${r.pass ? '✓' : '✗'} ${r.text} · expected ${word(r.expected)} · actual ${word(r.actual)}`,
+          h('div', { style: 'opacity:.7' }, r.error ? `error ${r.error}` : `${r.model.structure}, unfinished ${r.model.unfinished}, linked ${r.model.linked}, model says ${r.model.phraseComplete} (${r.model.confidence})${r.overridden ? ', overridden' : ''}`))));
+      console.info('[sonmira] lyrics evaluation', j);
+    } catch (e) { evalOut.replaceChildren(h('div', {}, `blocked: ${e.message}`)); } finally { evalBtn.disabled = false; }
+  } }, 'Run lyrics evaluation');
   const only = h('input', { type: 'checkbox', onChange: (e) => { app.dev.analyzeOnly = e.target.checked; } });
   const refresh = () => app.current?.name === 'diary' ? app.navigate('diary') : null;
   document.body.append(h('details', { class: 'devpanel' },
@@ -68,6 +85,7 @@ export function mountDevPanel(app) {
     h('label', {}, sim, ' sample voice (no mic)'),
     h('label', {}, only, ' analyze only (no image call)'),
     h('button', { onClick: async () => { await seed(app); refresh(); } }, 'add sample entries'),
+    evalBtn, evalOut,
     h('button', { onClick: async () => { if (confirm('Clear the whole diary?')) { await clearEntries(); app.entries = []; refresh(); } } }, 'clear diary'),
     h('div', { style: 'margin-top:6px' }, h('a', { href: 'dev/gallery.html' + location.search, target: '_blank' }, 'engine gallery ↗')),
     h('div', { style: 'margin-top:6px;opacity:.7' }, 'engine: ', h('a', { href: '?dev&engine=ai' }, 'ai'), ' · ', h('a', { href: '?dev&engine=real' }, 'real'), ' · ', h('a', { href: '?dev&engine=mock' }, 'mock')),

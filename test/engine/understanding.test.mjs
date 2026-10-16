@@ -454,3 +454,24 @@ test('the reading asks for the structure before the verdict, and separates relat
   assert.match(sys, /does not need to be a whole song/);
   assert.ok(!sys.includes(CASE_A) && !sys.includes(CASE_B), 'the test cases are not in the prompt');
 });
+
+test('dev lyrics evaluation: 16 cases through the text model, stops at an unreachable model, never in Production', async () => {
+  const { LYRICS_EVAL_CASES } = await import('../../src/engine/interpret/lyrics-eval.js');
+  assert.equal(LYRICS_EVAL_CASES.length, 16);
+  // A model that reads every line as a complete clause: the 9 incomplete cases must show as failures.
+  const { calls, fetchImpl } = mockOpenAIUnderstand({ text: '', reading: reading() });
+  const r = await call(understandHandler({ env: { OPENAI_API_KEY: 'sk-test' }, fetchImpl }), { method: 'POST', body: { mode: 'eval' } });
+  assert.equal(r.code, 200);
+  assert.equal(calls.length, 16);
+  assert.ok(calls.every((c) => c.url.endsWith('/chat/completions')), 'text calls only');
+  assert.deepEqual([r.json.total, r.json.passed], [16, 7]);
+  const a = r.json.results.find((x) => x.text === '遥远的夜空月亮月亮下面');
+  assert.deepEqual([a.expected, a.actual, a.pass], [false, true, false]);
+  assert.doesNotMatch(JSON.stringify(r.json), /sk-test/);
+  // Unreachable model: one call, then a clear blocker.
+  const blocked = mockOpenAIUnderstand({ text: '', status: 403 });
+  const b = await call(understandHandler({ env: { OPENAI_API_KEY: 'k' }, fetchImpl: blocked.fetchImpl }), { method: 'POST', body: { mode: 'eval' } });
+  assert.deepEqual([b.code, b.json.code, b.json.status, blocked.calls.length], [502, 'interpret_failed', 403, 1]);
+  const prod = await call(understandHandler({ env: { OPENAI_API_KEY: 'k', VERCEL_ENV: 'production' }, fetchImpl }), { method: 'POST', body: { mode: 'eval' } });
+  assert.equal(prod.code, 404);
+});
