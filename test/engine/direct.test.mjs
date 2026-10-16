@@ -83,3 +83,12 @@ test('no words: no people and no story at any tier', () => {
   }
 });
 
+
+test('reference guide: R4 follows one primary reference, others send all of theirs', async () => {
+  const { referenceGuide, FAMILIES } = await import('../../src/engine/direct/index.js');
+  const r4 = referenceGuide('R4-lyrical-everyday', 7);
+  assert.equal(r4.refs.length, 1);
+  assert.ok(FAMILIES['R4-lyrical-everyday'].refs.includes(r4.primary));
+  assert.deepEqual(referenceGuide('R5-light-as-subject', 7).refs, FAMILIES['R5-light-as-subject'].refs);
+  assert.equal(referenceGuide('R5-light-as-subject', 7).primary, null);
+});

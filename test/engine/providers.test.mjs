@@ -25,3 +25,16 @@ test('provider errors surface with their message', async () => {
   const fetchImpl = async () => ({ ok: false, status: 401, json: async () => ({ error: { message: 'bad key' } }) });
   await assert.rejects(generateOpenAI(direction, { env: { OPENAI_API_KEY: 'k' }, fetchImpl }), /bad key/);
 });
+
+test('openai edits send the reference images with the prompt', async () => {
+  const { editOpenAI } = await import('../../src/engine/providers/openai.js');
+  let sent;
+  const fetchImpl = async (url, init) => { sent = { url, init }; return { ok: true, json: async () => ({ data: [{ b64_json: 'QUJD' }] }) }; };
+  const g = await editOpenAI('P', [{ name: 'a.jpg', mime: 'image/jpeg', bytes: new Uint8Array([1, 2]) }], { env: { OPENAI_API_KEY: 'k' }, fetchImpl });
+  assert.match(sent.url, /images\/edits$/);
+  assert.equal(sent.init.body.get('prompt'), 'P');
+  assert.equal(sent.init.body.get('model'), 'gpt-image-2');
+  assert.equal(sent.init.body.getAll('image[]').length, 1);
+  assert.equal(g.b64, 'QUJD');
+  await assert.rejects(editOpenAI('P', [], { env: { OPENAI_API_KEY: 'k' }, fetchImpl }), { code: 'no_references' });
+});

@@ -31,6 +31,7 @@ export const GLOBAL_STYLE = [
   'wet-on-wet diffusion, granulation, blooms, backruns and transparent layered washes',
   'organic, imperfect edges, intentional negative space of reserved white paper',
   'natural paper texture and selective, unfinished passages; hand-made, uneven colour transitions',
+  'generous breathing room: detail concentrated in one limited focal area, the outer areas dissolving into open washes and bare paper',
   'one clear colour idea: a dominant colour family with at most one accent',
   'elegant and considered, beautiful enough to sit inside a refined, minimal app',
   'an original composition, not a copy of any existing artwork',
@@ -41,6 +42,7 @@ export const AVOID = [
   'cartoon, anime or comic style', 'sentimental greeting-card art', 'generic stock illustration',
   'photorealism', 'cinematic photography', 'lens blur', 'HDR lighting', 'digital airbrushing',
   'smooth artificial gradients', 'a photo-to-watercolor filter effect', 'uniform detail everywhere',
+  'digital illustration', 'excessive detail', 'a composition that fills every corner',
   'glossy digital rendering', 'heavy black ink outlines',
   'text, letters, titles, signature, logo or watermark', 'a frame, border or mat', 'a photo of a painting on a table',
 ];
@@ -126,4 +128,25 @@ export function direct(spec) {
     family: familyId, familyLabel: F.label, refs: F.refs.slice(),
     subject, pigments: chosen.map((p) => p.name), swatches: chosen, sections, prompt, avoid: AVOID.slice(),
   };
+}
+
+// Reference-guided generation: which of the family's reference images go to
+// the model as visual input, and how the prompt tells it to use them.
+// Families listed here follow one primary reference per generation (drawn by
+// seed) instead of the blend of all their references.
+const PRIMARY_REFERENCE = new Set(['R4-lyrical-everyday']);
+
+export function referenceGuide(familyId, seed = 0) {
+  const F = FAMILIES[familyId];
+  if (!F) throw new Error(`unknown family ${familyId}`);
+  const primary = PRIMARY_REFERENCE.has(familyId) ? F.refs[Math.floor(rng(hashSeed(seed >>> 0, 'primary-ref'))() * F.refs.length)] : null;
+  const refs = primary ? [primary] : F.refs.slice();
+  const text = [
+    `The attached ${refs.length === 1 ? 'image is the style reference' : 'images are the style references'} for this painting.`,
+    primary
+      ? 'Follow it closely in its dominant colour atmosphere, its openness and amount of white paper, where its detail sits, its degree of finish and its watercolor handling. Where the colour list below differs from it, follow the reference.'
+      : `Follow ${refs.length === 1 ? 'it' : 'them'} closely in palette, watercolor handling, degree of finish, amount of open white paper and where detail sits.`,
+    'Paint a new, original composition and subject: do not copy, trace or recombine their compositions, figures or motifs, and do not reproduce any text, titles or watermarks in them.',
+  ].join(' ');
+  return { refs, primary, text };
 }
