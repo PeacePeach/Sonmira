@@ -13,7 +13,7 @@
 // sung correctly or completely (nothing here recognises songs).
 // Every threshold is provisional and needs calibration on real recordings.
 
-export const LYRICS_VERSION = 1;
+export const LYRICS_VERSION = 2;
 
 export const GATE_CALIBRATION = {
   minLexicalWords: 3,
@@ -25,6 +25,26 @@ export const GATE_CALIBRATION = {
   maxWordsPerSec: 4.5,         // more words than a voice sings → background speech, or spoken
   minWordsPerSec: 0.15,        // a few words in a long hum are fragments, not a phrase
 };
+
+// Phrase structure as the language model reports it (see the prompt in
+// providers/openai-understand.js). Only these two can be complete.
+export const STRUCTURES = ['clause', 'image_phrase', 'noun_list', 'fragment', 'multiple_fragments', 'vocables'];
+export const COMPLETE_STRUCTURES = ['clause', 'image_phrase'];
+
+// The completeness verdict used by the gate. The model's own phraseComplete
+// counts only when its structure analysis agrees: a model that calls a noun
+// list or an unfinished fragment "complete" contradicts itself, and the
+// stricter reading wins. No meaning is inferred here; this only checks the
+// model's answers against each other.
+export function phraseVerdict(lyrics) {
+  if (!lyrics) return { complete: false, reasons: ['no reading'] };
+  const reasons = [];
+  if (!lyrics.phraseComplete) reasons.push('model: not complete');
+  if (!COMPLETE_STRUCTURES.includes(lyrics.structure)) reasons.push(`structure: ${lyrics.structure ?? 'not reported'}`);
+  if (lyrics.unfinished === true) reasons.push('ends unfinished');
+  if (lyrics.linked !== true) reasons.push('parts not joined into one statement or image');
+  return { complete: reasons.length === 0, reasons, overridden: Boolean(lyrics.phraseComplete) && reasons.length > 0 };
+}
 
 // Non-lexical singing syllables (vocables), in English and Chinese, and the
 // bracketed tags transcribers emit for music.
@@ -98,8 +118,10 @@ export function completionGate({ transcript = null, lyrics = null, singing = nul
   add('word_rate', rate >= cal.minWordsPerSec && rate <= cal.maxWordsPerSec, r3(rate), `${cal.minWordsPerSec}–${cal.maxWordsPerSec} words per sounding second`);
   add('language_model', lyrics && !lyrics.error, lyrics ? (lyrics.error ? `error: ${lyrics.error}` : 'read') : 'not available', 'a reading of the words');
   add('lexical_meaning', lyrics?.lexical && lyrics?.coherent, lyrics ? `lexical ${Boolean(lyrics.lexical)}, coherent ${Boolean(lyrics.coherent)}` : '—', 'meaningful, coherent words');
-  add('phrase_complete', lyrics?.phraseComplete && (lyrics?.completionConfidence ?? 0) >= needCompletion,
-    lyrics ? `${Boolean(lyrics.phraseComplete)} (${lyrics.completionConfidence ?? '?'})` : '—', `complete, confidence ≥ ${needCompletion}`);
+  const verdict = phraseVerdict(lyrics);
+  add('phrase_complete', verdict.complete && (lyrics?.completionConfidence ?? 0) >= needCompletion,
+    lyrics ? `model ${Boolean(lyrics.phraseComplete)} (${lyrics.completionConfidence ?? '?'}), structure ${lyrics.structure ?? '—'}, unfinished ${Boolean(lyrics.unfinished)}, linked ${Boolean(lyrics.linked)}${verdict.reasons.length ? ` → incomplete: ${verdict.reasons.join('; ')}` : ''}` : '—',
+    `a clause or bound image, not unfinished, parts joined; confidence ≥ ${needCompletion}`);
   add('clean_ending', sung?.ending?.clean, sung?.ending ? `quiet ${sung.ending.trailingQuietSec}s, held ${sung.ending.lastNoteHeldSec ?? 0}s` : '—', 'the voice ends, not cut off');
 
   const pass = checks.every((c) => c.ok);

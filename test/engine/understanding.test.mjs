@@ -33,7 +33,8 @@ for (const k of Object.keys(singers)) take[k] = measure(singers[k]());
 // A confident transcript: token probabilities around 0.9.
 const confident = (text) => analyzeTranscript(text, { logprobs: text.split(/\s+/).map((token) => ({ token, logprob: Math.log(0.9) })) });
 const reading = (o = {}) => cleanReading({
-  language: 'en', lexical: true, coherent: true, phraseComplete: true, completionConfidence: 0.9, completionReason: 'a full line',
+  language: 'en', lexical: true, coherent: true, structure: 'clause', unfinished: false, linked: true, missing: '',
+  phraseComplete: true, completionConfidence: 0.9, completionReason: 'a full line',
   theme: [], imagery: [], figurative: [], mood: 'tender', motif: 'abstract', concepts: { loose: 'x', gathered: 'y', resolved: 'z' }, ...o,
 });
 const decide = (t, l, s) => { const gate = completionGate({ transcript: t, lyrics: l, singing: s.singing, features: s.features }); return { gate, ...decideTier({ gate, quality: s.singing.quality }) }; };
@@ -390,4 +391,66 @@ test('vibrato is neither "moving" pitch nor overshoot', () => {
   const q = measure(sungTakes['expressive, ±70 cent vibrato']).singing.quality.components;
   assert.equal(q.transitions.score, 1, JSON.stringify(q.transitions));
   assert.ok(q.stability.vibratoShare > 0);
+});
+
+// ── Regression: related or disconnected words are not a complete phrase ────
+// The model's reading is GIVEN here (no API in tests). These check that the
+// gate uses the structure analysis and refuses self-contradicting verdicts;
+// whether the model reports the structure correctly is checked against the
+// real API with tools/eval-lyrics.mjs.
+import { phraseVerdict } from '../../src/engine/interpret/lyrics.js';
+
+const CASE_A = '遥远的夜空月亮月亮下面';
+const CASE_B = '月亮，咖啡，石头';
+
+test('case A: a repeated, unfinished fragment is not complete, even if the model says so', () => {
+  // As the model now should report it.
+  const reported = reading({ language: 'zh', structure: 'multiple_fragments', unfinished: true, linked: false, missing: 'what happens under the moon', phraseComplete: false, completionConfidence: 0.85 });
+  const a = decide(confident(CASE_A), reported, take.strong);
+  assert.equal(a.tier, 'loose');
+  assert.deepEqual(a.gate.failed, ['phrase_complete']);
+  // The old failure: "complete (0.8)" with a structure that contradicts it.
+  for (const contradiction of [{ structure: 'fragment' }, { unfinished: true }, { linked: false }, { structure: null }]) {
+    const r = decide(confident(CASE_A), reading({ language: 'zh', phraseComplete: true, completionConfidence: 0.8, ...contradiction }), take.strong);
+    assert.equal(r.tier, 'loose', JSON.stringify(contradiction));
+    assert.match(r.gate.checks.find((c) => c.id === 'phrase_complete').value, /→ incomplete/);
+  }
+});
+
+test('case B: a list of nouns is Loose on completeness alone, with confident transcription', () => {
+  const t = confident(CASE_B);
+  assert.ok(t.asrConfidence > 0.85);
+  assert.equal(t.lexicalWords, 3);
+  for (const r of [
+    reading({ language: 'zh', structure: 'noun_list', unfinished: false, linked: false, phraseComplete: false, completionConfidence: 0.9 }),
+    reading({ language: 'zh', structure: 'noun_list', unfinished: false, linked: false, phraseComplete: true, completionConfidence: 0.9 }), // the old verdict
+  ]) {
+    const d = decide(t, r, take.strong);
+    assert.equal(d.tier, 'loose');
+    assert.deepEqual(d.gate.failed, ['phrase_complete'], 'not because of ASR confidence');
+  }
+  assert.deepEqual(phraseVerdict(reading({ structure: 'noun_list', linked: false })).reasons, ['structure: noun_list', 'parts not joined into one statement or image']);
+});
+
+test('short poetic lines that are complete still pass and reach stage 2', () => {
+  for (const [text, structure] of [['月光洒在海面上', 'clause'], ['海边的一盏孤灯', 'image_phrase'], ['I miss you tonight', 'clause'], ['a lonely boat on the evening river', 'image_phrase']]) {
+    const d = decide(confident(text), reading({ structure }), take.strong);
+    assert.equal(d.gate.pass, true, `${text}: ${JSON.stringify(d.gate.checks.filter((c) => !c.ok))}`);
+    assert.equal(d.tier, 'resolved');
+    assert.equal(decide(confident(text), reading({ structure }), take.weak).tier, 'gathered');
+  }
+});
+
+test('the reading asks for the structure before the verdict, and separates related from complete', async () => {
+  const { calls, fetchImpl } = mockOpenAIUnderstand({ text: CASE_B });
+  await call(understandHandler({ env: { OPENAI_API_KEY: 'k' }, fetchImpl }), { method: 'POST', body: AUDIO });
+  const chat = JSON.parse(calls[1].init.body);
+  const req = chat.response_format.json_schema.schema.required;
+  for (const k of ['structure', 'unfinished', 'linked', 'missing']) assert.ok(req.indexOf(k) < req.indexOf('phraseComplete'), k);
+  const sys = chat.messages[0].content;
+  assert.match(sys, /Related is not complete/);
+  assert.match(sys, /Never supply missing verbs, particles, grammar or connections/);
+  assert.match(sys, /need not be conventional prose/);
+  assert.match(sys, /does not need to be a whole song/);
+  assert.ok(!sys.includes(CASE_A) && !sys.includes(CASE_B), 'the test cases are not in the prompt');
 });

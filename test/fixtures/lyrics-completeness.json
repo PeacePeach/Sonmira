@@ -1,0 +1,18 @@
+[
+  { "text": "遥远的夜空月亮月亮下面", "complete": false, "note": "real case A: repetition, ends on a localizer" },
+  { "text": "月亮，咖啡，石头", "complete": false, "note": "real case B: unrelated noun list" },
+  { "text": "星星 河流 窗户", "complete": false, "note": "noun list, related-sounding" },
+  { "text": "月亮 夜空 星星", "complete": false, "note": "semantically related nouns only" },
+  { "text": "在那条长长的路", "complete": false, "note": "unfinished prepositional phrase" },
+  { "text": "当我走过", "complete": false, "note": "unfinished subordinate clause" },
+  { "text": "the night the night sky under", "complete": false, "note": "restart and dangling preposition" },
+  { "text": "moon, coffee, stone", "complete": false, "note": "noun list" },
+  { "text": "when I was walking down the", "complete": false, "note": "cut mid-phrase" },
+  { "text": "月光洒在海面上", "complete": true, "note": "short clause" },
+  { "text": "海边的一盏孤灯", "complete": true, "note": "bound image phrase, no verb" },
+  { "text": "我想你", "complete": true, "note": "very short clause" },
+  { "text": "遥远的夜空挂着一轮明月", "complete": true, "note": "complete version of case A" },
+  { "text": "I miss you tonight", "complete": true, "note": "short clause" },
+  { "text": "a lonely boat on the evening river", "complete": true, "note": "bound image phrase" },
+  { "text": "you are my sunshine", "complete": true, "note": "a line from a song; the recorded phrase is complete" }
+]

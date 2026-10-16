@@ -89,7 +89,8 @@ export function mountDevPanel(app) {
           ['sung', v?.sung], ...(v?.sungChecks ?? []).map((c) => [`  ${c.ok ? '✓' : '✗'} ${c.id}`, `${c.value} (need ${c.need})`]),
           ['notes', v?.noteCount], ['note s', v?.noteSec], ['sustained ratio', v?.sustainedRatio], ['ending', v?.ending]]));
         out.push(section('lyrics', [['requested', u.wordsRequested], ['skipped', u.wordsSkipped ?? undefined], ['transcript', t?.text], ['asr confidence', t?.asrConfidence], ['words / lexical / vocables', t ? `${t.wordCount} / ${t.lexicalWords} / ${t.nonLexicalWords}` : null], ['hallucination', t?.hallucination],
-          ['asr model', t?.model], ['lexical', l?.lexical], ['coherent', l?.coherent], ['phrase complete', l ? `${l.phraseComplete} (${l.completionConfidence})` : null], ['why', l?.completionReason], ['text model', l?.model],
+          ['asr model', t?.model], ['lexical', l?.lexical], ['coherent', l?.coherent], ['structure', l ? `${l.structure ?? '—'}, unfinished ${l.unfinished}, linked ${l.linked}` : null], ['missing', l?.missing || undefined],
+          ['model says complete', l ? `${l.phraseComplete} (${l.completionConfidence})` : null], ['why', l?.completionReason], ['text model', l?.model],
           ['gate', u.gate ? `${u.gate.pass ? 'PASS' : 'FAIL'} (confidence ${u.gate.confidence})` : null], ['failed checks', u.gate?.failed?.join(', ')],
           ...(u.gate?.checks ?? []).map((c) => [`  ${c.ok ? '✓' : '✗'} ${c.id}`, `${typeof c.value === 'object' ? JSON.stringify(c.value) : c.value} (need ${c.need})`])]));
         out.push(section('singing', [['score', q?.score], ['confidence', q?.confidence], ['strong', q?.strong], ...Object.entries(q?.components ?? {}).map(([k, c]) => [k, c]), ['unavailable', q?.unavailable?.join('; ')], ['expression', u.expression]]));
