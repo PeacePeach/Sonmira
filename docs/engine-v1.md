@@ -69,7 +69,7 @@ The thresholds are provisional. They were calibrated on one singer, 9 takes, Chr
 ## Beta setup: transcription check (agreed with Han, 16 Oct)
 
 When the beta's `OPENAI_API_KEY` is set, before the merge into main:
-1. Enable the key for the PR #2 Preview as well.
+1. Enable the key for the PR #2 Preview as well. That Preview has no invite guard, so keep it behind Vercel Deployment Protection, and take the key off Preview once the check is done.
 2. Han opens the Playground Singing test in the same browser as the 9 saved takes. Each take's words are transcribed once, automatically, with no re-recording. This costs about $0.04 and makes no images.
 3. Han taps **Copy results for Claude** and pastes the results into the Engine thread.
 4. Check:
