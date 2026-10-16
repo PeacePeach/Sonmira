@@ -18,6 +18,27 @@ const exe = process.env.CHROMIUM_PATH;
 const viewport = { width: 393, height: 852 }; // iPhone 15
 const shot = async (page, name) => SHOTS && page.screenshot({ path: `${SHOTS}/${name}.png` });
 const advanced = (page, sel) => page.waitForFunction((s) => document.querySelector(s)?.textContent !== '0:00', sel, { timeout: 5000 });
+// Inspects the last file handed to the share sheet (and decodes its audio).
+const lastShared = (page) => page.evaluate(async () => {
+  for (let i = 0; i < 50 && !window.__shared.length; i++) await new Promise((r) => setTimeout(r, 100));
+  const f = window.__shared.pop();
+  const url = URL.createObjectURL(f);
+  const out = { name: f.name, type: f.type, size: f.size };
+  if (f.type.startsWith('image')) {
+    const im = new Image(); im.src = url; await im.decode();
+    Object.assign(out, { width: im.naturalWidth, height: im.naturalHeight });
+  } else {
+    const v = document.createElement('video'); v.muted = true; v.src = url;
+    await new Promise((r, j) => { v.onloadedmetadata = r; v.onerror = () => j(new Error('video unplayable')); });
+    if (v.duration === Infinity) { v.currentTime = 1e6; await new Promise((r) => { v.ontimeupdate = r; }); }
+    Object.assign(out, { width: v.videoWidth, height: v.videoHeight, duration: v.duration });
+    const ac = new AudioContext();
+    const buf = await ac.decodeAudioData(await f.arrayBuffer());
+    const d = buf.getChannelData(0); let s = 0; for (let i = 0; i < d.length; i++) s += d[i] * d[i];
+    out.audioRms = Math.sqrt(s / d.length);
+  }
+  return out;
+});
 const url = (q = '') => BASE + '?' + [ENGINE, q].filter(Boolean).join('&');
 
 async function run() {
@@ -26,6 +47,12 @@ async function run() {
     args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${wav}`, '--autoplay-policy=no-user-gesture-required'],
   });
   const ctx = await browser.newContext({ viewport, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+  // Stand-in for the system share sheet: records what would be shared.
+  await ctx.addInitScript(() => {
+    window.__shared = [];
+    navigator.canShare = (d) => !!(d && d.files && d.files.length);
+    navigator.share = async (d) => { window.__shared.push(d.files[0]); };
+  });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -77,6 +104,32 @@ async function run() {
   assert.equal(await page.inputValue('.caption-input'), 'Rain on the window');
   assert.ok(await page.$('.painting img.art'), 'result shows artwork');
   await page.fill('.caption-input', 'Rain on the window, again');
+
+  // share right after generating: image, then video
+  await page.click('[data-screen=sing] [aria-label="Share"]');
+  await page.waitForSelector('[data-share] .pill:not([disabled])');
+  await page.waitForTimeout(400);
+  await shot(page, '06b-share-sheet');
+  await page.click('[data-share] .pill');
+  const img = await lastShared(page);
+  assert.equal(img.type, 'image/jpeg');
+  assert.deepEqual([img.width, img.height], [2160, 2700], 'share image is high resolution');
+  await page.waitForSelector('[data-share]', { state: 'detached' });
+  await page.click('[data-screen=sing] [aria-label="Share"]');
+  await page.waitForSelector('[data-share] .pill:not([disabled])');
+  await page.click('text=Make a video');
+  await page.waitForSelector('[data-share] .share-progress:not([hidden])');
+  await page.waitForTimeout(1500);
+  await shot(page, '06c-share-video-progress');
+  await page.waitForSelector('[data-share] .pill:has-text("Share video")', { timeout: 30000 });
+  await page.click('[data-share] .pill');
+  const vid = await lastShared(page);
+  assert.match(vid.type, /^video\/mp4/);
+  assert.deepEqual([vid.width, vid.height], [1080, 1920], 'video is 9:16');
+  assert.ok(vid.duration > 13 && vid.duration < 17, 'video keeps the recording length, got ' + vid.duration);
+  assert.ok(vid.audioRms > 0.01, 'video carries the original audio');
+  await page.waitForSelector('[data-share]', { state: 'detached' });
+  assert.equal(await page.inputValue('.caption-input'), 'Rain on the window, again', 'sharing leaves the result as it was');
   // 8. save
   await page.click('text=Keep it');
   await page.waitForSelector('[data-screen=diary] .entry');
@@ -89,6 +142,12 @@ async function run() {
   await page.waitForTimeout(500);
   await page.click('[data-screen=detail] .play-btn');
   await advanced(page, '[data-screen=detail] .times span'); // detail playback advances
+  // share a saved entry
+  await page.click('[data-screen=detail] [aria-label="Share"]');
+  await page.waitForSelector('[data-share] .pill:not([disabled])');
+  await page.click('[data-share] .pill');
+  assert.equal((await lastShared(page)).type, 'image/jpeg');
+  await page.waitForSelector('[data-share]', { state: 'detached' });
   await shot(page, '08-detail');
   // 11. reload keeps it
   await page.reload();

@@ -6,6 +6,7 @@ import { createPainting } from '../ui/painting.js';
 import { createPlayer } from '../ui/player.js';
 import { createRecorder, MicError } from '../recorder.js';
 import { clock, dayKey, longDate } from '../format.js';
+import { openShareSheet } from '../share/sheet.js';
 
 const SINGING_LINES = ['Keep going…', 'Let it out.', 'Softly, softly.', 'That’s it.'];
 const FINDING = 'Finding the shape of your song…';
@@ -25,21 +26,27 @@ export function mountSing(app) {
   const fill = h('div', { class: 'rec-fill' });
   const tLabel = h('span', {}, clock(0));
   const progress = h('div', {}, h('div', { class: 'rec-track' }, fill), h('div', { class: 'rec-times tabular' }, tLabel, h('span', {}, clock(maxSeconds))));
+  // Share appears in the top bar only once a painting exists (result state).
+  const shareBtn = h('button', { class: 'icon-btn', 'aria-label': 'Share', hidden: true, onClick: () => {
+    player?.stop();
+    sheet = openShareSheet(app, { painting: result, note: noteDraft.trim(), date: dayKey(), audio: take.audio, durationSec: take.durationSec });
+  } }, icons.share());
+  const navRight = h('div', { class: 'spacer44' }, shareBtn);
   const phaseHost = h('div', { style: 'flex:1;display:flex;flex-direction:column;min-height:0' });
   const el = h('div', { class: 'sing', 'data-screen': 'sing' },
     h('div', { class: 'navrow' },
       h('button', { class: 'icon-btn', 'aria-label': 'Close', onClick: close }, icons.close()),
       h('span', { class: 'date' }, longDate(dayKey())),
-      h('div', { class: 'spacer44' })),
+      navRight),
     h('div', { class: 'sing-canvas' }, painting.el, progress),
     phaseHost);
 
   // take state
-  let phase = 'ready', recorder = null, session = null, take = null, result = null, player = null, timers = [], noteDraft = '';
+  let phase = 'ready', sheet = null, recorder = null, session = null, take = null, result = null, player = null, timers = [], noteDraft = '';
   let hint = '';
 
   const later = (fn, ms) => timers.push(setTimeout(fn, ms));
-  const show = (node) => { player?.destroy(); player = null; phaseHost.replaceChildren(node); };
+  const show = (node) => { player?.destroy(); player = null; shareBtn.hidden = true; phaseHost.replaceChildren(node); };
   const setProgress = (t) => { fill.style.width = `${Math.min(100, (t / maxSeconds) * 100)}%`; tLabel.textContent = clock(t); };
 
   // ── ready ────────────────────────────────────────────────────────────────
@@ -189,6 +196,7 @@ export function mountSing(app) {
         h('div', { style: 'margin-top:26px' }, p.el)),
       h('div', { class: 'actions' }, keep, h('button', { class: 'quiet-btn', onClick: singAgain }, 'Sing again'))));
     player = p;
+    shareBtn.hidden = false;
 
     async function save() {
       if (phase !== 'result') return;
@@ -249,6 +257,7 @@ export function mountSing(app) {
     el,
     destroy() {
       phase = 'gone';
+      sheet?.close();
       document.removeEventListener('visibilitychange', onHide);
       timers.forEach(clearTimeout);
       recorder?.cancel();

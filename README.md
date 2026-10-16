@@ -32,6 +32,7 @@ If that's awkward, any HTTPS tunnel also works, e.g. `npx localtunnel --port 517
 | Sing | Ready → recording (real mic, timer, audio-reactive halo and live wash, auto-stop at the limit) → preview (playback, optional note, *Sing again*) → “Finding the shape of your song…” → result (painting, playback with progress, interpretation line, editable note, *Keep it* / *Sing again*). |
 | Painting | Full painting, date, note, play/pause of the original recording. Delete asks for a second tap. |
 | Settings | Recording length 15 / 30 s and start day Sun / Mon both work and are remembered. Daily reminder, Diary lock, Backup / restore and Rate say **Coming soon** and do nothing. Privacy policy and Terms open short prototype drafts. |
+| Share | A share icon on the result screen and on a saved painting. **Share image** makes a 2160×2700 (4:5) card with the painting, the optional note, the date and a small *Sonmira* wordmark. **Make a video** records a 1080×1920 (9:16) MP4 with the original recording (up to 30 s), the painting and a quiet waveform. Both open the system share sheet (on iPhone, the native iOS sheet with Save Image, Messages, Instagram…). Everything happens on the device and nothing is uploaded. Video is offered only where the browser can record MP4. |
 | Persistence | Entries, audio and paintings are stored in IndexedDB and survive reloads. Settings are kept in localStorage. |
 
 ### Edge cases handled
@@ -49,6 +50,7 @@ If that's awkward, any HTTPS tunnel also works, e.g. `npx localtunnel --port 517
 ```
 src/
   app/                    Track A: screens, recorder, player, storage (no engine internals)
+    share/                share card + video composition, export, system share sheet
     main.js               state + navigation
     screens/              diary, sing, detail, settings, legal
     ui/                   painting card, playback row, dom helpers, icons

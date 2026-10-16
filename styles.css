@@ -42,6 +42,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
 }
+[hidden] { display: none !important; }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; }
 input { font: inherit; }
 input::placeholder { color: var(--placeholder); opacity: 1; }
@@ -203,6 +204,26 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .legal .prose { padding: 18px 28px 0; font-family: var(--sans); font-weight: 450; font-size: 15px; line-height: 1.6; color: var(--body); }
 .legal .prose p { margin: 0 0 14px; }
 .legal .draft { padding: 22px 28px 0; font-family: var(--sans); }
+
+/* ── share sheet ─────────────────────────────────────────────────────────── */
+.share-layer { position: absolute; inset: 0; z-index: 30; }
+.share-scrim { position: absolute; inset: 0; background: rgba(31,29,26,.28); animation: fadeIn .25s ease-out both; }
+.share-panel { position: absolute; left: 0; right: 0; bottom: 0; background: var(--paper); border-radius: 20px 20px 0 0; padding: 10px 24px var(--bottom); box-shadow: 0 -10px 30px -18px rgba(60,45,30,.35); animation: sheetIn .34s cubic-bezier(.2,.7,.2,1) both; max-height: 92%; overflow-y: auto; }
+.share-layer.leaving .share-scrim { animation: fadeOut .2s ease-in both; }
+.share-layer.leaving .share-panel { animation: sheetOut .2s ease-in both; }
+@keyframes sheetIn { from { transform: translateY(100%); } }
+@keyframes sheetOut { to { transform: translateY(100%); } }
+.share-head { display: flex; align-items: center; justify-content: space-between; margin-right: -10px; }
+.share-title { font-size: 26px; }
+.share-preview-box { display: flex; justify-content: center; padding: 8px 0 18px; }
+.share-preview { width: 52%; max-width: 220px; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 3px; background: var(--painting-paper); box-shadow: var(--shadow-card); }
+.share-preview.story { aspect-ratio: 9 / 16; width: 46%; }
+.share-progress { padding: 0 0 6px; }
+.share-progress .rec-track { margin-top: 10px; }
+.share-message { font-family: var(--serif); font-weight: 600; font-style: italic; font-size: 16px; color: var(--secondary); line-height: 1.35; text-align: center; min-height: 0; }
+.share-message:empty { display: none; }
+.nav-actions { display: flex; align-items: center; }
+@media (prefers-reduced-motion: reduce) { .share-panel, .share-scrim { animation: none !important; } }
 
 /* ── toast (quiet, bottom) ───────────────────────────────────────────────── */
 .toast { position: absolute; left: 24px; right: 24px; bottom: calc(var(--bottom) + 84px); z-index: 20; text-align: center; font-size: 13px; color: var(--body); background: var(--tile); border: 1px solid var(--tile-line); border-radius: 14px; padding: 12px 16px; line-height: 1.45; animation: fadeIn .25s ease-out both; }
