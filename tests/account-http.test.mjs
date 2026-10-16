@@ -4,7 +4,7 @@ import { createAccountHandlers } from '../src/account/http.js';
 import { createAccounts } from '../src/account/accounts.js';
 import { createMemoryStore } from '../src/account/stores.js';
 import { verifyIdentityToken, verifyAppleNotification } from '../src/account/apple.js';
-import { buildFromEnv, handlers as deployed } from '../src/account/deploy.js';
+import { buildFromEnv, handlers as deployed, createDeployedHandlers, perAddressLimit, LIMITS } from '../src/account/deploy.js';
 import { randomId } from '../src/account/encoding.js';
 import { fakeApple, SECRET } from './account-helpers.mjs';
 
@@ -12,12 +12,13 @@ const apple = await fakeApple();
 const deps = {
   accounts: createAccounts({ store: createMemoryStore(), secret: SECRET, verifyIdentity: (t, n) => verifyIdentityToken(t, { audience: 'app.sonmira', rawNonce: n, getKey: apple.getKey }) }),
   verifyNotification: (p) => verifyAppleNotification(p, { audience: 'app.sonmira', getKey: apple.getKey }),
+  authorize: async () => true,
 };
 const h = createAccountHandlers(async () => deps);
 
-async function call(handler, body, method = 'POST') {
+async function call(handler, body, method = 'POST', req = {}) {
   const res = { statusCode: 0, headers: {}, body: '', setHeader(k, v) { this.headers[k] = v; }, end(b) { this.body = b; } };
-  await handler({ method, body }, res);
+  await handler({ method, body, headers: {}, ...req }, res);
   return { status: res.statusCode, json: JSON.parse(res.body), headers: res.headers };
 }
 
@@ -55,4 +56,55 @@ test('fails closed without configuration', async () => {
   const r = await call(deployed.apple, { identityToken: 'x', rawNonce: 'y', accountId: randomId() });
   assert.deepEqual([r.status, r.json.error], [503, 'not_configured']);
   if (saved) process.env.SONMIRA_ACCOUNT_SECRET = saved;
+});
+
+test('sign-in needs proof that the caller holds the account id it sends', async () => {
+  const owner = randomId(), stranger = randomId();
+  const authorize = async (req, id) => req.headers['x-install-token'] === `token-for-${id}`;
+  const guarded = createAccountHandlers(async () => ({ ...deps, authorize }));
+  const signIn = async (accountId, token, sub) => {
+    const rawNonce = randomId();
+    return call(guarded.apple, { identityToken: await apple.token({ sub, rawNonce }), rawNonce, accountId }, 'POST', { headers: { 'x-install-token': token } });
+  };
+  // Someone who learned a guest's id can't sign it into their own Apple ID.
+  const r = await signIn(owner, `token-for-${stranger}`, 'attacker');
+  assert.deepEqual([r.status, r.json.error], [401, 'unauthorized']);
+  assert.equal((await signIn(owner, undefined, 'attacker')).status, 401);
+  assert.equal((await signIn(owner, `token-for-${owner}`, 'owner')).json.status, 'linked');
+  // No check configured → refuse rather than trust the id.
+  const open = createAccountHandlers(async () => ({ ...deps, authorize: null }));
+  const rawNonce = randomId();
+  const o = await call(open.apple, { identityToken: await apple.token({ sub: 'x', rawNonce }), rawNonce, accountId: randomId() });
+  assert.deepEqual([o.status, o.json.error], [503, 'not_configured']);
+});
+
+test('deployed builds refuse sign-in until the guard check is supplied; local allows', async () => {
+  const kv = { KV_REST_API_URL: 'https://kv', KV_REST_API_TOKEN: 't' };
+  assert.equal(buildFromEnv({ SONMIRA_ACCOUNT_SECRET: SECRET, VERCEL: '1', VERCEL_ENV: 'preview', ...kv }).authorize, null);
+  const check = async () => true;
+  assert.equal(buildFromEnv({ SONMIRA_ACCOUNT_SECRET: SECRET, VERCEL: '1', VERCEL_ENV: 'preview', ...kv }, { authorize: check }).authorize, check);
+  assert.equal(await buildFromEnv({ SONMIRA_ACCOUNT_SECRET: SECRET }).authorize({}, randomId()), true);
+});
+
+test('the integration composes the endpoints through createDeployedHandlers', async () => {
+  const seen = [];
+  const hs = createDeployedHandlers({ authorize: async () => false, limit: async (req, name) => { seen.push(name); return true; } }, { SONMIRA_ACCOUNT_SECRET: SECRET });
+  const r = await call(hs.apple, { identityToken: 'x', rawNonce: 'y', accountId: randomId() });
+  assert.deepEqual([r.status, r.json.error, seen], [401, 'unauthorized', ['apple']]);
+  const ledger = { merge: async () => {}, erase: async () => {} };
+  assert.ok(buildFromEnv({ SONMIRA_ACCOUNT_SECRET: SECRET }, { ledger }).accounts);
+});
+
+test('each endpoint is rate limited per address', async () => {
+  let t = 0;
+  const limit = perAddressLimit(createMemoryStore(), { now: () => t });
+  const limited = createAccountHandlers(async () => ({ ...deps, limit }));
+  const from = (ip) => ({ headers: { 'x-forwarded-for': `${ip}, 10.0.0.1` } });
+  for (let i = 0; i < LIMITS.delete; i++) assert.notEqual((await call(limited.delete, {}, 'POST', from('1.1.1.1'))).status, 429);
+  const r = await call(limited.delete, {}, 'POST', from('1.1.1.1'));
+  assert.deepEqual([r.status, r.json.error], [429, 'rate_limited']);
+  assert.notEqual((await call(limited.delete, {}, 'POST', from('2.2.2.2'))).status, 429, 'another address is unaffected');
+  assert.notEqual((await call(limited.session, {}, 'POST', from('1.1.1.1'))).status, 429, 'limits are per endpoint');
+  t += 60_000;
+  assert.notEqual((await call(limited.delete, {}, 'POST', from('1.1.1.1'))).status, 429, 'the window moves on');
 });
