@@ -212,7 +212,9 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 @keyframes developBreathe { from { opacity: .2; } to { opacity: .6; } }
 .caption-input { display: block; width: 100%; margin-top: 12px; resize: none; overflow: hidden; line-height: 1.25; text-wrap: pretty; border: 0; border-bottom: 1px solid var(--underline); border-radius: 0; background: transparent; font-family: var(--serif); font-weight: 600; letter-spacing: -0.015em; font-size: 24px; color: var(--ink); padding: 8px 0 12px; outline: none; -webkit-appearance: none; }
 .caption-input:focus { border-bottom-color: var(--secondary); }
-.take-player { margin-top: 26px; }
+/* Listen back and its player read as one group; the note sits below with room to breathe */
+.take-player { margin-top: 16px; }
+.take-player + .caption-input { margin-top: 28px; }
 .actions { display: flex; flex-direction: column; gap: 6px; padding-top: 22px; }
 .soft-warning { font-family: var(--serif); font-weight: 600; font-style: italic; font-size: 17px; color: var(--secondary); line-height: 1.35; margin-top: 4px; }
 .error-copy { text-align: center; }

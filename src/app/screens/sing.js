@@ -163,8 +163,8 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
         take.analysis.flags.silent
           ? h('div', { class: 'soft-warning' }, 'We could barely hear you. Sing again a little closer, or keep going as it is.')
           : h('div', { class: 'caps' }, `${clock(take.durationSec)} · Listen back`),
-        input,
-        h('div', { class: 'take-player' }, p.el)),
+        h('div', { class: 'take-player' }, p.el),
+        input),
       h('div', { class: 'actions' },
         usesEl = h('div', { class: 'uses', 'data-uses': '' }, usesLabel(app.billing.status())),
         h('button', { class: 'pill', onClick: generate }, 'Create painting'),
@@ -172,8 +172,9 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
     player = p;
   }
 
-  // Preview and result share one note field in the same place, so what was
-  // typed before painting is still there after. It wraps onto more lines as
+  // Preview and result share one note field in the same place, under the
+  // listen-back label and its player, so what was typed before painting is
+  // still there after. It wraps onto more lines as
   // it grows (one paragraph: Enter finishes, pasted line breaks become spaces).
   function noteInput() {
     const fit = () => { el.style.height = 'auto'; el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`; };
@@ -315,8 +316,8 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
     show(h('div', { class: 'phase form', 'data-phase': 'result' },
       h('div', {},
         h('div', { class: 'caps' }, `${clock(take.durationSec)} · ${it.summary}`),
-        noteInput(),
-        h('div', { class: 'take-player' }, p.el)),
+        h('div', { class: 'take-player' }, p.el),
+        noteInput()),
       h('div', { class: 'actions' }, keep, h('button', { class: 'quiet-btn', onClick: singAgain }, 'Sing again'))));
     player = p;
     shareBtn.hidden = false;
