@@ -32,14 +32,10 @@
   },
   "functions": {
     "api/generate.js": {
-      "maxDuration": 120,
-      "includeFiles": "references/**"
+      "maxDuration": 120
     },
     "api/understand.js": {
       "maxDuration": 60
-    },
-    "api/reference.js": {
-      "includeFiles": "references/**"
     }
   }
 }

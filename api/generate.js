@@ -10,8 +10,7 @@
 
 import { direct, FAMILIES, checkPrompt } from '../src/engine/direct/index.js';
 import { generateFromDirection, openaiConfig } from '../src/engine/providers/openai.js';
-import { referenceStoreFromEnv } from '../src/engine/providers/reference-store.js';
-import { FOLDER_LIBRARY } from '../src/engine/providers/reference-folder.js';
+import { referenceStoreFromEnv, libraryFor } from '../src/engine/providers/reference-store.js';
 import { REFERENCE_LIBRARY } from '../src/engine/direct/references.js';
 import { protect, timedFetch } from '../server/protect/index.js';
 import { wiring } from '../server/wire.js';
@@ -78,11 +77,10 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
   if ((body.provider || 'openai') !== 'openai') { res.status(400).json({ ok: false, error: 'unknown provider' }); return; }
   try {
     // References are selected from the bundled, version-controlled registry
-    // (direct/references.js) plus the new images in the repository's family
-    // folders (reference-folder.js): tested, shipped and rolled back with the
-    // deploy. The store only supplies the image bytes; its registry is never
-    // read here.
-    const library = FOLDER_LIBRARY;
+    // (direct/references.js: tested, shipped and rolled back with the deploy)
+    // plus any new image uploaded to a family in the store (libraryFor). The
+    // store's own registry.json is never read here.
+    const library = await libraryFor(store);
     const direction = direct({ ...spec, library });
     // The decided tier is authoritative: never paint a family of another tier.
     if (FAMILIES[direction.family].tier !== spec.completeness) {
