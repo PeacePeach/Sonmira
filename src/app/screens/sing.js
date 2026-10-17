@@ -94,7 +94,7 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
     painting.el.classList.add('alive'); // the washes live until the artwork covers them
     const line = h('div', { class: 'line serif' }, SINGING_LINES[0]);
     const note = h('div', { class: 'hint' }, 'Waiting for the microphone…');
-    const halo = h('div', { class: 'halo', style: { background: 'oklch(0.78 0.1 240 / 0.55)' } });
+    const halo = h('div', { class: 'halo' });
     show(h('div', { class: 'phase centered', 'data-phase': 'singing' },
       h('div', { style: 'text-align:center' }, line, note),
       h('div', { class: 'mic-stack' },
@@ -118,7 +118,6 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
         painting.addStroke(sig.stroke, true);
         painting.setVoice(sig.level);
         halo.style.transform = `scale(${(1 + sig.level * 0.55).toFixed(3)})`;
-        halo.style.background = `oklch(0.78 0.1 ${sig.hue.toFixed(0)} / 0.55)`;
       },
       onLimit: stopSinging,
       onInterrupted: stopSinging,
