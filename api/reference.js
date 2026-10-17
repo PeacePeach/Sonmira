@@ -14,7 +14,7 @@
 // in. Only ids in the active registry are served. Off in Production unless
 // SONMIRA_REFERENCE_VIEW=1 is set there: the comparison is a Preview tool.
 
-import { referenceStoreFromEnv } from '../src/engine/providers/reference-store.js';
+import { referenceStoreFromEnv, registryFor } from '../src/engine/providers/reference-store.js';
 import { REFERENCE_LIBRARY } from '../src/engine/direct/references.js';
 
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
@@ -29,11 +29,11 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
   if (!referenceViewAllowed(env)) return fail(404, 'not available here');
   if (!store) return fail(503, 'no reference store configured');
   const q = req.query ?? Object.fromEntries(new URL(req.url ?? '/', 'http://x').searchParams);
-  if (q.check === '1') return res.status(200).json(await checkAll(store));
+  if (q.check === '1') return res.status(200).json(await checkAll(store, await registryFor(store)));
   const id = q.id;
   if (!ID.test(String(id ?? ''))) return fail(400, 'invalid id');
   try {
-    const ref = REFERENCE_LIBRARY.find((e) => e.id === id && e.active);
+    const ref = (await registryFor(store)).find((e) => e.id === id && e.active);
     if (!ref) return fail(404, 'unknown reference');
     const img = await store.loadImage(ref);
     res.setHeader('content-type', img.mime);
@@ -45,8 +45,8 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
 
 export default createHandler();
 
-// Reads the image of every active reference in the bundled registry (the
-// one /api/generate selects from) through the store, a few at a time, and
+// Reads the image of every active reference /api/generate selects from (the
+// bundled registry plus new images uploaded to a family) through the store, a few at a time, and
 // reports what loaded; no paths or URLs are returned. The store's own
 // registry is compared for information only.
 export async function checkAll(store, bundled = REFERENCE_LIBRARY) {

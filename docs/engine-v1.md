@@ -27,7 +27,8 @@ All of it. Client and server code ship together in one Vercel deploy, and the ne
 | Image prompts, family rules, composition | Code change, then deploy. `tests/visual-freeze.test.mjs` fails until the change is approved and the snapshot is refreshed. |
 | Singing thresholds, words gate, interpretation | Code change, then deploy. Re-check them for free in the Playground Singing test, which re-analyses the saved takes. |
 | Image or text models, image quality and size | Environment variables (`OPENAI_IMAGE_MODEL`, `OPENAI_IMAGE_QUALITY`, `OPENAI_IMAGE_SIZE`, `OPENAI_TRANSCRIBE_MODEL`, `OPENAI_TEXT_MODEL`), then redeploy |
-| Reference styles (which images, which family) | Edit the bundled registry `src/engine/direct/references.js`, then deploy. Upload a new image to Blob first with `tools/references.mjs add`. The freeze test fails until the change is approved. |
+| New reference image | Upload it in the Vercel dashboard (Storage → the Blob store → `references/<tier>/`), named with its family code first, e.g. `R4-morning-window.jpg`. It joins that family's pool within a minute, with no deploy. |
+| Original references (family, palette, retiring one) | Edit the bundled registry `src/engine/direct/references.js`, then deploy. The freeze test fails until the change is approved. |
 
 Iteration is safe in these ways:
 - Every branch gets its own Preview.
@@ -36,13 +37,13 @@ Iteration is safe in these ways:
 
 If the app is ever wrapped as a native App Store app, the wrapper should load the hosted URL. Bundling the files into the app would make every client-side change above wait for a new iOS build.
 
-## Reference selection is version-controlled (Han, 16 Oct)
+## Reference selection (Han, 16 and 17 Oct)
 
-`/api/generate` selects from the bundled registry (`src/engine/direct/references.js`), which has 22 active references in 12 families. Blob storage holds only the image files.
+`/api/generate` selects from the bundled registry (`src/engine/direct/references.js`), which has 22 active references in 12 families, plus any image uploaded to a family in Blob. The bundled registry keeps each original's family, measured palette and content; Blob's own `registry.json` is kept for `tools/references.mjs` but decides nothing (`tests/reference-source.test.mjs`).
 
-Blob's own registry is kept for `tools/references.mjs`, but it no longer decides anything. A reference change therefore goes through Preview, the tests and a deploy, and Vercel's rollback takes it back. `tests/reference-source.test.mjs` fails if the server reads the store's registry or paints a reference that isn't bundled.
+**Adding a reference.** Upload the image into the private Blob store under `references/`, either named with its family code first (`references/resolved/R4-morning-window.jpg`) or inside a folder named after the family (`references/resolved/R4/morning-window.jpg`). The server lists `references/` at most every 30 s (`libraryFor` in `src/engine/providers/reference-store.js`) and adds it to that family's pool; anything without a family in its path is ignored. A new image has no measured palette, so its colour line comes from the family's observed schemes; the image itself is still sent as the style reference. To remove one, delete it in the dashboard. The store is private, so uploads are never publicly readable; `/api/reference` serves images only on Preview (or with `SONMIRA_REFERENCE_VIEW=1`).
 
-There are two ways to check that every active bundled image is in Blob, neither of which costs anything:
+There are two ways to check that every active image is readable in Blob, neither of which costs anything:
 - the Playground's References tab, **Check all references**, on any deployment with the Blob token;
 - `node tools/references.mjs verify`.
 

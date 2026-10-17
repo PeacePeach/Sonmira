@@ -15,14 +15,20 @@
 //
 // The Blob registry is re-read at most every REGISTRY_TTL_MS, so a reference
 // imported or disabled there becomes (in)eligible without a redeploy.
+//
+// Both stores also list their image paths (listPaths), so an image uploaded
+// to a family (folder or file-name code, see discoverReferences) joins that
+// family's pool on its own: libraryFor(store).
 
-import { readFile } from 'node:fs/promises';
-import { join, extname } from 'node:path';
+import { readFile, readdir } from 'node:fs/promises';
+import { join, extname, basename } from 'node:path';
 import { REFERENCE_LIBRARY } from '../direct/references.js';
 import { FAMILIES } from '../direct/families.js';
+import { createLibrary, LIBRARY } from '../direct/library.js';
 
 const MIME = { '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' };
 const mimeOf = (path) => MIME[extname(path).toLowerCase()] || 'image/jpeg';
+const isImage = (path) => Boolean(MIME[extname(path).toLowerCase()]);
 export const BLOB_PREFIX = 'references/';
 export const REGISTRY_PATH = `${BLOB_PREFIX}registry.json`;
 export const REGISTRY_TTL_MS = 30_000;
@@ -32,6 +38,7 @@ export function localStore(root, registry = REFERENCE_LIBRARY) {
     kind: 'local',
     loadRegistry: async () => registry,
     loadImage: async (ref) => ({ name: ref.path.split('/').pop(), mime: mimeOf(ref.path), bytes: await readFile(join(root, ref.path)) }),
+    listPaths: async () => (await readdir(root, { recursive: true })).map((p) => p.split('\\').join('/')).filter(isImage),
   };
 }
 
@@ -79,6 +86,21 @@ export function blobStore({ client, token, now = Date.now } = {}) {
     async deleteImage(path) {
       await (await sdk).del(BLOB_PREFIX + path, auth);
     },
+    // Every image under references/, as paths relative to it.
+    async listPaths() {
+      const paths = [];
+      let cursor;
+      try {
+        do {
+          const r = await (await sdk).list({ prefix: BLOB_PREFIX, cursor, ...auth });
+          for (const b of r.blobs) paths.push(b.pathname.slice(BLOB_PREFIX.length));
+          cursor = r.hasMore ? r.cursor : undefined;
+        } while (cursor);
+      } catch (e) {
+        throw Object.assign(new Error('reference storage unavailable'), { code: 'reference_store', cause: e });
+      }
+      return paths.filter(isImage);
+    },
   };
 }
 
@@ -90,6 +112,63 @@ export function referenceStoreFromEnv(env = process.env) {
   if (mode === 'blob') return blobStore({ token: env.BLOB_READ_WRITE_TOKEN });
   if (mode === 'local' && env.SONMIRA_REFS_DIR) return localStore(env.SONMIRA_REFS_DIR);
   return null;
+}
+
+// ---- Discovery: new images join their family's pool.
+//
+// The bundled registry (direct/references.js) stays the source for the
+// references it lists: their family, measured palette and content. An image
+// in the store that it does not list is added when its family can be read
+// from its path: a folder named after the family, or a file name that starts
+// with the family code:
+//
+//   references/resolved/R4-morning-window.jpg   → R4-lyrical-everyday
+//   references/resolved/R4/morning-window.jpg   → R4-lyrical-everyday
+//   references/gathered/G2-splash-wash/blot.png → G2-splash-wash
+//
+// Anything else is ignored. A new image has no measured palette, so direct()
+// colours it from its family's observed schemes; the image itself is still
+// sent as the style reference.
+
+const CODE = /^([A-Z]\d)(?:[\s_-]|$)/i;
+const familyOfName = (name) => FAMILIES[name] ? name : Object.keys(FAMILIES).find((id) => id.split('-')[0].toUpperCase() === name.toUpperCase()) || null;
+
+export function discoverReferences(paths, registry = REFERENCE_LIBRARY) {
+  const known = new Set(registry.map((e) => e.path));
+  const ids = new Set(registry.map((e) => e.id));
+  const added = [];
+  for (const path of [...paths].sort()) {
+    if (known.has(path) || !isImage(path)) continue;
+    const parts = path.split('/');
+    const file = basename(path, extname(path));
+    const family = parts.slice(0, -1).map(familyOfName).filter(Boolean).pop() || (CODE.test(file) ? familyOfName(file.match(CODE)[1]) : null);
+    if (!family) continue;
+    const stem = file.replace(/[^A-Za-z0-9_-]+/g, '_').slice(0, 48);
+    let id = stem;
+    if (ids.has(id)) id = `${family.split('-')[0]}_${stem}`;
+    if (ids.has(id)) continue;
+    ids.add(id);
+    added.push({ id, family, path, active: true });
+  }
+  return added.length ? [...registry, ...added] : registry;
+}
+
+// The registry and library /api/generate selects from: the bundled registry
+// plus the store's new images, listed at most every REGISTRY_TTL_MS. If the
+// listing fails, the bundled registry alone (painting never depends on it).
+const discovered = new WeakMap();
+export async function registryFor(store, { now = Date.now } = {}) {
+  if (!store?.listPaths) return REFERENCE_LIBRARY;
+  const hit = discovered.get(store);
+  if (hit && now() - hit.at < REGISTRY_TTL_MS) return hit.registry;
+  let registry = hit?.registry ?? REFERENCE_LIBRARY;
+  try { registry = discoverReferences(await store.listPaths()); } catch { /* keep the last good list */ }
+  discovered.set(store, { at: now(), registry });
+  return registry;
+}
+export async function libraryFor(store, opts) {
+  const registry = await registryFor(store, opts);
+  return registry === REFERENCE_LIBRARY ? LIBRARY : createLibrary(registry);
 }
 
 // ---- Registry edits (import script and tests). Every change rewrites the
