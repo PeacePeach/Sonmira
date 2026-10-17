@@ -20,6 +20,7 @@ import { readFile } from 'node:fs/promises';
 import { join, extname } from 'node:path';
 import { REFERENCE_LIBRARY } from '../direct/references.js';
 import { FAMILIES } from '../direct/families.js';
+import { REFERENCE_DIR, folderHasImages } from './reference-folder.js';
 
 const MIME = { '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' };
 const mimeOf = (path) => MIME[extname(path).toLowerCase()] || 'image/jpeg';
@@ -82,13 +83,16 @@ export function blobStore({ client, token, now = Date.now } = {}) {
   };
 }
 
-// Blob when the deployment has Blob credentials (or SONMIRA_REFS_STORE=blob),
-// else the local folder when SONMIRA_REFS_DIR is set, else none (text-only
-// generation from the bundled registry's palettes).
-export function referenceStoreFromEnv(env = process.env) {
-  const mode = env.SONMIRA_REFS_STORE || (env.BLOB_READ_WRITE_TOKEN ? 'blob' : env.SONMIRA_REFS_DIR ? 'local' : 'none');
+// SONMIRA_REFS_STORE decides when set. Otherwise the local folder when
+// SONMIRA_REFS_DIR is set, else the repository's references/ folder when it
+// holds images (shipped with the deploy), else Blob when the deployment has
+// Blob credentials, else none (text-only generation from the bundled
+// registry's palettes).
+export function referenceStoreFromEnv(env = process.env, { repoDir = REFERENCE_DIR, repoHasImages = folderHasImages(repoDir) } = {}) {
+  const mode = env.SONMIRA_REFS_STORE || (env.SONMIRA_REFS_DIR ? 'local' : repoHasImages ? 'repo' : env.BLOB_READ_WRITE_TOKEN ? 'blob' : 'none');
   if (mode === 'blob') return blobStore({ token: env.BLOB_READ_WRITE_TOKEN });
   if (mode === 'local' && env.SONMIRA_REFS_DIR) return localStore(env.SONMIRA_REFS_DIR);
+  if (mode === 'repo') return { ...localStore(repoDir), kind: 'repo' };
   return null;
 }
 

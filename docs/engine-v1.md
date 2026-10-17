@@ -27,7 +27,7 @@ All of it. Client and server code ship together in one Vercel deploy, and the ne
 | Image prompts, family rules, composition | Code change, then deploy. `tests/visual-freeze.test.mjs` fails until the change is approved and the snapshot is refreshed. |
 | Singing thresholds, words gate, interpretation | Code change, then deploy. Re-check them for free in the Playground Singing test, which re-analyses the saved takes. |
 | Image or text models, image quality and size | Environment variables (`OPENAI_IMAGE_MODEL`, `OPENAI_IMAGE_QUALITY`, `OPENAI_IMAGE_SIZE`, `OPENAI_TRANSCRIBE_MODEL`, `OPENAI_TEXT_MODEL`), then redeploy |
-| Reference styles (which images, which family) | Edit the bundled registry `src/engine/direct/references.js`, then deploy. Upload a new image to Blob first with `tools/references.mjs add`. The freeze test fails until the change is approved. |
+| Reference styles (which images, which family) | Add the image to its family folder, `references/<tier>/<FAMILY>/`, then deploy (see `references/README.md`). Changing an original reference's family or entry is an edit to `src/engine/direct/references.js`; the freeze test fails until that change is approved. |
 
 Iteration is safe in these ways:
 - Every branch gets its own Preview.
@@ -38,7 +38,7 @@ If the app is ever wrapped as a native App Store app, the wrapper should load th
 
 ## Reference selection is version-controlled (Han, 16 Oct)
 
-`/api/generate` selects from the bundled registry (`src/engine/direct/references.js`), which has 22 active references in 12 families. Blob storage holds only the image files.
+`/api/generate` selects from the bundled registry (`src/engine/direct/references.js`), which has 22 active references in 12 families, plus any new image in a family folder under `references/` (`src/engine/providers/reference-folder.js`). Once `references/` holds the images, the server reads them from the deploy; Blob is used only when it doesn't (or with `SONMIRA_REFS_STORE=blob`).
 
 Blob's own registry is kept for `tools/references.mjs`, but it no longer decides anything. A reference change therefore goes through Preview, the tests and a deploy, and Vercel's rollback takes it back. `tests/reference-source.test.mjs` fails if the server reads the store's registry or paints a reference that isn't bundled.
 
