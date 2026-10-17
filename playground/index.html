@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sonmira Engine Playground</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>Sonmira Watercolor Engine Playground</h1>
+  <p class="sub">Local test bench for the real engine (<span id="method">procedural-watercolor-v1</span>). Nothing leaves this computer.</p>
+  <nav>
+    <button class="tab active" data-view="studio">Studio</button>
+    <button class="tab" data-view="library">Library &amp; compare <span id="libCount"></span></button>
+    <button class="tab" data-view="refs">References</button>
+    <button class="tab" data-view="validation">Validation</button>
+    <button class="tab" data-view="singing">Singing test</button>
+  </nav>
+</header>
+
+<main id="studio" class="view">
+  <section class="col input">
+    <div class="card">
+      <h2>1 · Voice</h2>
+      <div class="rec">
+        <button id="recBtn" class="primary">● Record</button>
+        <span id="timer" class="timer">0.0 / 30 s</span>
+      </div>
+      <div class="meter"><div id="meterFill"></div></div>
+      <p class="hint" id="recHint">Recording asks for microphone permission. Stops by itself at 30 s.</p>
+      <div class="or">or</div>
+      <label class="file">Upload WAV, MP3 or M4A
+        <input id="fileInput" type="file" accept=".wav,.mp3,.m4a,.aac,.mp4,audio/*">
+      </label>
+      <div id="clip" class="clip" hidden>
+        <div class="clipname" id="clipName"></div>
+        <audio id="player" controls></audio>
+        <button id="retryBtn" class="ghost">Discard and record again</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2 · Note (optional)</h2>
+      <textarea id="note" rows="3" placeholder="A line about the song or the moment. Emotion and motif come only from these words."></textarea>
+      <p class="hint">For OpenAI paintings the note is also the subject (there is no lyrics step here). With no note, Gathered and Resolved paint an atmosphere of the motif. No people are painted at any tier.</p>
+    </div>
+
+    <div class="card dev">
+      <h2>Image provider</h2>
+      <label>Painted by
+        <select id="provider">
+          <option value="procedural">Procedural renderer (JS, no AI)</option>
+          <option value="openai">OpenAI image model (server)</option>
+        </select>
+      </label>
+      <p class="hint" id="providerHint">Checking which providers are configured…</p>
+    </div>
+
+    <div class="card dev">
+      <h2>Developer overrides</h2>
+      <label>Vocal control
+        <select id="ovTier">
+          <option value="auto">Auto (from the voice)</option>
+          <option value="loose">Loose</option>
+          <option value="gathered">Gathered</option>
+          <option value="resolved">Resolved</option>
+          <option value="custom">Custom position…</option>
+        </select>
+      </label>
+      <label id="posRow" hidden>Style position <output id="posOut">0.50</output>
+        <input id="ovPos" type="range" min="0" max="1" step="0.01" value="0.5">
+      </label>
+      <label>Emotion
+        <select id="ovEmotion"><option value="auto">Auto (from the note)</option></select>
+      </label>
+      <label>Motif
+        <select id="ovMotif"><option value="auto">Auto (from the note)</option></select>
+      </label>
+      <label>Style family
+        <select id="ovFamily">
+          <option value="auto">Auto (drawn from this tier's references)</option>
+        </select>
+      </label>
+      <label>Reference (OpenAI only)
+        <select id="ovReference">
+          <option value="auto">Auto (drawn from the family)</option>
+        </select>
+      </label>
+      <p class="hint">Pin one reference to compare styles under the same note, tier, emotion, motif and seed.</p>
+      <label>Seed
+        <span class="seedrow">
+          <input id="seed" type="text" inputmode="numeric" placeholder="auto (from the audio)">
+          <button id="rollSeed" class="ghost" title="New random seed">↻</button>
+        </span>
+      </label>
+      <p class="hint">Fix a seed to compare tiers or emotions on the same composition.</p>
+    </div>
+
+    <div class="actions">
+      <button id="paintBtn" class="primary" disabled>Analyze &amp; paint</button>
+      <button id="tiersBtn" disabled title="Same audio, note and seed, painted at Loose, Gathered and Resolved">Paint all three tiers</button>
+    </div>
+    <p class="hint" id="status"></p>
+  </section>
+
+  <section class="col art">
+    <div id="artwork" class="artwork empty">
+      <p>The painting appears here.</p>
+    </div>
+  </section>
+
+  <section class="col results">
+    <div class="card" id="results">
+      <h2>Analysis</h2>
+      <p class="hint">Record or upload a take, then press Analyze &amp; paint.</p>
+    </div>
+    <details class="card limits">
+      <summary>What these numbers can and cannot say</summary>
+      <ul>
+        <li>Vocal control measures how sustained and connected the pitch was and how often the sound broke. It picks an artistic register. It is not a singing-quality score.</li>
+        <li>There is no reference melody or beat, so nothing here can judge whether notes or rhythm were correct.</li>
+        <li>Vibrato and slides count as connected. Onset regularity is only a proxy from loudness rises.</li>
+        <li>Emotion and motif come only from the note. With no note: tender and an abstract motif.</li>
+        <li>Thresholds (gathered ≥ 0.50, resolved ≥ 0.78) are artistic calibration, not validated against listeners.</li>
+        <li>Confidence drops with little pitched sound, unclear pitch or mostly noise; low-confidence takes are pulled toward the middle.</li>
+      </ul>
+    </details>
+  </section>
+</main>
+
+<main id="library" class="view" hidden>
+  <div class="libbar">
+    <span id="libHint" class="hint">Every painting is saved here in this browser. Tick runs and press Compare: AI paintings show their original reference on the left, the output on the right, and the settings.</span>
+    <span class="spacer"></span>
+    <label class="importrun">Import runs (.json)<input id="importRuns" type="file" accept=".json,application/json"></label>
+    <button id="compareBtn" disabled>Compare selected</button>
+    <button id="clearSel" class="ghost">Clear selection</button>
+  </div>
+  <div id="compare" class="compare" hidden></div>
+  <div id="runs" class="runs"></div>
+</main>
+
+<main id="refs" class="view" hidden>
+  <div class="libbar">
+    <span class="hint">Loads every reference this deployment's server can read (private store), so you can confirm all of them are available here.</span>
+    <span class="spacer"></span>
+    <button id="refCheckBtn" class="primary">Check all references</button>
+  </div>
+  <p id="refSummary" class="refsummary"></p>
+  <div id="refGrid" class="refgrid"></div>
+</main>
+
+<main id="validation" class="view" hidden>
+  <p class="hint">Validation runs (newest first) made with the real pipeline and saved with this deployment. Each original reference is on the left and its generated image on the right, with the settings and the checks.</p>
+  <div id="valSets"></div>
+</main>
+
+<main id="singing" class="view" hidden>
+  <section class="card stintro">
+    <h2>Singing test · how the app classifies a whole recording</h2>
+    <p>Nine short takes, each sung a particular way. Before each take, set the tier you expect; after listening back, set the tier you think it deserves. The engine decides exactly as the app does: first whether the words form a complete sung phrase (if not, Loose), then whether the singing is controlled across the whole take (Resolved) or not (Gathered). Your labels are compared with the engine, not treated as correct: the table at the bottom shows where each threshold sits against your voice.</p>
+    <p class="hint" id="stServer">Checking the transcription server…</p>
+    <p class="hint">Takes and recordings stay in this browser. Recording again replaces a take. Use headphones off and a quiet room; the microphone settings are the app’s.</p>
+  </section>
+  <section class="card"><h2>Summary</h2><p class="hint" id="stProgress"></p><div id="stSummary"></div></section>
+  <div id="stTakes" class="takes"></div>
+  <section class="card"><h2>Calibration · every check, every take</h2><div id="stCalib"></div></section>
+  <section class="card stdone">
+    <h2>When you’re done</h2>
+    <div class="actions"><button id="stCopy" class="primary">Copy results for Claude</button><button id="stClear" class="ghost">Delete all takes</button></div>
+    <p class="hint" id="stCopyHint">Copies the measurements and your labels (no audio) as text to paste into the Sonmira thread.</p>
+    <textarea id="stCopyBox" rows="6" hidden readonly></textarea>
+  </section>
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

@@ -40,5 +40,6 @@ export function mountDetail(app, { id }) {
       h('div', { class: 'caption serif' + (e.note ? '' : ' untitled') }, e.note || 'Untitled'),
       player.el));
 
-  return { el, destroy() { sheet?.close(); clearTimeout(confirmT); player.destroy(); painting.destroy(); } };
+  app.dev.onArtworkOpen?.(e); // ?dev panel only
+  return { el, destroy() { app.dev.onArtworkClose?.(e); sheet?.close(); clearTimeout(confirmT); player.destroy(); painting.destroy(); } };
 }

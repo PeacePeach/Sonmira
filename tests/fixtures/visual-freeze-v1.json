@@ -1,0 +1,33 @@
+{
+ "approved": "Han, 16 Oct 2026: Validation 4 approved as the V1 three-tier artwork quality",
+ "library": "68d7d4a86f0416e7",
+ "image": {
+  "model": "gpt-image-2",
+  "quality": "medium",
+  "size": "1024x1536"
+ },
+ "prompts": {
+  "loose/L1-line-over-wash/loose_01": "1a3f87afd458e633",
+  "loose/L2-bloom-field/loose_02": "3562b1b81f0c3602",
+  "loose/L3-drip-curtain/loose_03": "4362d9fe83a031c1",
+  "gathered/G1-atmospheric-study/gathered_01": "c4c964573e5254b1",
+  "gathered/G1-atmospheric-study/gathered_05": "8f88d982975761d6",
+  "gathered/G2-splash-wash/gathered_02": "aefcc36c30a566d5",
+  "gathered/G3-luminous-contrast/gathered_03": "6a8deba5c9183aab",
+  "gathered/G3-luminous-contrast/gathered_04": "8f9a8e243fb106ad",
+  "resolved/R1-graphic-snow/resolved_01": "cb71fc01c6188698",
+  "resolved/R1-graphic-snow/resolved_14": "ab551c2acd5a11fb",
+  "resolved/R2-aerial-shallows/resolved_08": "841078e370976314",
+  "resolved/R2-aerial-shallows/resolved_12": "a44fab42e6d0cdf0",
+  "resolved/R3-vivid-wash-focal/resolved_02": "22ce9248ceb597dd",
+  "resolved/R3-vivid-wash-focal/resolved_03": "f262bc309d42214a",
+  "resolved/R4-lyrical-everyday/resolved_05": "c10b3c79d3ce5482",
+  "resolved/R4-lyrical-everyday/resolved_06": "710a78557f483e8d",
+  "resolved/R4-lyrical-everyday/resolved_07": "5948b2459b0c763e",
+  "resolved/R4-lyrical-everyday/resolved_13": "dc6bf6e93248d108",
+  "resolved/R5-light-as-subject/resolved_04": "730d852f5f95c51f",
+  "resolved/R5-light-as-subject/resolved_09": "127aa76b16d0aeed",
+  "resolved/R5-light-as-subject/resolved_10": "36c63028de9bdd30",
+  "resolved/R6-misty-monochrome/resolved_11": "13fb27d041b7dfc3"
+ }
+}

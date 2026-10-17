@@ -18,6 +18,7 @@ const ERRORS = {
   network: 'We couldn’t reach the App Store. Check your connection and try again. Nothing was charged.',
   failed: 'The purchase didn’t go through, and nothing was charged. You can try again.',
   notAllowed: 'Purchases are turned off on this device. You can change this in Screen Time settings.',
+  appOnly: 'Purchases are made in the Sonmira app for iPhone. Nothing was charged.',
   restoreNetwork: 'We couldn’t reach the App Store to restore. Check your connection and try again.',
 };
 
@@ -55,14 +56,6 @@ export function openPaywall(app, { from = 'diary', onContinue } = {}) {
     return { p, el };
   });
 
-  const whyBody = h('div', { class: 'pw-why-body', id: 'pw-why', hidden: true }, WHY.map((t) => h('p', {}, t)));
-  const whyBtn = h('button', { class: 'pw-why-link serif', 'aria-expanded': 'false', 'aria-controls': 'pw-why', onClick: () => {
-    const open = whyBody.hidden;
-    whyBody.hidden = !open;
-    whyBtn.setAttribute('aria-expanded', String(open));
-    if (open) requestAnimationFrame(() => whyBody.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
-  } }, 'Why we charge');
-
   const lede = extraToday
     ? 'Daily Ritual brings a new one tomorrow. If today asks for more, you can add a few paintings.'
     : start.purchased
@@ -76,13 +69,10 @@ export function openPaywall(app, { from = 'diary', onContinue } = {}) {
     extraToday ? h('p', { class: 'pw-plan-note' }, `Your Daily Ritual · ${renewalLabel(start.sub)}`) : null,
     h('div', { class: 'pw-cta' }, cta, message),
     fine,
-    h('div', { class: 'pw-why' }, whyBtn, whyBody),
     h('div', { class: 'pw-links' },
       h('button', { class: 'pw-link', onClick: restore }, 'Restore purchases'),
       h('span', { 'aria-hidden': 'true' }, '·'),
-      h('button', { class: 'pw-link', onClick: () => openLegalSheet(app, 'terms') }, 'Terms'),
-      h('span', { 'aria-hidden': 'true' }, '·'),
-      h('button', { class: 'pw-link', onClick: () => openLegalSheet(app, 'privacy') }, 'Privacy')),
+      h('button', { class: 'pw-link', 'data-more-info': '', onClick: () => openMoreInfo(app, b) }, 'More information')),
     b.simulated ? h('div', { class: 'pw-dev' }, 'Development build · purchases are simulated') : null);
   layer.body.append(choose);
 
@@ -96,9 +86,10 @@ export function openPaywall(app, { from = 'diary', onContinue } = {}) {
     const price = b.price(p.id);
     cta.disabled = busy;
     if (!busy && !waiting) cta.textContent = p.kind === 'subscription' ? `Start Daily Ritual · ${price} / month` : `Add 10 paintings · ${price}`;
+    // The recurring-charge terms stay here, next to the button; the rest is in More information.
     fine.textContent = p.kind === 'subscription'
-      ? `${price} a month, renewing automatically until you cancel. Cancel anytime in your Apple ID settings, at least 24 hours before it renews. One painting a day; unused days don’t carry over. Cancelling never touches your diary.`
-      : `A one-time purchase. Your ${p.credits} paintings never expire, and one is used only when a painting is made.`;
+      ? `${price} a month, renewing automatically until you cancel. Cancel anytime in your Apple ID settings, at least 24 hours before it renews.`
+      : `A one-time purchase. Your ${p.credits} paintings never expire.`;
   }
   const say = (t, tone = '') => { message.textContent = t || ''; message.dataset.tone = tone; };
   const working = (label) => { busy = true; paint(); cta.textContent = label; say(''); };
@@ -142,7 +133,7 @@ export function openPaywall(app, { from = 'diary', onContinue } = {}) {
     } catch (e) {
       if (layer.closed) return;
       idle();
-      if (e?.kind !== 'userCancelled') say(ERRORS.restoreNetwork, 'error');
+      if (e?.kind !== 'userCancelled') say(e?.kind === 'appOnly' ? ERRORS.appOnly : ERRORS.restoreNetwork, 'error');
     }
   }
 
@@ -184,5 +175,25 @@ export function openPaywall(app, { from = 'diary', onContinue } = {}) {
   }
 
   paint();
+  return layer;
+}
+
+// More information: why Sonmira charges, the purchase details in full, and
+// Terms and Privacy, in a sheet over the paywall (the legal sheets open over it).
+function openMoreInfo(app, b) {
+  const sub = b.products.find((p) => p.kind === 'subscription');
+  const pack = b.products.find((p) => p.kind === 'consumable');
+  const layer = openLayer(app, { label: 'More information', title: 'More information', cls: 'pw-info' });
+  const section = (title, ...paras) => h('section', { class: 'pw-info-section' }, h('h3', { class: 'caps' }, title), paras.filter(Boolean).map((t) => h('p', {}, t)));
+  layer.body.append(
+    section('Why we charge', ...WHY),
+    section('About purchases',
+      sub ? `${sub.name}: ${b.price(sub.id)} a month, renewing automatically until you cancel. Payment is charged to your Apple ID when you confirm. Cancel anytime in your Apple ID settings, at least 24 hours before it renews. One painting a day; unused days don’t carry over. Cancelling never touches your diary.` : null,
+      pack ? `${pack.name}: ${b.price(pack.id)}, a one-time purchase. Your ${pack.credits} paintings never expire, and one is used only when a painting is made.` : null,
+      'Restore purchases brings back what you’ve bought with this Apple ID.'),
+    h('div', { class: 'pw-links pw-info-links' },
+      h('button', { class: 'pw-link', onClick: () => openLegalSheet(app, 'terms') }, 'Terms'),
+      h('span', { 'aria-hidden': 'true' }, '·'),
+      h('button', { class: 'pw-link', onClick: () => openLegalSheet(app, 'privacy') }, 'Privacy')));
   return layer;
 }

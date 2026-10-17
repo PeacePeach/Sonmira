@@ -3,19 +3,18 @@
 
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
-import { LENGTHS } from '../settings.js';
 import { openPaywall } from '../paywall/paywall.js';
 import { balanceLabel, renewalLabel } from '../paywall/copy.js';
 
 export function mountSettings(app) {
   const b = app.billing;
-  const lengthVal = h('span', { class: 'val' });
   const paintings = h('div', { class: 'group', 'data-paintings': '' });
   const devGroup = h('div', { class: 'group', 'data-dev-group': '' });
   const weekVal = h('span', { class: 'val' });
+  const accountVal = h('span', { class: 'val acct-row-val' });
   const paint = () => {
-    lengthVal.textContent = `${app.settings.maxSeconds} seconds`;
     weekVal.textContent = app.settings.weekStart === 1 ? 'Mon' : 'Sun';
+    accountVal.textContent = app.account?.status().signedIn ? 'Signed in with Apple' : 'On this iPhone';
     const st = b.status();
     paintings.replaceChildren(...[
       h('div', { class: 'row' }, lead('Available', 'paintings'), h('span', { class: 'val' }, balanceLabel(st))),
@@ -27,16 +26,17 @@ export function mountSettings(app) {
   };
 
   // In the app this opens Apple's subscription settings (AppStore.showManageSubscriptions).
-  const manage = () => app.toast(b.simulated
-    ? 'In the app, this opens Apple’s subscription settings. In this simulation, use Development below.'
-    : 'Opening subscription settings…');
+  const manage = () => (b.manageSubscriptions
+    ? b.manageSubscriptions().then(() => b.refresh()).then(paint).catch(() => app.toast('We couldn’t open your subscription settings. You’ll also find them in Settings, under your name.'))
+    : app.toast('In the app, this opens Apple’s subscription settings. In this simulation, use Development below.'));
 
   async function restore() {
     try {
       const r = await b.restore();
       app.toast(r.subscription || r.credits ? `Restored. ${balanceLabel(b.status())}.` : 'There’s nothing to restore for this Apple ID.');
     } catch (e) {
-      if (e?.kind !== 'userCancelled') app.toast('We couldn’t reach the App Store to restore. Check your connection and try again.');
+      if (e?.kind === 'appOnly') app.toast('Purchases are made and restored in the Sonmira app for iPhone.');
+      else if (e?.kind !== 'userCancelled') app.toast('We couldn’t reach the App Store to restore. Check your connection and try again.');
     }
     paint();
   }
@@ -67,16 +67,15 @@ export function mountSettings(app) {
     h('h1', {}, 'Settings'),
     h('div', { class: 'section' }, 'Diary'),
     h('div', { class: 'group' },
-      action('Recording length', lengthVal, () => {
-        const i = LENGTHS.indexOf(app.settings.maxSeconds);
-        app.setSettings({ maxSeconds: LENGTHS[(i + 1) % LENGTHS.length] }); paint();
-      }, 'recordingLength'),
       action('Start day of week', weekVal, () => { app.setSettings({ weekStart: app.settings.weekStart ? 0 : 1 }); paint(); }, 'weekStart'),
       soon('Daily reminder', 'reminder'),
       soon('Diary lock', 'lock'),
       soon('Backup / restore', 'backup')),
     h('div', { class: 'section' }, 'Paintings'),
     paintings,
+    h('div', { class: 'section' }, 'Account'),
+    h('div', { class: 'group' },
+      h('button', { class: 'row action', 'data-account-row': '', onClick: () => app.navigate('account') }, lead('Account', 'account'), h('span', { class: 'row-end' }, accountVal, icon('forward', { size: 'sm', tone: 'subtle' })))),
     h('div', { class: 'section' }, 'About'),
     h('div', { class: 'group' },
       soon('Rate Sonmira', 'rate'),

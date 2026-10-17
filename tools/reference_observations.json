@@ -1,0 +1,585 @@
+{
+ "loose_01": {
+  "title_observed": "nine small abstract cards",
+  "hue_family": "cool blue-cyan with ochre/red line accents",
+  "form_clarity": 0.1,
+  "composition": "all-over, no focal hierarchy; each card a field of marks",
+  "focal_area": "none",
+  "wash_transparency": "medium, layered and scrubbed",
+  "paper_grain": "visible, rough",
+  "edge_bleed": "high, wet-in-wet blooms and backruns",
+  "line_density": "high: scribbled pencil/crayon loops, dashes, arcs over washes",
+  "drip_density": "low",
+  "motifs": [
+   "abstract",
+   "water"
+  ],
+  "notes": "Gestural scribbles (loops, hatching, dotted dashes) laid over loose blue washes; rain-like vertical dashes in some cards.",
+  "flags": [
+   "composite: 3x3 grid of separate artworks on white",
+   "metrics averaged over the nine panels"
+  ],
+  "confidence": 0.8,
+  "scores": {
+   "edge_bleed": 0.8,
+   "linework": 0.8,
+   "drips": 0.1,
+   "spatter": 0.1
+  }
+ },
+ "loose_02": {
+  "title_observed": "turquoise wash field",
+  "hue_family": "cerulean / turquoise with spring-green",
+  "form_clarity": 0.05,
+  "composition": "all-over field, darker toward edges, pale centre",
+  "focal_area": "none",
+  "wash_transparency": "high, many soft overlapping washes",
+  "paper_grain": "strong granulation speckle",
+  "edge_bleed": "very high, cauliflower blooms",
+  "line_density": "none",
+  "drip_density": "none",
+  "motifs": [
+   "abstract",
+   "water"
+  ],
+  "notes": "Pure pigment play: blooms, salt-like speckle, diagonal soft streaks. Reads as water/ice without any form.",
+  "flags": [],
+  "confidence": 0.9,
+  "scores": {
+   "edge_bleed": 1,
+   "linework": 0,
+   "drips": 0,
+   "spatter": 0.2
+  }
+ },
+ "loose_03": {
+  "title_observed": "dripping forest",
+  "hue_family": "sap green, lemon, lilac-grey, peach",
+  "form_clarity": 0.35,
+  "composition": "vertical rhythm of runs from a top band of foliage blobs",
+  "focal_area": "upper band",
+  "wash_transparency": "very high, thin glazes",
+  "paper_grain": "smooth",
+  "edge_bleed": "high at the top band; runs have hard drip edges",
+  "line_density": "none",
+  "drip_density": "very high: long vertical drips standing in for trunks",
+  "motifs": [
+   "garden",
+   "landscape"
+  ],
+  "notes": "Trees suggested only by gravity drips; leaves are dabs. Paper left open between runs. Grey background around the sheet excluded.",
+  "flags": [
+   "photo of a sheet on grey background; ROI crops to the sheet"
+  ],
+  "confidence": 0.85,
+  "scores": {
+   "edge_bleed": 0.7,
+   "linework": 0,
+   "drips": 1,
+   "spatter": 0.1
+  }
+ },
+ "gathered_01": {
+  "title_observed": "lagoon city in haze (three views)",
+  "hue_family": "pale aqua, cream, vermilion/peach accents",
+  "form_clarity": 0.55,
+  "composition": "low horizon, architecture as a thin band with a few verticals, large open sky and water",
+  "focal_area": "towers on the horizon band",
+  "wash_transparency": "very high, near-white glazes",
+  "paper_grain": "light",
+  "edge_bleed": "soft, forms dissolve into haze; some pencil underdrawing",
+  "line_density": "low: a few fine pencil lines for masts and windows",
+  "drip_density": "none",
+  "motifs": [
+   "water",
+   "landscape"
+  ],
+  "notes": "Emerging forms: buildings stated by a few warm notes and their reflections; most of the sheet is air and water.",
+  "flags": [
+   "composite: three paintings stacked with white gutters",
+   "metrics averaged over the three panels"
+  ],
+  "confidence": 0.85,
+  "scores": {
+   "edge_bleed": 0.6,
+   "linework": 0.2,
+   "drips": 0,
+   "spatter": 0
+  }
+ },
+ "gathered_02": {
+  "title_observed": "grey washes over grassy marks",
+  "hue_family": "neutral grey, cerulean, olive green",
+  "form_clarity": 0.3,
+  "composition": "heavy bottom band of olive dry-brush marks, floating grey shapes above, big white field",
+  "focal_area": "centre-left floating grey shapes",
+  "wash_transparency": "medium, hard-edged pooled washes",
+  "paper_grain": "visible granulation in greys",
+  "edge_bleed": "pooled hard edges with dark rims; spatter dots",
+  "line_density": "medium: calligraphic dry-brush strokes",
+  "drip_density": "low",
+  "motifs": [
+   "landscape",
+   "abstract",
+   "sky"
+  ],
+  "notes": "Semi-abstract landscape: suggests ground, grasses and clouds without depicting them. Dark edge rims from pooling are characteristic.",
+  "flags": [
+   "signature lower right"
+  ],
+  "confidence": 0.8,
+  "scores": {
+   "edge_bleed": 0.6,
+   "linework": 0.5,
+   "drips": 0.2,
+   "spatter": 0.5
+  }
+ },
+ "gathered_03": {
+  "title_observed": "sunlit forest path",
+  "hue_family": "yellow-green, sap green, blue-grey",
+  "form_clarity": 0.5,
+  "composition": "diagonal light shaft from top-left, dark mass right, path into depth",
+  "focal_area": "bright clearing centre",
+  "wash_transparency": "high wet-in-wet glow",
+  "paper_grain": "smooth",
+  "edge_bleed": "very soft wet-in-wet, with sharp spatter and lifted leaf shapes",
+  "line_density": "medium: thin twig lines",
+  "drip_density": "low; spatter medium",
+  "motifs": [
+   "garden",
+   "landscape"
+  ],
+  "notes": "Atmospheric depth through soft gradients, structure emerging only at the edges (twigs, path).",
+  "flags": [
+   "small signature mark lower left"
+  ],
+  "confidence": 0.85,
+  "scores": {
+   "edge_bleed": 0.85,
+   "linework": 0.4,
+   "drips": 0.1,
+   "spatter": 0.5
+  }
+ },
+ "gathered_04": {
+  "title_observed": "sepia arcade / café interior",
+  "hue_family": "burnt umber, sienna, ochre, blue-violet",
+  "form_clarity": 0.55,
+  "composition": "one-point perspective into depth, vertical drips, light at end",
+  "focal_area": "lit tables lower right",
+  "wash_transparency": "low-medium, layered darks",
+  "paper_grain": "dry-brush texture",
+  "edge_bleed": "mixed: dry-brush scumbles and vertical runs",
+  "line_density": "medium: string lights, rigging lines",
+  "drip_density": "high vertical runs",
+  "motifs": [
+   "interior",
+   "landscape"
+  ],
+  "notes": "Strong value structure and drips; forms implied by light and dark blocks rather than drawn.",
+  "flags": [],
+  "confidence": 0.8,
+  "scores": {
+   "edge_bleed": 0.5,
+   "linework": 0.45,
+   "drips": 0.75,
+   "spatter": 0.3
+  }
+ },
+ "gathered_05": {
+  "title_observed": "breaking surf and sky studies (three views)",
+  "hue_family": "cerulean, cobalt, sand yellow, peach",
+  "form_clarity": 0.4,
+  "composition": "horizontal bands: sky, wave crest / cloud streak, beach",
+  "focal_area": "the white crest or a single blue streak",
+  "wash_transparency": "medium, some opaque white",
+  "paper_grain": "light",
+  "edge_bleed": "soft feathered strokes",
+  "line_density": "low",
+  "drip_density": "none",
+  "motifs": [
+   "water",
+   "sky"
+  ],
+  "notes": "Few horizontal gestures suggest wave and sky; the third panel is almost colour field with one blue streak.",
+  "flags": [
+   "composite: three studies stacked",
+   "metrics averaged over the three panels"
+  ],
+  "confidence": 0.8,
+  "scores": {
+   "edge_bleed": 0.55,
+   "linework": 0.15,
+   "drips": 0,
+   "spatter": 0.1
+  }
+ },
+ "resolved_01": {
+  "title_observed": "skier on snow slope with conifers",
+  "hue_family": "cobalt blue and white, small red accent",
+  "form_clarity": 0.95,
+  "composition": "diagonal slope, long parallel shadows, winding track leading to tiny figure",
+  "focal_area": "skier lower right",
+  "wash_transparency": "flat, graphic gouache-like",
+  "paper_grain": "strong printed grain",
+  "edge_bleed": "none, crisp",
+  "line_density": "low",
+  "drip_density": "none",
+  "motifs": [
+   "landscape"
+  ],
+  "notes": "Graphic, two-value design; whitespace is the snow. Grain texture inside flat shapes.",
+  "flags": [
+   "artist watermark bottom-left excluded"
+  ],
+  "confidence": 0.9,
+  "scores": {
+   "edge_bleed": 0,
+   "linework": 0.2,
+   "drips": 0,
+   "spatter": 0
+  }
+ },
+ "resolved_02": {
+  "title_observed": "surfer inside a curling wave with a shark",
+  "hue_family": "teal, aqua, sand-peach",
+  "form_clarity": 0.85,
+  "composition": "spiral wave occupying the sheet, figure at the eye",
+  "focal_area": "surfer centre",
+  "wash_transparency": "high, splashy layered washes",
+  "paper_grain": "light",
+  "edge_bleed": "mixed: splashy outer edges, controlled figure",
+  "line_density": "low",
+  "drip_density": "spatter medium",
+  "motifs": [
+   "water"
+  ],
+  "notes": "Loose brushwork organised by a strong spiral; detail concentrated at the focal point.",
+  "flags": [
+   "likely digital/AI-assisted"
+  ],
+  "confidence": 0.8,
+  "scores": {
+   "edge_bleed": 0.45,
+   "linework": 0.15,
+   "drips": 0,
+   "spatter": 0.45
+  }
+ },
+ "resolved_03": {
+  "title_observed": "white cat peeking from behind a torn edge",
+  "hue_family": "ultramarine / cerulean",
+  "form_clarity": 0.9,
+  "composition": "vertical split, subject at right edge",
+  "focal_area": "cat face",
+  "wash_transparency": "high, blooming blue fields",
+  "paper_grain": "medium",
+  "edge_bleed": "blooms in background; crisp subject",
+  "line_density": "low (whiskers)",
+  "drip_density": "none",
+  "motifs": [
+   "abstract",
+   "interior"
+  ],
+  "notes": "Background is pure wet-in-wet blooms; resolution comes from one clearly reserved white subject.",
+  "flags": [],
+  "confidence": 0.85,
+  "scores": {
+   "edge_bleed": 0.5,
+   "linework": 0.1,
+   "drips": 0,
+   "spatter": 0
+  }
+ },
+ "resolved_04": {
+  "title_observed": "rainy car window at dusk",
+  "hue_family": "blue-green slate with magenta/yellow light",
+  "form_clarity": 0.8,
+  "composition": "frame-within-frame: car body diagonal, window with drops",
+  "focal_area": "red lights through the drops",
+  "wash_transparency": "medium, layered",
+  "paper_grain": "visible",
+  "edge_bleed": "soft background, crisp drops",
+  "line_density": "low",
+  "drip_density": "rain drops as small reserved shapes",
+  "motifs": [
+   "interior",
+   "water"
+  ],
+  "notes": "Mood through muted value range; detail by many small droplet highlights.",
+  "flags": [
+   "signature"
+  ],
+  "confidence": 0.85,
+  "scores": {
+   "edge_bleed": 0.35,
+   "linework": 0.15,
+   "drips": 0.2,
+   "spatter": 0.2
+  }
+ },
+ "resolved_05": {
+  "title_observed": "temple gate, waterfall and figure",
+  "hue_family": "sap/olive green, sand, vermilion",
+  "form_clarity": 0.95,
+  "composition": "vertical: gate at top, falls in middle, figure at pool bottom",
+  "focal_area": "crouching figure",
+  "wash_transparency": "medium, careful glazing",
+  "paper_grain": "light",
+  "edge_bleed": "controlled, crisp",
+  "line_density": "medium (architecture)",
+  "drip_density": "none",
+  "motifs": [
+   "garden",
+   "landscape",
+   "water"
+  ],
+  "notes": "Dappled light reserved as whitespace across rocks; highly resolved illustration.",
+  "flags": [
+   "book cover: Korean/English title text excluded by ROI (top 62% analysed)"
+  ],
+  "confidence": 0.75,
+  "scores": {
+   "edge_bleed": 0.15,
+   "linework": 0.45,
+   "drips": 0,
+   "spatter": 0
+  }
+ },
+ "resolved_06": {
+  "title_observed": "figures on a misty beach",
+  "hue_family": "lavender, periwinkle, sand",
+  "form_clarity": 0.8,
+  "composition": "diagonal shoreline right, wide reflective flat, tiny figures",
+  "focal_area": "standing figure left",
+  "wash_transparency": "very high, smooth graded washes",
+  "paper_grain": "fine",
+  "edge_bleed": "soft sky, crisp shoreline",
+  "line_density": "very low",
+  "drip_density": "none",
+  "motifs": [
+   "water",
+   "sky"
+  ],
+  "notes": "Mostly air and reflection; legibility comes from a clear horizon, shoreline and small dark figures.",
+  "flags": [],
+  "confidence": 0.9,
+  "scores": {
+   "edge_bleed": 0.3,
+   "linework": 0.05,
+   "drips": 0,
+   "spatter": 0
+  }
+ },
+ "resolved_07": {
+  "title_observed": "couple walking at the waterline",
+  "hue_family": "sky blue, cream, coral red",
+  "form_clarity": 0.85,
+  "composition": "big cloudy sky, low horizon, figures lower centre with reflections",
+  "focal_area": "two figures",
+  "wash_transparency": "high",
+  "paper_grain": "fine",
+  "edge_bleed": "soft clouds, crisp figures",
+  "line_density": "low",
+  "drip_density": "none",
+  "motifs": [
+   "water",
+   "sky"
+  ],
+  "notes": "Wet-sand reflections double the figures; strong whitespace.",
+  "flags": [
+   "watermark/caption text excluded by ROI"
+  ],
+  "confidence": 0.85,
+  "scores": {
+   "edge_bleed": 0.3,
+   "linework": 0.1,
+   "drips": 0,
+   "spatter": 0
+  }
+ },
+ "resolved_08": {
+  "title_observed": "aerial boats over turquoise shallows",
+  "hue_family": "turquoise, olive-ochre, umber, accents orange/blue",
+  "form_clarity": 0.75,
+  "composition": "diagonal shoreline, boats clustered in a diagonal",
+  "focal_area": "boat cluster",
+  "wash_transparency": "medium, wet-in-wet with spatter",
+  "paper_grain": "strong granulation",
+  "edge_bleed": "very wet background, crisp boats",
+  "line_density": "medium: mooring lines",
+  "drip_density": "spatter high",
+  "motifs": [
+   "water"
+  ],
+  "notes": "Loose ground made legible by a few precisely painted objects.",
+  "flags": [
+   "signature"
+  ],
+  "confidence": 0.85,
+  "scores": {
+   "edge_bleed": 0.6,
+   "linework": 0.4,
+   "drips": 0,
+   "spatter": 0.7
+  }
+ },
+ "resolved_09": {
+  "title_observed": "tidal flats with bathers and sparkle",
+  "hue_family": "cerulean, sand-pink, dark green headland",
+  "form_clarity": 0.8,
+  "composition": "high horizon with dark headland, curving tide channels",
+  "focal_area": "small figures mid-ground",
+  "wash_transparency": "medium",
+  "paper_grain": "light",
+  "edge_bleed": "mixed; spatter for sparkle",
+  "line_density": "low",
+  "drip_density": "white spatter high",
+  "motifs": [
+   "water",
+   "landscape"
+  ],
+  "notes": "Sparkle reserved as white spatter; curved bands lead the eye.",
+  "flags": [
+   "signature"
+  ],
+  "confidence": 0.85,
+  "scores": {
+   "edge_bleed": 0.35,
+   "linework": 0.1,
+   "drips": 0,
+   "spatter": 0.7
+  }
+ },
+ "resolved_10": {
+  "title_observed": "winter street, bare trees, lit café",
+  "hue_family": "violet, periwinkle, orange-red",
+  "form_clarity": 0.75,
+  "composition": "vertical street view, warm lit block bottom left, bare tree lines",
+  "focal_area": "lit café",
+  "wash_transparency": "high wet-in-wet sky",
+  "paper_grain": "visible",
+  "edge_bleed": "soft architecture, crisp branch lines",
+  "line_density": "high: branch lines",
+  "drip_density": "low",
+  "motifs": [
+   "landscape",
+   "interior"
+  ],
+  "notes": "Complementary warm/cool contrast; linework (branches) carries the structure.",
+  "flags": [
+   "screenshot with platform watermark bottom-right excluded"
+  ],
+  "confidence": 0.8,
+  "scores": {
+   "edge_bleed": 0.45,
+   "linework": 0.75,
+   "drips": 0.1,
+   "spatter": 0.1
+  }
+ },
+ "resolved_11": {
+  "title_observed": "figure in a flowing gown dissolving into mist",
+  "hue_family": "grey-green, viridian",
+  "form_clarity": 0.7,
+  "composition": "single centred silhouette, large empty field",
+  "focal_area": "head and shoulders",
+  "wash_transparency": "very high, soft gradients",
+  "paper_grain": "smooth",
+  "edge_bleed": "crisp top contour, dissolving bottom",
+  "line_density": "very low",
+  "drip_density": "none",
+  "motifs": [
+   "abstract",
+   "sky"
+  ],
+  "notes": "Resolution gradient inside one image: crisp at the focal point, dissolving away from it.",
+  "flags": [
+   "AI-generated (source caption)"
+  ],
+  "confidence": 0.75,
+  "scores": {
+   "edge_bleed": 0.4,
+   "linework": 0.05,
+   "drips": 0,
+   "spatter": 0
+  }
+ },
+ "resolved_12": {
+  "title_observed": "aerial pier and moored boats",
+  "hue_family": "cobalt, turquoise, sand, orange/coral accents",
+  "form_clarity": 0.9,
+  "composition": "vertical pier top right, boats radiating",
+  "focal_area": "boat cluster",
+  "wash_transparency": "medium-high",
+  "paper_grain": "granulation and spatter",
+  "edge_bleed": "wet ground, crisp objects",
+  "line_density": "medium: mooring lines",
+  "drip_density": "spatter medium",
+  "motifs": [
+   "water"
+  ],
+  "notes": "Saturated ground with precisely drawn hulls; complementary orange accents.",
+  "flags": [
+   "signature"
+  ],
+  "confidence": 0.9,
+  "scores": {
+   "edge_bleed": 0.4,
+   "linework": 0.45,
+   "drips": 0,
+   "spatter": 0.4
+  }
+ },
+ "resolved_13": {
+  "title_observed": "city towers with figures under falling snow",
+  "hue_family": "warm cream, sand, pale mint",
+  "form_clarity": 0.9,
+  "composition": "towers rise behind, three figures foreground, lamp post",
+  "focal_area": "figures",
+  "wash_transparency": "medium",
+  "paper_grain": "visible",
+  "edge_bleed": "soft glow around lights",
+  "line_density": "medium: windows",
+  "drip_density": "snow dots",
+  "motifs": [
+   "landscape"
+  ],
+  "notes": "Atmospheric perspective: towers fade into light; snow as scattered reserved dots.",
+  "flags": [
+   "diagonal platform watermark over image"
+  ],
+  "confidence": 0.75,
+  "scores": {
+   "edge_bleed": 0.3,
+   "linework": 0.4,
+   "drips": 0,
+   "spatter": 0.4
+  }
+ },
+ "resolved_14": {
+  "title_observed": "snowy conifer forest above a village",
+  "hue_family": "cobalt, periwinkle, white, small red/brown",
+  "form_clarity": 0.95,
+  "composition": "dense repeated conifer cones top, village cluster bottom",
+  "focal_area": "village roofs",
+  "wash_transparency": "flat, graphic",
+  "paper_grain": "strong printed grain",
+  "edge_bleed": "none",
+  "line_density": "low",
+  "drip_density": "none",
+  "motifs": [
+   "landscape"
+  ],
+  "notes": "Pattern of simple repeated shapes; clarity through repetition and value contrast.",
+  "flags": [],
+  "confidence": 0.9,
+  "scores": {
+   "edge_bleed": 0,
+   "linework": 0.15,
+   "drips": 0,
+   "spatter": 0
+  }
+ }
+}

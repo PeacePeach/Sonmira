@@ -29,10 +29,12 @@ export const MOTIF_WORDS = {
     'plant', 'petal', 'spring', 'forest',
     '花', '园', '树', '叶', '玫瑰', '开花', '草', '公园', '植物', '春', '森林'],
   landscape: ['mountain', 'hill', 'road', 'walk', 'home', 'city', 'street', 'field', 'car', 'town', 'cafe',
-    'café', 'train', 'travel', 'village', 'bridge', 'valley', 'house', 'window',
-    '山', '路', '回家', '家', '城', '街', '田', '车', '小镇', '咖啡', '火车', '旅行', '村', '桥', '房子'],
-  abstract: ['dream', 'feeling', 'thought', 'nothing', 'something', 'half asleep', 'testing', 'hum',
-    '梦', '感觉', '想法', '随便', '哼', '试'],
+    'café', 'train', 'travel', 'village', 'bridge', 'valley', 'house', 'window', 'wheat', 'meadow',
+    '山', '路', '回家', '家', '城', '街', '田', '车', '小镇', '咖啡', '火车', '旅行', '村', '桥', '房子', '麦田', '田野', '原野'],
+  interior: ['room', 'window', '窗', 'kitchen', 'bed', 'table', 'cup', 'tea', 'coffee', 'vase', 'lamp', 'desk', 'sofa', 'indoors', 'inside',
+    '房间', '厨房', '床', '桌', '杯', '茶', '台灯', '书桌', '沙发', '屋里', '室内', '花瓶'],
+  abstract: ['dream', 'feeling', 'thought', 'nothing', 'something', 'half asleep',
+    '梦', '感觉', '想法', '随便'],
 };
 
 const isCjk = (w) => /[㐀-鿿]/.test(w);
@@ -57,4 +59,17 @@ export function countMatches(text, lists) {
 export function topMatches(counts, priority) {
   const max = Math.max(0, ...priority.map((c) => counts[c] || 0));
   return max > 0 ? priority.filter((c) => (counts[c] || 0) === max) : [];
+}
+
+// Among tied categories, the one whose word appears earliest in the text.
+export function firstMention(text, lists, cats) {
+  const t = (text || '').toLowerCase();
+  let best = cats[0], bestAt = Infinity;
+  for (const cat of cats) {
+    for (const w of lists[cat]) {
+      const at = isCjk(w) ? t.indexOf(w) : t.search(new RegExp(`(^|[^\\p{L}])${escape(w)}`, 'u'));
+      if (at >= 0 && at < bestAt) { bestAt = at; best = cat; }
+    }
+  }
+  return best;
 }

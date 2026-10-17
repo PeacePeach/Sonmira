@@ -10,6 +10,10 @@ listening to or sharing the ones someone already has.
 > transactions verified by a server, and a server-side ledger that the
 > generation service checks before it paints (see *Restoring after a
 > reinstall* below).
+>
+> The iOS app now uses the real App Store and a server ledger: see
+> `docs/billing-iap.md`. Everything below about the simulation still holds
+> for web previews.
 
 ## Model
 

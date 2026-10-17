@@ -1,0 +1,9 @@
+{
+  "appId": "app.sonmira",
+  "appName": "Sonmira",
+  "webDir": "www",
+  "backgroundColor": "#F8F5EF",
+  "ios": {
+    "contentInset": "never"
+  }
+}

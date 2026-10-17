@@ -5,6 +5,7 @@ import { icon } from '../ui/icons.js';
 import { createPainting } from '../ui/painting.js';
 import { illustration } from '../ui/illustration.js';
 import { clock, dayKey, monthDay, weekday, MONTHS } from '../format.js';
+import { mountDraftsRow } from '../drafts/ui.js';
 
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -21,6 +22,8 @@ export function mountDiary(app) {
   const fab = h('button', { class: 'fab', 'aria-label': 'Sing a new entry', onClick: () => app.startNewMemory() }, icon('plus', { size: 'lg', tone: 'inverse' }));
   const el = h('div', { 'data-screen': 'diary' }, scroll, top, h('div', { class: 'fab-fade' }), fab);
   let paintings = [];
+  // "A painting is waiting for you": paintings not kept yet (drafts).
+  const drafts = mountDraftsRow(app);
 
   function calendar() {
     const { calY, calM, selDay } = app.ui;
@@ -83,6 +86,7 @@ export function mountDiary(app) {
       !app.storage.persistent ? h('p', { class: 'notice' }, app.storage.loadFailed
         ? 'Your diary couldn’t be opened on this device. New entries may not be kept.'
         : 'This browser isn’t keeping data (private browsing?). Entries will disappear when you close it.') : null,
+      sel ? null : drafts.el,
       ...groups.map((g) => h('section', {},
         h('div', { class: 'group-head' }, h('span', { class: 'md serif' }, monthDay(g.date)), h('span', { class: 'wd serif' }, weekday(g.date))),
         g.items.map(entryCard))),
@@ -92,5 +96,5 @@ export function mountDiary(app) {
   }
 
   render();
-  return { el, update: render, destroy() { paintings.forEach((p) => p.destroy()); } };
+  return { el, update: render, destroy() { paintings.forEach((p) => p.destroy()); drafts.destroy(); } };
 }

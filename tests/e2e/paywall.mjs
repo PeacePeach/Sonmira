@@ -1,7 +1,8 @@
 // End-to-end check of the paywall with the development purchase simulator,
 // in Chromium at iPhone size with the fake microphone from flow.mjs.
 //
-//   node server.js &  then  node tests/e2e/paywall.mjs      (SHOTS=dir saves screenshots)
+//   SONMIRA_PROTECT=off SONMIRA_FAKE_PROVIDER=1 SONMIRA_FAKE_DELAY_MS=1000 PORT=5173 node tests/e2e/guarded-server.mjs &
+//   then  node tests/e2e/paywall.mjs      (SHOTS=dir saves screenshots)
 
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';
@@ -44,6 +45,8 @@ async function run() {
     args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${wav}`, '--autoplay-policy=no-user-gesture-required'],
   });
   const ctx = await browser.newContext({ viewport, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+  // Past the beta invitation (run against tests/e2e/guarded-server.mjs with SONMIRA_PROTECT=off).
+  await ctx.addInitScript(() => { /* the API is mocked: a stand-in token for this device's id (protect/client.js) */ let a = null; try { a = JSON.parse(localStorage.getItem('sonmira.account')); } catch {} if (!a?.id) { a = { id: 'e2e-device-00000001', token: null, user: null, since: null }; localStorage.setItem('sonmira.account', JSON.stringify(a)); } localStorage.setItem('sonmira.access', `v1.${btoa(JSON.stringify({ i: a.id }))}.mock`); });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -80,7 +83,8 @@ async function run() {
   assert.match(text, /Your first three paintings are on us/);
   assert.match(text, /Daily Ritual.*\$4\.99.*month/s);
   assert.match(text, /Little Moments.*\$2\.99/s);
-  assert.match(text, /Restore purchases.*Terms.*Privacy/s);
+  assert.match(text, /Restore purchases.*More information/s);
+  assert.doesNotMatch(text, /Why we charge|Terms|Privacy/, 'the footer stays short; the rest is in More information');
   assert.match(await page.textContent(`${paywall} .pill`), /Add 10 paintings · \$2\.99/);
   assert.ok(await page.$(`${paywall} .pw-dev`), 'simulation is labeled');
   // close: the diary is untouched
@@ -91,7 +95,7 @@ async function run() {
   await page.waitForSelector('[data-screen=detail]');
   await page.click('[aria-label="Back to diary"]');
 
-  // why we charge, and the subscription option
+  // the subscription option, and More information
   await page.click('.fab');
   await page.waitForSelector(paywall);
   await page.click('[data-plan="app.sonmira.daily_ritual.monthly"]');
@@ -99,17 +103,22 @@ async function run() {
   assert.match(await page.textContent(`${paywall} .pw-fine`), /renewing automatically until you cancel/);
   await settle(page);
   await shot(page, 'p03-paywall-daily-selected');
-  await page.click('text=Why we charge');
-  await page.waitForSelector('.pw-why-body:not([hidden])');
+  await page.click('text=More information');
+  await page.waitForSelector('.pw-info');
   await settle(page, 700);
-  await shot(page, 'p04-why-we-charge');
-  assert.match(await page.textContent('.pw-why-body'), /costs something to run/);
-  await page.click('text=Terms');
+  await shot(page, 'p04-more-information');
+  const info = await page.textContent('.pw-info');
+  assert.match(info, /Why we charge.*costs something to run/s);
+  assert.match(info, /Daily Ritual: \$4\.99 a month, renewing automatically until you cancel/);
+  assert.match(info, /Little Moments: \$2\.99, a one-time purchase/);
+  await page.click('.pw-info >> text=Terms');
   await page.waitForSelector('.legal-sheet');
   await settle(page);
   await shot(page, 'p04b-terms-sheet');
   await page.click('.legal-sheet [aria-label=Close]');
   await page.waitForSelector('.legal-sheet', { state: 'detached' });
+  await page.click('.pw-info [aria-label=Close]');
+  await page.waitForSelector('.pw-info', { state: 'detached' });
 
   // C. Little Moments: cancelled, failed, offline, pending, approved
   await page.click('[data-plan="app.sonmira.little_moments.10"]');
@@ -143,7 +152,8 @@ async function run() {
   assert.equal((await status(page)).credits, 10);
   await page.click('[data-paywall-done] .pill'); // Sing a moment
 
-  // F. a failed generation uses nothing (the app shows its usual wash-only fallback)
+  // F. a failed generation uses nothing (with the engine work merged, the app
+  // shows its "didn't come through" screen instead of a wash-only fallback)
   await record(page);
   assert.equal(await page.textContent('[data-uses]'), 'Uses 1 of your 10 paintings');
   await page.evaluate(() => {
@@ -151,7 +161,7 @@ async function run() {
     eng.generate = async () => { eng.generate = real; throw new Error('simulated engine failure'); };
   });
   await page.click('text=Create painting');
-  await page.waitForSelector('[data-phase=result]', { timeout: 8000 });
+  await page.waitForSelector('[data-phase=error][data-kind=generation]', { timeout: 8000 });
   await settle(page);
   await shot(page, 'p09-generation-failed');
   assert.equal((await status(page)).credits, 10, 'failure uses nothing');
@@ -244,6 +254,7 @@ async function run() {
 
   // the paywall at Create painting keeps the take and goes on after buying
   const c2 = await browser.newContext({ viewport, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+  await c2.addInitScript(() => { /* the API is mocked: a stand-in token for this device's id (protect/client.js) */ let a = null; try { a = JSON.parse(localStorage.getItem('sonmira.account')); } catch {} if (!a?.id) { a = { id: 'e2e-device-00000001', token: null, user: null, since: null }; localStorage.setItem('sonmira.account', JSON.stringify(a)); } localStorage.setItem('sonmira.access', `v1.${btoa(JSON.stringify({ i: a.id }))}.mock`); });
   const p2 = await c2.newPage();
   p2.on('pageerror', (e) => errors.push(e.message));
   await p2.goto(BASE);

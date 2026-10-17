@@ -1,12 +1,13 @@
 // Draws Sonmira share compositions onto a <canvas>: the painting as the
-// centrepiece, an optional note, the date and a quiet wordmark. Used by both
-// the image card and the video. Works from contract data only (painting,
+// centrepiece, an optional note, the date and a quiet wordmark. The video
+// uses drawComposition; the image card (card.js) shares the painting, fonts
+// and text helpers. Works from contract data only (painting,
 // note, date), so it never depends on how a painting was generated.
 
 import { longDate } from '../format.js';
 
 const C = {
-  paper: '#F8F5EF', paintingPaper: '#F3EDE1', ink: '#1F1D1A', muted: '#A39D93', track: '#E4DDD1',
+  paper: '#F8F5EF', paintingPaper: '#F3EDE1', ink: '#1F1D1A', secondary: '#8C867D', muted: '#A39D93', track: '#E4DDD1',
   serif: '"Cormorant Garamond", "Iowan Old Style", Georgia, serif',
   sans: '"Hanken Grotesk", -apple-system, system-ui, sans-serif',
 };
@@ -18,6 +19,8 @@ export async function ensureFonts() {
   await Promise.all([
     document.fonts.load(`600 40px ${C.serif}`),
     document.fonts.load(`italic 600 40px ${C.serif}`),
+    document.fonts.load(`500 40px ${C.serif}`),
+    document.fonts.load(`italic 500 40px ${C.serif}`),
     document.fonts.load(`450 20px ${C.sans}`),
   ]).catch(() => {});
 }
@@ -106,7 +109,7 @@ export function drawPainting(ctx, { painting, img, x, y, w, h, scale = 1 }) {
   ctx.restore();
 }
 
-function wrap(ctx, text, maxW, maxLines) {
+export function wrap(ctx, text, maxW, maxLines) {
   const words = text.split(/\s+/).filter(Boolean);
   const lines = [];
   let line = '';
@@ -145,11 +148,10 @@ function spaced(ctx, text, x, y, tracking, align = 'left') {
 }
 
 /**
- * Lays out a full composition in base units then scales to pixels.
- * layout: 'card' (1080×1350, 4:5 feed image) | 'story' (1080×1920, 9:16 video)
+ * Lays out the video's composition in base units then scales to pixels.
+ * layout: 'story' (1080×1920, 9:16 video). The share image is card.js.
  */
 export const LAYOUTS = {
-  card: { W: 1080, H: 1350, art: { x: 90, y: 90, w: 900, h: 1000 }, noteY: 1160, footY: 1282 },
   story: { W: 1080, H: 1920, art: { x: 90, y: 230, w: 900, h: 1125 }, noteY: 1450, footY: 1790, wave: { y: 1625, h: 72 } },
 };
 
