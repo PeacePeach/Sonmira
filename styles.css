@@ -237,8 +237,15 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .detail { display: flex; flex-direction: column; padding: var(--top) 0 var(--bottom); overflow-y: auto; }
 .detail .art-pad { padding: 22px 18px 0; flex-shrink: 0; }
 .detail .body { padding: 26px 28px 0; flex: 1; display: flex; flex-direction: column; min-height: 150px; }
-.detail .caption { font-size: 26px; margin-top: 6px; line-height: 1.2; text-wrap: pretty; }
+.detail .caption { font-size: 26px; line-height: 1.2; text-wrap: pretty; }
 .detail .caption.untitled { color: var(--muted); }
+/* The title is tappable to rename; the pencil sits on its first line */
+.detail .title-btn { display: flex; align-items: flex-start; gap: 8px; margin-top: 6px; text-align: left; color: inherit; }
+.detail .title-btn .icon { margin-top: 8px; }
+.detail .caption-input { margin-top: 0; font-size: 26px; line-height: 1.2; padding: 6px 0 10px; }
+.detail .title-actions { display: flex; justify-content: flex-end; margin: 2px -12px 0 0; }
+.detail .title-actions .save { color: var(--ink); }
+.detail .title-actions .text-btn[disabled] { opacity: .6; }
 .detail .player { margin-top: auto; padding-top: 22px; }
 .text-btn.confirm { color: var(--ink); }
 

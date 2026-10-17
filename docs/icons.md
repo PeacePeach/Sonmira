@@ -56,6 +56,7 @@ Icons are outline only. No filled glyphs, no accent colors, and no motion of the
 | `rate` | star | Settings (Coming soon) |
 | `privacy` | shield | Settings → Privacy policy |
 | `terms` | file-text | Settings → Terms |
+| `rename` | pencil | Painting title (tap to rename) |
 | `account` | user-round | reserved for the Account row |
 
 To add one, copy the inner markup of the Lucide SVG (from `lucide-static`, same version) into `GLYPHS` under a name that says what it means in Sonmira, not what it looks like.
