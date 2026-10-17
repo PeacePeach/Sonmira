@@ -5,7 +5,8 @@
 # Repository secrets (Settings → Secrets and variables → Actions):
 #   ASC_KEY_ID       the key's ID
 #   ASC_ISSUER_ID    the Issuer ID shown above the keys
-#   ASC_KEY_P8       the contents of the downloaded AuthKey_XXXX.p8
+#   ASC_KEY_P8       the contents of the downloaded AuthKey_XXXX.p8 (pasted as is;
+#                    scripts/asc-key.py also accepts one line, no BEGIN/END, base64)
 #   APPLE_TEAM_ID    the 10-character Team ID (developer.apple.com → Membership)
 #
 # Run it from Actions → TestFlight → Run workflow, or push a tag testflight-*.
@@ -41,7 +42,12 @@ jobs:
           for v in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8 APPLE_TEAM_ID; do
             [ -n "${!v}" ] || { echo "::error::Add the repository secret $v (see the top of this file)."; exit 1; }
           done
-          printf '%s\n' "$ASC_KEY_P8" > "$KEY_PATH"
+          # Rebuilds the .p8 file however the key was pasted, then checks it
+          # is a readable private key before Xcode needs it. Prints no key.
+          python3 scripts/asc-key.py
+          openssl pkey -in "$KEY_PATH" -noout 2>/dev/null \
+            || { echo "::error::ASC_KEY_P8 is not a readable private key. Paste the whole AuthKey_XXXXXXXXXX.p8 file into the secret."; exit 1; }
+          echo "App Store Connect key file is valid."
       - run: npm ci
       - run: npm run ios
         env:
