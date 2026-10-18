@@ -1,7 +1,8 @@
 // The V1 visual rules are frozen (Han approved Validation 4 on 16 Oct as the
 // three-tier quality for V1). These checks fail when anything that shapes the
-// image request changes: the prompt text, the family and reference chosen for
-// a tier and seed, the reference library, and the image settings.
+// image request changes: the prompt text for a family and reference, the
+// reference library, and the image settings. (Which reference a seed draws
+// is covered by test/engine/reference-selection.test.mjs.)
 //
 // 1. The 10 approved Validation 4 runs are rebuilt through the real
 //    /api/generate handler (fake OpenAI, no network) and must produce exactly
@@ -51,8 +52,11 @@ test('the 10 approved Validation 4 requests are rebuilt exactly', async () => {
   for (const run of approved.runs) {
     const o = run.overrides, r = run.result;
     const note = String(run.note ?? '').trim();
+    // The approved family and reference are pinned: since 18 Oct a seed
+    // draws its reference from the whole tier (Han), so the same seed may now
+    // pick another one; the request for the approved pair must not change.
     const spec = {
-      completeness: o.tier, emotion: o.emotion, motif: o.motif, seed: o.seed, energy: { value: r.energy ?? 'calm' }, expression: r.settings.expression,
+      completeness: o.tier, emotion: o.emotion, motif: o.motif, seed: o.seed, family: r.family, reference: r.reference, energy: { value: r.energy ?? 'calm' }, expression: r.settings.expression,
       ...(note ? { concept: { text: note, theme: [], imagery: [], figurative: [], source: 'note' } } : { soundOnly: true }),
     };
     const g = await paint(spec);
