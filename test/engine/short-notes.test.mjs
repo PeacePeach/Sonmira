@@ -104,6 +104,34 @@ test('sung lyrics with short syllables are singing, including fast syllables and
   }
 });
 
+// Long takes: a sustained note is the steady finder's, so the short-note pass
+// must add nothing there and cost little; tracking runs only on uncovered time.
+const msPer = (f, n = 3) => { f(); const t = performance.now(); for (let i = 0; i < n; i++) f(); return (performance.now() - t) / n; };
+const overlaps = (r) => r.notes.some((n, i) => r.notes.some((m, j) => i !== j && n.start < m.end - 1e-6 && m.start < n.end - 1e-6));
+
+test('a 30 s held tone gains no short notes, and finding them stays cheap', () => {
+  for (const vib of [0, 0.3]) {
+    const tr = pitchTrack(voice([{ hz: 220, sec: 30 }], { vibratoSt: vib }), SR);
+    const r = findNotes(tr);
+    assert.equal(r.shortNotes, 0, `vibrato ±${vib * 100} c`);
+    assert.equal(r.notes.length, findSteadyNotes(tr).notes.length);
+    const extra = msPer(() => findNotes(tr)) - msPer(() => findSteadyNotes(tr));
+    assert.ok(extra < 40, `vibrato ±${vib * 100} c: short-note pass took +${extra.toFixed(1)} ms on 30 s`);
+  }
+});
+
+test('a 30 s song of short and long notes: every note once, no overlaps, cheap', () => {
+  const notes = Array.from({ length: 60 }, (_, i) => ({ hz: 220 * 2 ** ([0, 2, 4, 5, 7, 5, 4, 2][i % 8] / 12), sec: [0.2, 0.3, 0.6, 1.2][i % 4] }));
+  for (const vib of [0, 0.3]) {
+    const tr = pitchTrack(voice(notes, { vibratoSt: vib }), SR), r = findNotes(tr);
+    assert.ok(!overlaps(r), `vibrato ±${vib * 100} c: overlapping notes`);
+    assert.ok(r.notes.length <= notes.length, `vibrato ±${vib * 100} c: ${r.notes.length} notes for ${notes.length} sung`);
+    if (!vib) assert.equal(r.notes.length, notes.length);
+    const extra = msPer(() => findNotes(tr)) - msPer(() => findSteadyNotes(tr));
+    assert.ok(extra < 40, `vibrato ±${vib * 100} c: short-note pass took +${extra.toFixed(1)} ms on 30 s`);
+  }
+});
+
 test('real recording (tests/e2e/hum.wav): a held hum gains no short notes', () => {
   const w = decodeWav(readFileSync(new URL('../../tests/e2e/hum.wav', import.meta.url)));
   assert.equal(findNotes(pitchTrack(w.samples, w.sampleRate)).shortNotes, 0);

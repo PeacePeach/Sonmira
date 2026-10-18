@@ -92,6 +92,7 @@ export const SINGING_CALIBRATION = {
     edgeSec: 0.04,     // articulation is looked for this close to the note's start or end …
     dipDb: 3,          // … a level dip (a consonant, a re-attack) …
     stepCents: 100,    // … or a pitch step this large within edgeSec
+    centreSec: 0.5,    // a candidate's centre follows its latest 0.5 s (longer than any short note)
   },
 };
 
@@ -222,24 +223,31 @@ export function findShortNotes(track, cal = SINGING_CALIBRATION, steady = []) {
   const notes = [];
   voicedRuns(fr, Math.round(cal.bridgeSec / hop)).forEach((run, runIndex) => {
     if (run.idx.length < 3) return;
+    // Only the time the steady notes left uncovered, and only stretches long
+    // enough to hold a note; a run a steady note fully covers costs nothing.
+    const free = [];
+    for (let a = 0, k = 0; k <= run.idx.length; k++) {
+      if (k === run.idx.length || taken.has(run.idx[k])) { if (k - a >= minLen) free.push([a, k - 1]); a = k + 1; }
+    }
+    if (!free.length) return;
     const raw = run.idx.map((i) => fr[i].cents);
     const sm = movingAverage(raw, w);
     const med = raw.map((_, k) => median(raw.slice(Math.max(0, k - mh), k + mh + 1)));
-    // Grow candidates along the run.
-    const segs = [];
-    for (let s = 0; s < med.length;) {
-      let e = s, centre = med[s], away = 0;
-      const vals = [med[s]];
-      for (let k = s + 1; k < med.length; k++) {
-        if (Math.abs(med[k] - centre) > P.leaveCents) { if (++away >= stay) break; continue; }
-        away = 0; e = k; vals.push(med[k]);
-        if (vals.length % 3 === 0) centre = median(vals);
+    // Grow candidates along each free stretch. The centre is the median of the
+    // candidate's latest centreSec, so a long stretch stays linear in time.
+    const segs = [], centreN = Math.max(3, Math.round(P.centreSec / hop));
+    for (const [u0, u1] of free) {
+      for (let s = u0; s <= u1;) {
+        let e = s, centre = med[s], away = 0;
+        const vals = [med[s]];
+        for (let k = s + 1; k <= u1; k++) {
+          if (Math.abs(med[k] - centre) > P.leaveCents) { if (++away >= stay) break; continue; }
+          away = 0; e = k; vals.push(med[k]);
+          if (vals.length % 3 === 0) centre = median(vals.slice(-centreN));
+        }
+        segs.push([s, e]);
+        s = e + 1;
       }
-      // Only the time the steady notes left uncovered.
-      for (let a = s, k = s; k <= e + 1; k++) {
-        if (k > e || taken.has(run.idx[k])) { if (k - 1 >= a) segs.push([a, k - 1]); a = k + 1; }
-      }
-      s = e + 1;
     }
     for (const [a, b] of segs) {
       const len = b - a + 1;
