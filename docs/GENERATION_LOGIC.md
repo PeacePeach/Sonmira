@@ -224,6 +224,6 @@ None of them is scored. `quality`, the gate and the tier never read them. `api/g
 
 The mapping is deterministic: the same measurements always give the same lines, and the seed still only picks the reference. It is an artistic choice, documented in the head of `direct/sound.js`, and not validated on images yet.
 
-Measured on the same reference (`loose_02`) and seed with 7 lyric-free synthetic performances, the share of the request that differs between two performances goes from 0–9 % (mean 6 %) to 28–36 % (mean 32 %). In Production a rising and a falling melody produce the identical request. Text-only Loose (no reference attached, never used in Production) is unchanged.
+Measured on the same reference (`loose_02`) and seed with 7 lyric-free synthetic performances, the share of the request that differs between two performances goes from 0–9 % (mean 6 %) to 26–35 % (mean 31 %). In Production a rising and a falling melody produce the identical request. Text-only Loose (no reference attached, never used in Production) is unchanged.
 
 **Snapshots** (`tests/visual-freeze.test.mjs`): the 3 approved Loose Validation 4 runs (S1, S3, S6) and the 3 Loose per-reference snapshots change. They are now checked against proposed hashes (`looseProposed` in the fixture). The 7 Gathered and Resolved approved runs and the 19 Gathered and Resolved snapshots are byte-identical.
