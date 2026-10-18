@@ -14,6 +14,7 @@
 import { pitchTrack } from './analysis/pitchtrack.js';
 import { singingAnalysis } from './analysis/singing.js';
 import { analyzeSamples } from './analysis/features.js';
+import { measurePerformance } from './analysis/performance-measure.js';
 import { completionGate, decideTier, GATE_CALIBRATION } from './interpret/lyrics.js';
 
 export const UNDERSTAND_VERSION = 2;
@@ -64,6 +65,11 @@ export function semanticsFor(tier, transcript, lyrics) {
   };
 }
 
+// A failed measurement leaves the take on the existing direction.
+function safeMeasure(samples, sampleRate) {
+  try { return measurePerformance(samples, sampleRate); } catch { return null; }
+}
+
 // samples/sampleRate: the decoded recording; features: the frame features
 // (computed from the samples when not given); words(): async → the
 // /api/understand result ({ transcript, lyrics }) — injected so tests and the
@@ -95,6 +101,9 @@ export async function understandTake({ samples = null, sampleRate = 0, features 
     tier, tierSource: forcedTier ? 'override' : 'decision',
     semantics,
     expression: expressionFor(feats, singing),
+    // How it was sung, over time, for the art direction of every tier
+    // (direct/performance.js); never part of the tier decision.
+    performance: samples ? safeMeasure(samples, sampleRate) : null,
     ms: Date.now() - t0,
   };
 }

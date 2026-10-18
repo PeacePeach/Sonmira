@@ -238,3 +238,31 @@ Real images (18 Oct, 16 images, one per cell, same seed, reference and performan
 2. **Staccato reads like a smooth, rising take, which points at analysis.** The "energetic staccato, wide leaps" test take was measured as connected flow, smooth line (`pitch.continuity ≥ 0.8`), no rhythm, moderate energy and rising contour. The plan followed those measurements, so the image looks like the rising one. Energy never reached "lively", and line was "smooth" on every synthetic take. Two things to investigate:
    - Whether `pitch.continuity`, the onset measures and `energyFor` separate detached notes from legato on real phone recordings.
    - Whether `expressionFor` needs a detached or staccato signal, for example from short notes with gaps. Any change here is analysis, not thresholds for the tier.
+
+## Phase 3: performance-led direction for every tier (draft PR, approved by Han 18 Oct, not in Production)
+
+Han approved two changes on 18 Oct: Gathered and Resolved stop taking composition from the reference, and every reference family gets a technique-only description. Lyrics decide what is painted, the singing decides how, and the reference gives only technique and palette family. This now applies in all three tiers.
+
+**Measurement** (`analysis/performance-measure.js`, in the browser, inside `understandTake`):
+- It sends a numbers-only summary, `performance`, along with the spec. The summary holds passages (phrases split where the voice lost hold or leapt), unstable episodes and whole-take measures.
+- It never touches the tier decision.
+- **Level.** Each take is scaled to a common loud level before tracking, and any frame more than 24 dB below that level counts as silence. As a result, gain changes from −12 to +6 dB give identical directions.
+- **Grid alignment.** The analysis grid is anchored 0.2 s before the first loud sound, so leading silence doesn't change any decision.
+- **Voice drops.** A quiet note far below both of its neighbours is a voice drop: a creak or fry as the voice gives way. It is counted as a voice break, not as a melodic leap.
+- **Strays.** A short burst an octave or more away from the sound around it is ignored. An example is a start beep that the tracker reads as a high note.
+
+**Direction** (`direct/performance.js`):
+- Each decision carries its measurements and the anchor it was scaled against. Anchors come from `SINGING_CALIBRATION` where one exists.
+- The prompt receives only the visual wording, with the numbers stripped out. The full trace is returned as `performanceTrace`.
+- Time runs left to right and pitch sets height. Everything else is decided per passage or for the whole take: strokes, pigment load, joins (soft turn, torn collision or jolt), rhythm, edges, contrast, colour relations, temperature, fragmentation, tension and water.
+
+**Prompt** (`direct/index.js` `directFromPerformance`):
+- **Opening authority:** `REFERENCE_AUTHORITY_PERFORMANCE`. The image defines medium, marks, texture, edges, palette family and stylisation. It does not set layout, focal placement, direction, density, contrast or colour relations.
+- **Style line:** the family's `technique`, which is its `rules` with layout, placement and direction removed.
+- **Form:** comes from the tier. Gathered lets the subject emerge from the structure. Resolved stages the subject's main form at the focal passage and draws it in the performance's own marks.
+- **Mood:** only from the words.
+- **Fallback:** without a measured performance (an older client, or a failed measurement), the prompt is exactly the Phase 2 prompt.
+
+**Evidence:** the benchmark on Han's takes A, B and C is in the project folder, `audio-benchmark/step6` and `step7`. On the same reference and the same lyric, A and B differ in 11 of 17 decisions, and C differs from both in 16 or more. C gets one breathless mass, a torn join, jolts, discordant colour, hard edges and uncontrolled water.
+
+**C's "21-semitone jump"** is not a tracker error. Three quiet notes at about 107 Hz (6.1, 13.0 and 15.6 s) show a clean 106/213/319 Hz harmonic series, about 23 dB above the room noise, which has no such series. This is the voice dropping into a creak, which is real sound but not a sung leap, so it is now treated as a voice drop. B's "26-semitone onset blip" is a roughly 3 kHz start tone, and it is now ignored.

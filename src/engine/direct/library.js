@@ -108,6 +108,16 @@ export const REFERENCE_AUTHORITY_LOOSE = [
   'Content never comes from the reference: its subjects, objects, figures, places and setting are not part of its style.',
 ].join(' ');
 
+// Every tier with a measured performance (Han, 18 Oct): the reference gives
+// the technique and palette family only; the composition, movement,
+// contrast and colour relations come from how this voice was sung, and the
+// subject from the words.
+export const REFERENCE_AUTHORITY_PERFORMANCE = [
+  'The attached image is the style reference for this painting: it defines the artistic language only, meaning its medium and technique, paint behaviour, kind of marks and brushwork, texture, granulation and edges, its palette family and its degree of stylisation.',
+  'It does not dictate the composition: the layout, focal placement, direction, density, movement, contrast and colour relations of this painting come from the written plan below, which describes how this particular voice was sung. Do not copy or trace its layout, shapes or motifs, and do not reproduce any text, titles or watermarks in it.',
+  'Content never comes from the reference: its subjects, objects, figures, places and setting are not part of its style. Paint only the subject the text below asks for.',
+].join(' ');
+
 // What the prompt says when the reference image is attached: the reference is
 // the visual authority for everything except subject and arrangement
 // (Gathered and Resolved; Loose uses REFERENCE_AUTHORITY_LOOSE).

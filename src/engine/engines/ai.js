@@ -163,7 +163,7 @@ export function createAIEngine({ fetchImpl = (...a) => globalThis.fetch(...a), d
       const { spec, interpretation: it } = plan;
       const body = { spec: {
         completeness: spec.completeness, emotion: spec.emotion, motif: spec.motif, seed: spec.seed, energy: spec.energy, family: spec.family,
-        concept, soundOnly: !concept && spec.completeness === 'loose', expression: u.expression,
+        concept, soundOnly: !concept && spec.completeness === 'loose', expression: u.expression, performance: u.performance ?? null,
       } };
       const understanding = { ...u, emotion: { value: it.emotion, source: sem.mood ? 'lyrics' : it.sources.emotion }, motif: { value: it.motif, source: sem.motif ? 'lyrics' : it.sources.motif }, plannedFamily: plan.direction.family };
       stage('feeling', { tier: u.tier });
