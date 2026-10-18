@@ -2,7 +2,8 @@
 //
 //   singingAnalysis(track, features?) → {
 //     vocal:   is this sung (sustained pitched notes) rather than speech/noise?
-//     notes:   the steady notes found
+//     notes:   the steady notes found (held notes on the smoothed line, plus
+//              short sung syllables the smoothed line cannot see)
 //     quality: component signals, a combined score, a confidence, and whether
 //              the take is confidently strong
 //     expression: dynamics and pitch movement (NOT part of quality)
@@ -25,7 +26,7 @@
 import { TRACK_HOP_SEC } from './pitchtrack.js';
 import { performanceProfile } from './performance.js';
 
-export const SINGING_VERSION = 3;
+export const SINGING_VERSION = 4;
 
 export const SINGING_CALIBRATION = {
   smoothSec: 0.15,          // removes vibrato (4–8 Hz) to see the note's slow line
@@ -79,6 +80,20 @@ export const SINGING_CALIBRATION = {
   // the last sound is a held note. Diagnostic only (see C.ending): an abrupt
   // end usually just means the user stopped recording straight away.
   ending: { quietSec: 0.2, heldSec: 0.3 },
+  // Short notes (findShortNotes). The smoothed line needs a note to last about
+  // 0.4 s before any of it reads as steady, so sung syllables of ~0.2 s (most
+  // sung lyrics) were never notes and their held pitch counted as unstable.
+  // These describe the detector, not a quality bar; checked against Basic
+  // Pitch on three real Mandarin takes and against synthetic speech (18 Oct).
+  shortNotes: {
+    medianSec: 0.05,   // jitter and single-frame slips, much shorter than a syllable
+    leaveCents: 60,    // further than this from the note's centre is "away" (wider than ±45 c vibrato)
+    stayAwaySec: 0.06, // away this long ends the note; a vibrato crest lasts less
+    edgeSec: 0.04,     // articulation is looked for this close to the note's start or end …
+    dipDb: 3,          // … a level dip (a consonant, a re-attack) …
+    stepCents: 100,    // … or a pitch step this large within edgeSec
+    centreSec: 0.5,    // a candidate's centre follows its latest 0.5 s (longer than any short note)
+  },
 };
 
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
@@ -120,11 +135,8 @@ function periodicity(xs, lo, hi) {
   return best;
 }
 
-// Voiced runs (short gaps bridged) → steady notes on the smoothed line.
-export function findNotes(track, cal = SINGING_CALIBRATION) {
-  const fr = track.frames, hop = track.hopSec ?? TRACK_HOP_SEC;
-  const bridge = Math.round(cal.bridgeSec / hop), w = Math.max(3, Math.round(cal.smoothSec / hop));
-  const span = Math.max(1, Math.round(cal.moveSpanSec / 2 / hop));
+// Voiced runs (short gaps bridged): frame indices per run.
+function voicedRuns(fr, bridge) {
   const runs = [];
   let cur = null, gap = 0;
   fr.forEach((f, i) => {
@@ -134,6 +146,23 @@ export function findNotes(track, cal = SINGING_CALIBRATION) {
     } else if (cur && ++gap > bridge) { runs.push(cur); cur = null; gap = 0; }
   });
   if (cur) runs.push(cur);
+  return runs;
+}
+
+// All notes: the steady notes on the smoothed line, plus the short sung notes
+// it cannot see, found only in the time it left uncovered.
+export function findNotes(track, cal = SINGING_CALIBRATION) {
+  const steady = findSteadyNotes(track, cal);
+  const short = findShortNotes(track, cal, steady.notes);
+  return { ...steady, notes: [...steady.notes, ...short].sort((a, b) => a.start - b.start), shortNotes: short.length };
+}
+
+// Steady notes on the smoothed line.
+export function findSteadyNotes(track, cal = SINGING_CALIBRATION) {
+  const fr = track.frames, hop = track.hopSec ?? TRACK_HOP_SEC;
+  const bridge = Math.round(cal.bridgeSec / hop), w = Math.max(3, Math.round(cal.smoothSec / hop));
+  const span = Math.max(1, Math.round(cal.moveSpanSec / 2 / hop));
+  const runs = voicedRuns(fr, bridge);
 
   const notes = [];
   runs.forEach((run, runIndex) => {
@@ -166,6 +195,95 @@ export function findNotes(track, cal = SINGING_CALIBRATION) {
   });
   notes.forEach((n) => { n.center = median(n.raw); });
   return { notes, runs, voicedSec: fr.filter((f) => f.cents != null).length * hop };
+}
+
+// Short sung notes (syllables of ~0.12–0.4 s) in the voiced time the steady
+// notes leave uncovered. Inside each run, on a 50 ms median of the raw pitch,
+// a note grows while the pitch stays near its own running centre and ends
+// only when the pitch stays away (a vibrato swing returns; a new note or a
+// glide does not). A candidate counts when it
+//   lasts minNoteSec, does not glide (its slow line moves slower than
+//   movingCentsPerSec across it: a spoken syllable glides, a sung one holds;
+//   on notes under ~0.25 s a ±30 c vibrato looks like a glide and is left out),
+//   and is articulated at its start or end by a voice gap, a level dip or a
+//   pitch step (the top of a slow, wandering swing also stays in the band
+//   for a moment, but nothing articulates it).
+// A candidate touching a steady note at the same pitch is that note's own
+// head or tail, not a new note.
+export function findShortNotes(track, cal = SINGING_CALIBRATION, steady = []) {
+  const P = cal.shortNotes, fr = track.frames, hop = track.hopSec ?? TRACK_HOP_SEC;
+  if (!P || !fr.length) return [];
+  const w = Math.max(3, Math.round(cal.smoothSec / hop));
+  const mh = Math.max(1, Math.round(P.medianSec / hop / 2)), stay = Math.max(1, Math.round(P.stayAwaySec / hop));
+  const E = Math.max(1, Math.round(P.edgeSec / hop)), minLen = Math.round(cal.minNoteSec / hop);
+  const t0 = fr[0].t, frameOf = (t) => Math.round((t - t0) / hop);
+  const taken = new Set();
+  for (const n of steady) for (let i = frameOf(n.start); i < frameOf(n.end); i++) taken.add(i);
+
+  const notes = [];
+  voicedRuns(fr, Math.round(cal.bridgeSec / hop)).forEach((run, runIndex) => {
+    if (run.idx.length < 3) return;
+    // Only the time the steady notes left uncovered, and only stretches long
+    // enough to hold a note; a run a steady note fully covers costs nothing.
+    const free = [];
+    for (let a = 0, k = 0; k <= run.idx.length; k++) {
+      if (k === run.idx.length || taken.has(run.idx[k])) { if (k - a >= minLen) free.push([a, k - 1]); a = k + 1; }
+    }
+    if (!free.length) return;
+    const raw = run.idx.map((i) => fr[i].cents);
+    const sm = movingAverage(raw, w);
+    const med = raw.map((_, k) => median(raw.slice(Math.max(0, k - mh), k + mh + 1)));
+    // Grow candidates along each free stretch. The centre is the median of the
+    // candidate's latest centreSec, so a long stretch stays linear in time.
+    const segs = [], centreN = Math.max(3, Math.round(P.centreSec / hop));
+    for (const [u0, u1] of free) {
+      for (let s = u0; s <= u1;) {
+        let e = s, centre = med[s], away = 0;
+        const vals = [med[s]];
+        for (let k = s + 1; k <= u1; k++) {
+          if (Math.abs(med[k] - centre) > P.leaveCents) { if (++away >= stay) break; continue; }
+          away = 0; e = k; vals.push(med[k]);
+          if (vals.length % 3 === 0) centre = median(vals.slice(-centreN));
+        }
+        segs.push([s, e]);
+        s = e + 1;
+      }
+    }
+    for (const [a, b] of segs) {
+      const len = b - a + 1;
+      if (len < minLen) continue;
+      const third = Math.max(1, Math.floor(len / 3));
+      const head = median(med.slice(a, a + third)), tail = median(med.slice(b + 1 - third, b + 1));
+      if (Math.abs(tail - head) > P.leaveCents || Math.abs(tail - head) / ((len - third) * hop) >= cal.movingCentsPerSec) continue;
+      if (!articulated(fr, run, raw, a, b, E, P)) continue;
+      const ks = Array.from({ length: len }, (_, j) => a + j), rawSeg = raw.slice(a, b + 1);
+      const n = {
+        run: runIndex, start: fr[run.idx[a]].t, end: fr[run.idx[b]].t + hop, sec: len * hop,
+        raw: rawSeg, smooth: ks.map((j) => sm[j]),
+        rms: ks.map((j) => fr[run.idx[j]].rms), clarity: ks.map((j) => fr[run.idx[j]].clarity),
+        approach: a > 0 ? raw.slice(Math.max(0, a - Math.round(0.25 / hop)), a) : [],
+        center: median(rawSeg), short: true,
+      };
+      const ownHeadOrTail = steady.some((m) => Math.abs(m.center - n.center) <= P.leaveCents
+        && (Math.abs(m.start - n.end) <= cal.bridgeSec + hop || Math.abs(n.start - m.end) <= cal.bridgeSec + hop));
+      if (!ownHeadOrTail) notes.push(n);
+    }
+  });
+  return notes;
+}
+
+// A note starts or ends with a voice gap, a level dip below the note's own
+// level, or a pitch step (run frames a..b; E frames either side).
+function articulated(fr, run, raw, a, b, E, P) {
+  if (a - E < 0 || b + E >= raw.length) return true;
+  const own = median(run.idx.slice(a, b + 1).map((i) => fr[i].rms));
+  const dip = (i0, i1) => {
+    let m = Infinity;
+    for (let i = i0; i <= i1; i++) { if (fr[i].cents == null) return Infinity; m = Math.min(m, fr[i].rms); }
+    return 20 * Math.log10(own / Math.max(1e-5, m));
+  };
+  if (dip(run.idx[a] - E, run.idx[a] + E) >= P.dipDb || dip(run.idx[b] - E, run.idx[b] + E) >= P.dipDb) return true;
+  return Math.abs(raw[a] - raw[a - E]) >= P.stepCents || Math.abs(raw[b + E] - raw[b]) >= P.stepCents;
 }
 
 function noteStability(n, hop, cal) {

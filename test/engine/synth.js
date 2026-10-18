@@ -153,13 +153,17 @@ export function sungLyrics({ vib = 30, vibHz = 5.5, gap = 0.06, amp = 0.25, seed
 
 // Spoken lyrics: short syllables whose pitch glides continuously (speech
 // intonation), with word gaps. slow = longer, drawn-out syllables.
-export function spokenLyrics({ seed = 11, amp = 0.25, slow = false } = {}) {
-  const r = rng(seed), syl = [];
+// jitter = random pitch wobble in cents (a new value every 10 ms), as in a
+// real speaking voice; it has its own random stream, so jitter 0 is unchanged.
+export function spokenLyrics({ seed = 11, amp = 0.25, slow = false, jitter = 0 } = {}) {
+  const r = rng(seed), syl = [], rj = rng(seed + 1000);
   let t = 0.3;
   for (let i = 0; i < (slow ? 18 : 30); i++) {
     const d = slow ? 0.15 + r() * 0.25 : 0.1 + r() * 0.16;
     syl.push({ t0: t, t1: t + d, c0: -1400 + r() * 300, slope: (r() < 0.7 ? -1 : 1) * (slow ? 300 + r() * 500 : 500 + r() * 900) });
     t += d + (r() < 0.25 ? 0.2 : 0.04);
   }
-  return sing((time) => { const s = syl.find((x) => time >= x.t0 && time < x.t1); return s ? s.c0 + s.slope * (time - s.t0) : null; }, t + 0.3, { amp });
+  const J = Array.from({ length: Math.ceil((t + 0.3) * 100) + 2 }, () => jitter * 2 * (rj() - 0.5));
+  const wobble = (time) => { const k = time * 100, i = Math.floor(k); return J[i] + (J[i + 1] - J[i]) * (k - i); };
+  return sing((time) => { const s = syl.find((x) => time >= x.t0 && time < x.t1); return s ? s.c0 + s.slope * (time - s.t0) + wobble(time) : null; }, t + 0.3, { amp });
 }
