@@ -17,7 +17,7 @@
 
 import { rng, hashSeed } from '../render/rng.js';
 import { FAMILIES, familiesOfTier } from './families.js';
-import { LIBRARY, referencePalette, REFERENCE_AUTHORITY } from './library.js';
+import { LIBRARY, referencePalette, REFERENCE_AUTHORITY, tierOf } from './library.js';
 import { PEOPLE } from './leakage.js';
 import { compositionPlan, compositionLine } from './composition.js';
 
@@ -196,9 +196,10 @@ function pickWeighted(list, r) {
   return list[list.length - 1][0];
 }
 
-// Families allowed for a tier, each equally likely: the style is chosen
-// first among families, then an image within the family (library.select),
-// so a family with more references is not chosen more often. Every family
+// Families allowed for a tier, each equally likely: the style family is
+// chosen among the tier's families, so a family with more references is not
+// chosen more often; the reference image is drawn separately from the whole
+// tier (library.selectInTier). Every family
 // can paint any subject (the subject never comes from the family), so a
 // family is left out only when it has no active reference. `motif` and
 // `concept` no longer change eligibility; kept for callers.
@@ -215,16 +216,24 @@ export function direct(spec) {
   const library = spec.library || LIBRARY;
   const drawn = pickWeighted(familiesFor(level, motif, library, { concept: Boolean(spec.concept?.text) }), r);
   // A developer override may pick any family; it brings its own tier rules.
-  const familyId = FAMILIES[spec.family] ? spec.family : drawn;
+  const pinned = FAMILIES[spec.family] ? spec.family : null;
+
+  // The primary reference: drawn by seed from every reference of the tier,
+  // whatever its family, each equally likely (Han, 18 Oct); from the family's
+  // pool when a tool pins the family. A given reference is used when it
+  // belongs to the pinned family, or else to the tier.
+  const tierOfDraw = FAMILIES[pinned ?? drawn].tier;
+  const given = spec.reference && library.get(spec.reference);
+  const fits = given?.active && (pinned ? given.family === pinned : tierOf(given) === tierOfDraw);
+  const reference = fits ? given : pinned ? library.select(pinned, spec.seed) : library.selectInTier(tierOfDraw, spec.seed);
+  // The style family follows the reference, so the written style matches
+  // the image; a reference with no family (uploaded straight into a tier
+  // folder) keeps the drawn family.
+  const familyId = pinned ?? reference?.family ?? drawn;
   const F = FAMILIES[familyId];
   const tier = F.tier;
   const subject = tier === 'loose' ? null : (ATMOSPHERES[motif] ?? ATMOSPHERES.abstract);
   const energy = spec.energy?.value || 'calm';
-
-  // The primary reference: drawn from the family's pool by seed (or given,
-  // e.g. by a tool, when it belongs to this family).
-  const given = spec.reference && library.get(spec.reference);
-  const reference = given && given.family === familyId && given.active ? given : library.select(familyId, spec.seed);
   const fromRef = referencePalette(reference);
 
   // Colour comes from the reference's measured hierarchy. Only a reference
