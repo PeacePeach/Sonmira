@@ -47,7 +47,7 @@ test('the style family follows the drawn reference, so the written style matches
   }
 });
 
-test('a reference uploaded straight into a tier folder joins that tier, with the drawn family', () => {
+test('a reference uploaded straight into a tier folder joins that tier, with no family\'s rules or colours', () => {
   const lib = createLibrary([...REFERENCE_LIBRARY, { id: 'resolved_15', tier: 'resolved', path: 'resolved/resolved_15.jpg', active: true }]);
   assert.equal(lib.tierPool('resolved').length, 15);
   assert.equal(lib.pool('R4-lyrical-everyday').length, LIBRARY.pool('R4-lyrical-everyday').length);
@@ -55,8 +55,13 @@ test('a reference uploaded straight into a tier folder joins that tier, with the
   let hits = 0;
   for (let i = 0; i < 1500; i++) {
     const d = direct({ completeness: 'resolved', emotion: 'tender', motif: 'water', seed: next(), energy: { value: 'calm' }, concept: words, library: lib });
-    assert.equal(FAMILIES[d.family].tier, 'resolved');
-    if (d.reference.id === 'resolved_15') { hits++; assert.ok(d.swatches.length > 0); }
+    assert.equal(d.level, 'resolved');
+    if (d.reference.id === 'resolved_15') {
+      hits++;
+      assert.equal(d.family, null);
+      assert.deepEqual(d.swatches, []);
+      for (const F of Object.values(FAMILIES)) assert.ok(!d.prompt.includes(F.rules), 'no family rules for a family-less reference');
+    } else assert.equal(FAMILIES[d.family].tier, 'resolved');
   }
   assert.ok(Math.abs(hits / 1500 - 1 / 15) < 0.025, `resolved_15 drawn ${hits} times`);
 });

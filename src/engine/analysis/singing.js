@@ -213,6 +213,30 @@ function endingOf(track, notes, cal) {
   return { trailingQuietSec: r3(trailingQuietSec), lastNoteHeldSec: r3(held), clean: trailingQuietSec >= cal.ending.quietSec || (held ?? 0) >= cal.ending.heldSec };
 }
 
+// The overall shape of the melody, from the settled notes in time order:
+// the duration-weighted pitch of the first, middle and last third of the
+// sung time. Descriptive only (gesture, never quality): rising, falling,
+// arching (up then down), dipping (down then up) or level. Null with fewer
+// than 3 notes.
+export const CONTOUR_CENTS = 150;
+export function melodicContour(notes, cents = CONTOUR_CENTS) {
+  if (notes.length < 3) return null;
+  const total = notes.reduce((a, n) => a + n.sec, 0);
+  const thirds = [[0, 0], [0, 0], [0, 0]];
+  let t = 0;
+  for (const n of notes) {
+    const k = Math.min(2, Math.floor(((t + n.sec / 2) / total) * 3));
+    thirds[k][0] += n.center * n.sec; thirds[k][1] += n.sec; t += n.sec;
+  }
+  if (thirds.some(([, w]) => !w)) return null;
+  const [a, m, b] = thirds.map(([s, w]) => s / w);
+  if (m - Math.max(a, b) > cents) return 'arching';
+  if (Math.min(a, b) - m > cents) return 'dipping';
+  if (b - a > cents) return 'rising';
+  if (a - b > cents) return 'falling';
+  return 'level';
+}
+
 export function singingAnalysis(track, features = null, cal = SINGING_CALIBRATION) {
   const hop = track.hopSec ?? TRACK_HOP_SEC;
   const { notes, voicedSec } = findNotes(track, cal);
@@ -335,6 +359,7 @@ export function singingAnalysis(track, features = null, cal = SINGING_CALIBRATIO
     dynamicRangeDb: features?.energy?.dynamicRangeDb ?? null,
     pitchRangeCents: cents.length ? r3(Math.max(...cents) - Math.min(...cents)) : null,
     vibratoShare: C.stability?.vibratoShare ?? null,
+    contour: melodicContour(notes),
   };
 
   return {

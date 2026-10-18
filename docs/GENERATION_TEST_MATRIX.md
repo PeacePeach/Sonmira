@@ -32,13 +32,27 @@ Passing unit or integration tests says nothing about how the images look. On 18 
 | 12 | Uneven reference pools | Each reference in a tier equally likely (if that is the chosen policy), and colour-balanced. | main: per family (`gathered_02` 33 % versus 17 %; `resolved_11` 17 % versus R4 4 %). PR #14: 1/N per tier. Loose is unaffected either way (3 × 1). | `reference-selection`, `references` | A colour-balance report per tier (share of blue references) | Unit (exists); a free diagnostic counting dominant hue families per tier |
 | 13 | **P0: Loose collapse**, different improvised or nonsense singing | Different, recognisably personal works, not one blue template. | See 3. In addition, the ASR usually returns vocables or nothing, so no words reach the prompt. | none | A request-diversity floor for wordless Loose; a fixed seed set to separate model variance from pipeline variance | Integration: 10 synthetic or real wordless takes with a fixed seed, the share of the prompt that varies. AI eval: same takes, review grid. |
 
+## Phase 2 coverage (draft PR #15)
+
+The table above describes Production. Phase 2 adds `test/engine/loose-performance.test.mjs` and updates five existing tests:
+
+| Row | Now covered by |
+|---|---|
+| 3, 4, 13 | The same performance gives the same plan whatever the seed. Contrasting performances on one reference differ in more than 20 % of the request. Every performance variable changes the prompt. |
+| 10 | The Loose colour line carries no hex values or "keep these proportions", and moves with the performance. Gathered and Resolved keep the measured palette and `REFERENCE_AUTHORITY`. |
+| 11 | A family-less reference gets no family rules, colours or composition language (Loose, Gathered, Resolved). The tier still holds. |
+| — | The new gesture fields leave every Gathered and Resolved prompt byte-identical. No Loose performance prompt names reference objects or people. `cleanSpec` drops unknown values. |
+| 5 (fidelity), all AI rows | Still open. A prompt-level A/B is not a visual result; see the real-image test below. |
+
+Prompt-level A/B script, no network: `/mnt/project-files/generation-audit/phase2/loose-ab.mjs <main checkout> <branch checkout>`.
+
 ## Proposed additions, smallest first
 
 These improve existing tests rather than add a framework.
 
-1. **Wordless prompt diversity** (unit, `test/engine/style-prompt.test.mjs`): build `direct()` for two contrasting wordless Loose expressions with one seed, and report the share of differing words. It records today's ~2.5 % as a baseline. It should only become a threshold once a target is agreed.
+1. **Wordless prompt diversity** (done in Phase 2, `loose-performance.test.mjs`; was proposed for `test/engine/style-prompt.test.mjs`): build `direct()` for two contrasting wordless Loose expressions with one seed, and report the share of differing words. It records today's ~2.5 % as a baseline. It should only become a threshold once a target is agreed.
 2. **Short lyric + long hum** (unit, `test/engine/understanding.test.mjs`): `mixedTakes`-style audio with a stubbed 3-word complete transcript. Record the current tier (Resolved). It becomes a regression test after the product rule is decided.
-3. **Family-less reference text** (unit, `reference-discovery`, PR #14 only): a tier-folder upload must not receive another family's `rules` or palette.
+3. **Family-less reference text** (done in Phase 2; unit, `reference-discovery`, PR #14 only): a tier-folder upload must not receive another family's `rules` or palette.
 4. **Tier colour balance** (free diagnostic, extend `tools/sample-references.mjs`): per tier, the share of references by dominant hue, from the measured palettes. Blob uploads have no palette, so this needs the indexer run on them.
 5. **Fixed-seed AI grids** (paid, Playground): for Loose, 6 wordless takes × 1 pinned reference, and 1 take × 3 references. Review blind for "can you tell the takes apart?" and "does it read as the reference's language?". About 9 images per round.
 

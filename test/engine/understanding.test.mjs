@@ -206,7 +206,10 @@ test('Loose without words expresses the sound itself; unreliable words carry no 
   const d = direct({ completeness: 'loose', emotion: 'tender', motif: 'abstract', seed: 2, soundOnly: true, expression: { range: 'wide', flow: 'broken', dynamics: 'swelling', vibrato: true } });
   assert.equal(d.subjectSource, 'sound');
   assert.match(d.prompt, /expresses the sound of the voice itself/);
-  assert.match(d.prompt, /Gesture, from how the voice moved, made only with the reference's own kind of marks: long, travelling marks.*separate patches.*swelling.*trembling/);
+  // The performance plan (sound.js) carries how the voice moved.
+  assert.match(d.sections.composition, /^Composition, from how this voice moved.*edge to edge.*separate clusters/);
+  assert.match(d.sections.marks, /swells into one strong, concentrated passage.*feathered, trembling edges/);
+  assert.equal(d.sections.emotion, null, 'no mood is invented for a wordless take');
 });
 
 test('fixture 10: after a library change, selection stays in the decided tier', () => {

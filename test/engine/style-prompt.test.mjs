@@ -4,7 +4,7 @@
 // layer remains only for text-only generation.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { direct, createLibrary, GLOBAL_STYLE, AVOID, REFERENCE_STYLE, REFERENCE_AVOID, FAMILIES } from '../../src/engine/direct/index.js';
+import { direct, createLibrary, GLOBAL_STYLE, AVOID, REFERENCE_STYLE, REFERENCE_STYLE_LOOSE, REFERENCE_AVOID, FAMILIES } from '../../src/engine/direct/index.js';
 
 const lyrics = { text: 'a paper boat drifting past a lit window', theme: ['longing'], imagery: ['paper boat', 'window'], figurative: [] };
 const spec = (family, extra = {}) => ({ completeness: FAMILIES[family].tier, emotion: 'melancholic', motif: 'water', seed: 3, family, energy: { value: 'lively' }, concept: lyrics,
@@ -15,6 +15,8 @@ test('with a reference, no universal watercolor technique, composition or avoid 
     const d = direct(spec(family));
     assert.ok(d.reference, family);
     assert.ok(!d.prompt.includes(GLOBAL_STYLE), family);
+    // Loose has its own style line and performance plan (sound.js).
+    if (FAMILIES[family].tier === 'loose') { assert.ok(d.prompt.includes(REFERENCE_STYLE_LOOSE), family); continue; }
     assert.ok(d.prompt.includes(REFERENCE_STYLE), family);
     assert.match(d.prompt, new RegExp(`Avoid: ${REFERENCE_AVOID[0]}`));
     for (const banned of ['wet-on-wet', 'cinematic', 'smooth artificial gradients', 'generic pastel', 'more paper showing', 'overcast light', 'flicks and splashes', 'sharpest edges only at the focus', 'only a small part of the picture']) {

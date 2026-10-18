@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { LIBRARY } from '../../src/engine/direct/library.js';
 import { REFERENCE_LIBRARY } from '../../src/engine/direct/references.js';
-import { direct, FAMILIES } from '../../src/engine/direct/index.js';
+import { direct, FAMILIES, REFERENCE_ONLY_STYLE } from '../../src/engine/direct/index.js';
 import { blobStore, discoverReferences, registryFor, libraryFor, REGISTRY_TTL_MS } from '../../src/engine/providers/reference-store.js';
 import { createHandler } from '../../api/generate.js';
 
@@ -59,7 +59,10 @@ test('resolved_15.jpg uploaded into references/resolved/ is drawn with no renami
   assert.equal(lib.tierPool('resolved').length, 15);
   const d = direct({ completeness: 'resolved', emotion: 'tender', motif: 'water', seed: 1, reference: 'resolved_15', energy: { value: 'calm' }, library: lib });
   assert.equal(d.reference.id, 'resolved_15');
-  assert.equal(FAMILIES[d.family].tier, 'resolved');
+  // No family: the image alone sets the style, at the decided tier.
+  assert.equal(d.level, 'resolved');
+  assert.equal(d.family, null);
+  assert.equal(d.sections.family, REFERENCE_ONLY_STYLE);
 });
 
 test('an upload to Blob is painted, without a palette of its own', async () => {

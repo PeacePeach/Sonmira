@@ -88,8 +88,29 @@ export function referencePalette(ref) {
   return { swatches: accent ? [...swatches, accent] : swatches, text };
 }
 
+// Loose: the reference's colour as a language to start from, not a palette
+// to keep. No hex values, shares or "keep these proportions": the
+// performance plan (sound.js) moves strength, key, temperature and hue.
+export function referenceColourLanguage(ref) {
+  const P = ref?.palette;
+  if (!P?.colors?.length) return 'Colour language: the attached reference\'s own, read from the image, as a starting point rather than a fixed palette.';
+  const names = [...new Set(P.colors.map((c) => colourName(c.hex)))];
+  const value = P.lightness > 0.72 ? 'high-key and light' : P.lightness < 0.5 ? 'low-key, with deep values' : 'mid-toned';
+  const sat = P.saturation > 0.3 ? 'saturated' : P.saturation < 0.15 ? 'soft, low saturation' : 'moderate saturation';
+  return `Colour language of the reference, as a starting point rather than a fixed palette: mostly ${names.join(', ')}; ${value}, ${sat}, ${P.temperature} in temperature, with ${P.paper > 0.3 ? 'plenty of' : 'some'} open paper.`;
+}
+
+// Loose (Han, 18 Oct): the reference defines the artistic language, not the
+// composition or the exact colours, which come from the performance plan.
+export const REFERENCE_AUTHORITY_LOOSE = [
+  'The attached image is the style reference for this painting: it defines the artistic language, meaning its medium and technique, paint behaviour, kind of marks and brushwork, texture, granulation and edges, and its degree of abstraction.',
+  'It does not dictate the composition or the exact colours: the arrangement, direction, density, movement and colour of this painting come from the written plan below, which describes how this particular voice moved. Do not copy or trace its layout, shapes or motifs, and do not reproduce any text, titles or watermarks in it.',
+  'Content never comes from the reference: its subjects, objects, figures, places and setting are not part of its style.',
+].join(' ');
+
 // What the prompt says when the reference image is attached: the reference is
-// the visual authority for everything except subject and arrangement.
+// the visual authority for everything except subject and arrangement
+// (Gathered and Resolved; Loose uses REFERENCE_AUTHORITY_LOOSE).
 export const REFERENCE_AUTHORITY = [
   'The attached image is the primary style reference for this painting and the visual authority: it overrides every written description below, including colour, light and composition notes.',
   'Controlled by the reference: (1) medium and technique: whether it reads as transparent washes, flat graphic colour, ink-like wash or dry-brush, and its paint behaviour, brush marks, texture, granulation and edges, including whether it has blooms and wet-in-wet at all; (2) dominant palette: its principal colour family, saturation, temperature and supporting accents; (3) colour distribution: the balance of dominant, secondary and accent colour; (4) composition language: visual weight, viewpoint, asymmetry, focal placement and spatial rhythm; (5) negative space: roughly how much open, lightly painted or untouched paper there is, and where; (6) detail distribution: where detail concentrates and where forms dissolve; (7) degree of stylisation and level of finish.',

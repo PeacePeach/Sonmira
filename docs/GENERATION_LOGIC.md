@@ -7,7 +7,9 @@ Related docs, not repeated here:
 - [`engine-pipeline.md`](engine-pipeline.md): the stage-1 and stage-2 rules in prose, the reference library, and the procedural `real` engine. Its "Heuristic control score" (`interpret/completeness.js`, 0.5 / 0.78) belongs to the procedural engine; the AI engine overrides it with the tier (see stage 4).
 - [`GENERATION_TEST_MATRIX.md`](GENERATION_TEST_MATRIX.md): what to test, and how.
 
-PR #14 (draft) changes stages 6 and 7 only. Each change is marked **PR #14**.
+**Production versus proposed.** Stages 1–11 below describe **Production logic** (`main`). Two proposed changes are on draft branches and are not deployed:
+- **PR #14** changes stages 6 and 7 only. Each change is marked **PR #14**.
+- **Phase 2** (draft PR #15, which includes PR #14) changes how Loose is prompted, and how references without a family are described. It is summarised at the end, under **Proposed: Phase 2**, with the stages it touches.
 
 ## The pipeline at a glance
 
@@ -180,11 +182,48 @@ Measured with `direct()` on the bundled library:
 
 ## Gaps between intent and implementation
 
-1. **Performance barely conditions Loose.** The intent is "the singing decides how abstract, the sound itself is expressed". In practice, about 2.5 % of the prompt carries the voice, against an image that is declared authoritative over colour and composition, and a Loose form line that says the reference's marks are the painting.
-2. **Mood is constant without words.** `tender` for every wordless take. The voice never sets mood, by design (`engine-pipeline.md`), and nothing replaces it.
-3. **The palette is locked to the reference** by hex values, shares and "never introduce an unrelated palette". This contradicts the intent that the song meaningfully influences colour. It is already recorded as a limitation for intense emotion (`engine-pipeline.md`, Validation 4).
+1. **Performance barely conditions Loose** (addressed by Phase 2). The intent is "the singing decides how abstract, the sound itself is expressed". In practice, about 2.5 % of the prompt carries the voice, against an image that is declared authoritative over colour and composition, and a Loose form line that says the reference's marks are the painting.
+2. **Mood is constant without words** (Phase 2 drops it for Loose). `tender` for every wordless take. The voice never sets mood, by design (`engine-pipeline.md`), and nothing replaces it.
+3. **The palette is locked to the reference** (Phase 2 loosens it for Loose only) by hex values, shares and "never introduce an unrelated palette". This contradicts the intent that the song meaningfully influences colour. It is already recorded as a limitation for intense emotion (`engine-pipeline.md`, Validation 4).
 4. **Loose has the smallest pool** (3) and the most skewed colour (2 blue). PR #14 does not change Loose, because each Loose family has one reference.
 5. **Stage 1 does not weigh how much of the take is words.** A short phrase plus a long hum passes `word_rate` (≥ 0.15/s). Stage 2 then scores the hum.
 6. **Strong humming cannot leave Loose.** This is a documented product decision, but it conflicts with "strong humming should not be inherently penalised".
 7. **The client's planned family** (`understanding.plannedFamily`, `ai.js`) is computed against the bundled library and can differ from the server's family once Blob uploads exist. It is diagnostics only, and becomes more likely to differ under PR #14.
-8. **PR #14, references without a family** get the drawn family's rules and fallback palette, chosen independently of the image. For example, a new image can be described as "Drip curtain… yellow-green, olive, lavender" whatever it shows (checked with `discoverReferences` + `direct()` on the PR branch).
+8. **PR #14, references without a family** (fixed by Phase 2) get the drawn family's rules and fallback palette, chosen independently of the image. For example, a new image can be described as "Drip curtain… yellow-green, olive, lavender" whatever it shows (checked with `discoverReferences` + `direct()` on the PR branch).
+
+## Proposed: Phase 2 (draft PR #15, not in Production)
+
+These are the changes from Production, by stage. Audio analysis, the words gate, stage-2 scoring, every threshold, and the Gathered and Resolved prompts are unchanged.
+
+**Stage 5, gesture** (`understand.js` `expressionFor`): five more descriptive fields, all from measurements that already existed:
+
+| Field | From | Values |
+|---|---|---|
+| `contour` | `analysis/singing.js` `melodicContour`: duration-weighted pitch of the first, middle and last third of the settled notes, 150-cent margin | rising, falling, arching, dipping, level (null under 3 notes) |
+| `register` | `pitch.medianHz` | low (< 165 Hz), mid (< 300 Hz), high |
+| `phrasing` | `phrases.count` | single (≤ 1), few (≤ 3), many |
+| `rhythm` | `onsets.regularityProxy` | regular (≥ 0.6), irregular |
+| `line` | `pitch.continuity` | smooth (≥ 0.8), stepped |
+
+None of them is scored. `quality`, the gate and the tier never read them. `api/generate.js` `cleanSpec` accepts only these values.
+
+**Stages 6–7, a reference without a family** (an upload straight into `references/<tier>/`, with PR #14): the drawn family still fixes the tier, but none of its rules, palettes or composition language is sent. `direct()` returns `family: null`. The style line becomes `REFERENCE_ONLY_STYLE`, colour becomes "the attached reference's own colour language, read from the image", and Gathered and Resolved get `NEUTRAL_COMPOSITION` (`direct/composition.js`). `api/generate.js` checks the tier with `direction.level`.
+
+**Stages 8–10, Loose with a reference** (`direct/index.js`, `direct/sound.js`, `direct/library.js`): the reference gives the language; the performance gives the picture.
+
+| Prompt part | Production | Phase 2 |
+|---|---|---|
+| Opening authority | `REFERENCE_AUTHORITY`: the image "overrides every written description… including colour, light and composition" | `REFERENCE_AUTHORITY_LOOSE`: the image defines medium, technique, marks, texture, edges and degree of abstraction; it "does not dictate the composition or the exact colours" |
+| Form | "the reference's own marks, colour and texture are the painting" | the reference's kind of marks and texture, "arranged and coloured as the performance plan below describes" |
+| Family style | the family's rules | the same rules, plus "where it describes a layout or a direction, the performance plan below decides instead" |
+| Composition | none | **from the voice**: movement (contour), where the weight sits (register), extent (range), one body or separate clusters (flow and phrasing), spacing (rhythm) |
+| Marks | pace (energy) and gesture lines, ~15 words | **from the voice**: stroke (line), density and speed (energy), pigment load (dynamics), edges (vibrato) |
+| Colour | measured hex values and shares, "keep these proportions… never introduce an unrelated palette" | the reference's colour language by name as a starting point, then **from the voice**: strength (energy), value key (register), temperature (contour), climax (dynamics), and a bounded hue freedom (`HUE_FREEDOM`) |
+| Mood | always "tender" without words | none without words. With words, the words' mood, no longer confined to the reference's range |
+| Avoid | `REFERENCE_AVOID` | the same, plus "the reference's own layout or placement of colour" |
+
+The mapping is deterministic: the same measurements always give the same lines, and the seed still only picks the reference. It is an artistic choice, documented in the head of `direct/sound.js`, and not validated on images yet.
+
+Measured on the same reference (`loose_02`) and seed with 7 lyric-free synthetic performances, the share of the request that differs between two performances goes from 0–9 % (mean 6 %) to 28–36 % (mean 32 %). In Production a rising and a falling melody produce the identical request. Text-only Loose (no reference attached, never used in Production) is unchanged.
+
+**Snapshots** (`tests/visual-freeze.test.mjs`): the 3 approved Loose Validation 4 runs (S1, S3, S6) and the 3 Loose per-reference snapshots change. They are now checked against proposed hashes (`looseProposed` in the fixture). The 7 Gathered and Resolved approved runs and the 19 Gathered and Resolved snapshots are byte-identical.
