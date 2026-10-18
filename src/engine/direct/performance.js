@@ -49,6 +49,7 @@ const scale = (key, x) => ramp(x, ANCHORS[key][0], ANCHORS[key][1]);
 export const EPISODE_MIN = 0.25; // s: an unstable episode this long tears the paint
 const ARTICULATION_LINE = 1.5;   // level dips per second: one per syllable at a moderate pace
 const BREATHLESS_SEC = 8;        // one phrase sung this long without a breath
+const FOCUS_TIE_DB = 0.5;        // half the smallest loudness difference a listener notices: a level tie
 
 const where = (x0, x1) => { const c = (x0 + x1) / 2; return c < 0.34 ? 'left' : c < 0.66 ? 'centre' : 'right'; };
 const heightWord = (y) => (y > 0.66 ? 'upper' : y < 0.34 ? 'lower' : 'middle');
@@ -68,8 +69,12 @@ export function performanceDirection(s) {
   const passages = s.passages.map((p, i) => ({
     id: `P${i + 1}`, ...p, x0: r(clamp((p.t0 - span0) / span)), x1: r(clamp((p.t1 - span0) / span)), y: r(yOf(p.pitch.median)), contour: contourWord(p),
   }));
-  // The focal passage: loudest relative to the take, with height as tie-break.
-  const focus = [...passages].sort((a, b) => (b.level.mean + b.pitch.high / 4) - (a.level.mean + a.pitch.high / 4))[0];
+  // The focal passage: the loudest relative to the take. Only passages less
+  // than FOCUS_TIE_DB below the loudest (levels are in 0.1 dB steps) are a
+  // tie, and the highest of those wins.
+  const loudest = Math.max(...passages.map((p) => p.level.mean));
+  const tied = (p) => Math.round((loudest - p.level.mean) * 10) < FOCUS_TIE_DB * 10;
+  const focus = passages.filter(tied).reduce((a, b) => (b.pitch.high > a.pitch.high ? b : a));
   const breaks = (G.pitchBreaks ?? 0) + (G.drops ?? 0);
   const gaps = s.gapsSec ?? [];
 
@@ -122,7 +127,7 @@ export function performanceDirection(s) {
     : S.range > 0.25 ? `The masses travel through the middle two thirds of the sheet's height (pitch range ${G.pitchRangeSt} st).`
       : `The masses stay in a narrow horizontal band (pitch range ${G.pitchRangeSt} st).`, [ev('pitch range p5–p95, voice drops left out', G.pitchRangeSt, 'st', ANCHORS.pitchRange[2])]);
   add('composition', `Focal point: ${focus.id} (${focus.t0}–${focus.t1} s), the ${where(focus.x0, focus.x1)} ${heightWord(focus.y)} part of the sheet, the loudest passage; the strongest value contrast and the most saturated pigment are concentrated there and nowhere else. Never on the centre line.`, [
-    ev(`${focus.id} mean level`, focus.level.mean, 'dB re loud voiced level', 'loudest passage = focal accent'), ev(`${focus.id} highest pitch`, focus.pitch.high, 'st', 'tie-break by height'),
+    ev(`${focus.id} mean level`, focus.level.mean, 'dB re loud voiced level', `loudest passage = focal accent; passages less than ${FOCUS_TIE_DB} dB below it are a tie`), ev(`${focus.id} highest pitch`, focus.pitch.high, 'st', 'breaks a tie only: the highest of the tied passages'),
   ]);
 
   // ---- Passage by passage ---------------------------------------------------------

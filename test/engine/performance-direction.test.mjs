@@ -4,11 +4,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { measurePerformance } from '../../src/engine/analysis/performance-measure.js';
+import { pitchTrack } from '../../src/engine/analysis/pitchtrack.js';
 import { performanceDirection, visual } from '../../src/engine/direct/performance.js';
 import { direct, FAMILIES, checkPrompt } from '../../src/engine/direct/index.js';
 import { REFERENCE_AUTHORITY_PERFORMANCE } from '../../src/engine/direct/library.js';
 import { createHandler, cleanPerformance } from '../../api/generate.js';
-import { singers, voice, silence, SR } from './synth.js';
+import { singers, voice, silence, sungLyrics, SR } from './synth.js';
 
 const strong = measurePerformance(singers.strong(), SR);
 const weak = measurePerformance(singers.weak(), SR);
@@ -157,4 +158,27 @@ test('api/generate accepts only bounded numbers for the performance', async () =
   assert.match(out.prompt, /Performance structure/);
   assert.doesNotMatch(out.prompt, /ignore/);
   assert.ok(out.performanceTrace.decisions.length > 0);
+});
+
+test('the focal passage is the loudest; height only breaks a near-tie', () => {
+  const passage = (t0, mean, high) => ({ t0, t1: t0 + 2, phrase: 0, joinedBy: t0 ? 'leap' : null, pitch: { start: high - 2, end: high - 2, median: high - 2, high, low: high - 4 },
+    level: { mean, start: mean, end: mean }, unstable: 0, bend: 0, articulationPerSec: 1, offGridCents: 10, maxLeapSt: 2, overshootCents: 0, entryLeapSt: t0 ? 8 : null, drops: 0 });
+  const summary = (ps) => ({ version: 1, span: [0, 6], pitchSpan: [-12, 12], phraseCount: 1, firstPhraseVoicedSec: 6, gapsSec: [], episodes: [], passages: ps,
+    global: { controlledShare: 1, pitchRangeSt: 10, levelRangeDb: 10, ioiCv: 0.3, ornamentCents: 10, pitchBreaks: 0, drops: 0, intonationDevCents: 12, meanOvershootCents: 0, tuningWanderCents: 10 } });
+  // A quieter high passage does not beat a louder low one, however high it is.
+  assert.equal(performanceDirection(summary([passage(0, -8, 12), passage(2, -3, -10), passage(4, -6, 0)])).focus, 'P2');
+  // Less than 0.5 dB apart is a tie, and the higher passage wins.
+  assert.equal(performanceDirection(summary([passage(0, -3.4, 10), passage(2, -3, -10), passage(4, -6, 0)])).focus, 'P1');
+  // 1 dB louder is louder: the higher passage does not win (take A: P1 -3.7 dB vs P3 -4.7 dB).
+  assert.equal(performanceDirection(summary([passage(0, -3.7, 3.3), passage(2, -4.7, 5.1), passage(4, -6, 0)])).focus, 'P1');
+  assert.equal(performanceDirection(summary([passage(0, -3.5, 10), passage(2, -3, -10), passage(4, -6, 0)])).focus, 'P2');
+});
+
+test('runtime: measuring the performance costs about one pitch track, not two', () => {
+  // 20 s at 48 kHz (a real phone take's rate), from the synthetic sung lyrics.
+  const base = sungLyrics(), sr = 48000, x = new Float32Array(20 * sr);
+  for (let i = 0; i < x.length; i++) x[i] = base[Math.floor(i / 3) % base.length];
+  const med = (f) => { const t = []; for (let i = 0; i < 5; i++) { const a = performance.now(); f(); t.push(performance.now() - a); } return t.sort((a, b) => a - b)[2]; };
+  const track = med(() => pitchTrack(x, sr)), measure = med(() => measurePerformance(x, sr));
+  assert.ok(measure < 1.8 * track, `measurePerformance ${measure.toFixed(0)} ms vs one pitch track ${track.toFixed(0)} ms`);
 });

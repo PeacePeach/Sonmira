@@ -80,7 +80,14 @@ export async function understandTake({ samples = null, sampleRate = 0, features 
   const singing = samples ? singingAnalysis(pitchTrack(samples, sampleRate), feats) : null;
   const sounding = feats?.activity?.soundingSec ?? 0;
   const ask = Boolean(words) && sounding >= MIN_SOUND_FOR_WORDS_SEC;
-  const w = ask ? await words() : null;
+  // The transcription request goes out first; the performance is measured
+  // while it is in flight, so it adds no waiting when there are words.
+  // A yield first lets the page paint between the two blocks of analysis.
+  const pending = ask ? words() : null;
+  pending?.catch(() => {}); // still awaited (and thrown) below
+  if (samples) await new Promise((r) => setTimeout(r, 0));
+  const performance = samples ? safeMeasure(samples, sampleRate) : null;
+  const w = pending ? await pending : null;
   const transcript = w?.transcript ?? null, lyrics = w?.lyrics ?? null;
   const gate = completionGate({ transcript, lyrics, singing, features: feats });
   const decision = decideTier({ gate, quality: singing?.quality });
@@ -103,7 +110,7 @@ export async function understandTake({ samples = null, sampleRate = 0, features 
     expression: expressionFor(feats, singing),
     // How it was sung, over time, for the art direction of every tier
     // (direct/performance.js); never part of the tier decision.
-    performance: samples ? safeMeasure(samples, sampleRate) : null,
+    performance,
     ms: Date.now() - t0,
   };
 }

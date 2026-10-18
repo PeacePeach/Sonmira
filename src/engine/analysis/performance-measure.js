@@ -63,9 +63,21 @@ const unvoice = (f) => ({ ...f, hz: null, cents: null });
 const loudOf = (frames) => q(frames.filter((f) => f.cents != null).map((f) => f.rms), 0.95);
 
 // Scale to the common loud level, then gate relative to it.
+// The take's loud level before scaling: p95 of 10 ms frame RMS. It scales
+// exactly with the gain, so the scaled take is the same at any input level,
+// and it costs one pass over the samples instead of a pitch track.
+function loudRms(samples, sampleRate) {
+  const n = Math.max(1, Math.round(0.01 * sampleRate)), xs = [];
+  for (let i = 0; i + n <= samples.length; i += n) {
+    let s = 0;
+    for (let k = i; k < i + n; k++) s += samples[k] * samples[k];
+    xs.push(Math.sqrt(s / n));
+  }
+  return q(xs, 0.95);
+}
+
 function levelledTrack(samples, sampleRate) {
-  const first = pitchTrack(samples, sampleRate);
-  const loud0 = loudOf(first.frames);
+  const loud0 = loudRms(samples, sampleRate);
   if (!loud0) return null;
   const gain = Math.min(100, Math.max(0.01, LEVEL.targetRms / loud0));
   const x = new Float32Array(samples.length);
