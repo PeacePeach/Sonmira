@@ -226,4 +226,6 @@ The mapping is deterministic: the same measurements always give the same lines, 
 
 Measured on the same reference (`loose_02`) and seed with 7 lyric-free synthetic performances, the share of the request that differs between two performances goes from 0–9 % (mean 6 %) to 26–35 % (mean 31 %). In Production a rising and a falling melody produce the identical request. Text-only Loose (no reference attached, never used in Production) is unchanged.
 
+Real images (18 Oct, 16 images, one per cell, same seed, reference and performance in each pair; scored by eye): the 6 Production images on `loose_02` are near-copies of the reference's layout. In Phase 2, extent, clustering, density and open paper visibly follow the performance. Direction (rising vs falling) reads mostly through colour. Style fidelity drops slightly, because Phase 2 uses more open paper and adds new hues. The grids and scores are kept outside the repository, in the project's `generation-audit/phase2/ab-results.md`.
+
 **Snapshots** (`tests/visual-freeze.test.mjs`): the 3 approved Loose Validation 4 runs (S1, S3, S6) and the 3 Loose per-reference snapshots change. They are now checked against proposed hashes (`looseProposed` in the fixture). The 7 Gathered and Resolved approved runs and the 19 Gathered and Resolved snapshots are byte-identical.
