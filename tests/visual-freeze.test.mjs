@@ -14,11 +14,12 @@
 // A failure here means a frozen rule changed. Change the rules (and refresh
 // with FREEZE_WRITE=1) only after Han approves new visual work.
 //
-// Loose is the exception, pending review (Phase 2, 18 Oct): its prompts now
-// follow the performance (direct/sound.js), so the 3 approved Loose runs
-// (S1, S3, S6) no longer rebuild to their approved prompts. They are checked
-// against the proposed prompts recorded in the fixture (`looseProposed`)
-// instead, and the Gathered and Resolved runs must still match exactly.
+// Loose changed with Phase 2 (Han approved it on 18 Oct after the real-image
+// A/B): its prompts now follow the performance (direct/sound.js), so the 3
+// Validation 4 Loose runs (S1, S3, S6) no longer rebuild to the prompts that
+// made those images. They are checked against the Phase 2 prompts Han
+// approved, recorded in the fixture (`looseApproved`), and the Gathered and
+// Resolved runs must still match Validation 4 exactly.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -53,9 +54,9 @@ async function paint(spec) {
   return { out, sent: form.get('prompt'), model: form.get('model'), quality: form.get('quality'), size: form.get('size'), fidelity: form.get('input_fidelity') };
 }
 
-const proposed = {};
+const loose = {};
 
-test('the 10 approved Validation 4 requests are rebuilt exactly (Loose: as proposed)', async () => {
+test('the 10 approved Validation 4 requests are rebuilt exactly (Loose: as approved for Phase 2)', async () => {
   assert.equal(approved.runs.length, 10);
   for (const run of approved.runs) {
     const o = run.overrides, r = run.result;
@@ -72,16 +73,16 @@ test('the 10 approved Validation 4 requests are rebuilt exactly (Loose: as propo
     assert.equal(g.out.reference, r.reference, `${run.id}: reference`);
     if (o.tier === 'loose') {
       assert.notEqual(g.sent, r.prompt, `${run.id}: Loose now follows the performance`);
-      proposed[run.id] = sha(g.sent);
+      loose[run.id] = sha(g.sent);
     } else assert.equal(g.sent, r.prompt, `${run.id}: the prompt differs from the approved one`);
     assert.deepEqual([g.model, g.quality, g.size], [r.model, r.quality, r.size], `${run.id}: image settings`);
   }
-  assert.equal(Object.keys(proposed).length, 3);
+  assert.equal(Object.keys(loose).length, 3);
   if (process.env.FREEZE_WRITE) {
     const f = JSON.parse(readFileSync(FIXTURE, 'utf8'));
-    writeFileSync(FIXTURE, `${JSON.stringify({ ...f, looseProposed: proposed }, null, 1)}\n`);
+    writeFileSync(FIXTURE, `${JSON.stringify({ ...f, looseApproved: loose }, null, 1)}\n`);
   }
-  assert.deepEqual(proposed, JSON.parse(readFileSync(FIXTURE, 'utf8')).looseProposed, 'the proposed Loose prompts changed');
+  assert.deepEqual(loose, JSON.parse(readFileSync(FIXTURE, 'utf8')).looseApproved, 'the approved Phase 2 Loose prompts changed');
 });
 
 function currentSnapshot() {
@@ -95,7 +96,7 @@ function currentSnapshot() {
   }
   const c = openaiConfig({ OPENAI_API_KEY: 'x' });
   return {
-    approved: 'Han, 16 Oct 2026: Validation 4 approved as the V1 three-tier artwork quality',
+    approved: 'Han, 16 Oct 2026: Validation 4 approved as the V1 three-tier artwork quality; Han, 18 Oct 2026: Phase 2 Loose (performance-driven) approved as the Loose baseline',
     library: sha(JSON.stringify(REFERENCE_LIBRARY)),
     image: { model: c.model, quality: c.quality, size: c.size },
     prompts,
@@ -104,7 +105,7 @@ function currentSnapshot() {
 
 test('every reference at its tier gives the frozen V1 prompt', () => {
   const now = currentSnapshot();
-  if (process.env.FREEZE_WRITE) writeFileSync(FIXTURE, `${JSON.stringify({ ...now, looseProposed: JSON.parse(readFileSync(FIXTURE, 'utf8')).looseProposed }, null, 1)}\n`);
+  if (process.env.FREEZE_WRITE) writeFileSync(FIXTURE, `${JSON.stringify({ ...now, looseApproved: JSON.parse(readFileSync(FIXTURE, 'utf8')).looseApproved }, null, 1)}\n`);
   const frozen = JSON.parse(readFileSync(FIXTURE, 'utf8'));
   assert.equal(now.library, frozen.library, 'the reference library changed');
   assert.deepEqual(now.image, frozen.image, 'the image settings changed');

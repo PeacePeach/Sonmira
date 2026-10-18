@@ -1,5 +1,5 @@
 {
- "approved": "Han, 16 Oct 2026: Validation 4 approved as the V1 three-tier artwork quality",
+ "approved": "Han, 16 Oct 2026: Validation 4 approved as the V1 three-tier artwork quality; Han, 18 Oct 2026: Phase 2 Loose (performance-driven) approved as the Loose baseline",
  "library": "68d7d4a86f0416e7",
  "image": {
   "model": "gpt-image-2",
@@ -30,7 +30,7 @@
   "resolved/R5-light-as-subject/resolved_10": "36c63028de9bdd30",
   "resolved/R6-misty-monochrome/resolved_11": "13fb27d041b7dfc3"
  },
- "looseProposed": {
+ "looseApproved": {
   "validation-4-S1-loose": "b311f78d7895a044",
   "validation-4-S3-loose": "196ef66c4cc41ccd",
   "validation-4-S6-loose": "1706de2704100472"

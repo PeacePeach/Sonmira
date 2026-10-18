@@ -7,9 +7,9 @@ Related docs, not repeated here:
 - [`engine-pipeline.md`](engine-pipeline.md): the stage-1 and stage-2 rules in prose, the reference library, and the procedural `real` engine. Its "Heuristic control score" (`interpret/completeness.js`, 0.5 / 0.78) belongs to the procedural engine; the AI engine overrides it with the tier (see stage 4).
 - [`GENERATION_TEST_MATRIX.md`](GENERATION_TEST_MATRIX.md): what to test, and how.
 
-**Production versus proposed.** Stages 1–11 below describe **Production logic** (`main`). Two proposed changes are on draft branches and are not deployed:
+**Production versus proposed.** Stages 1–11 below describe **Production logic** (`main`). Two changes are on draft branches and are not deployed:
 - **PR #14** changes stages 6 and 7 only. Each change is marked **PR #14**.
-- **Phase 2** (draft PR #15, which includes PR #14) changes how Loose is prompted, and how references without a family are described. It is summarised at the end, under **Proposed: Phase 2**, with the stages it touches.
+- **Phase 2** (draft PR #15, which includes PR #14) changes how Loose is prompted, and how references without a family are described. Han approved its visual direction on 18 Oct 2026, but it is not deployed. It is summarised at the end, under **Phase 2**, with the stages it touches.
 
 ## The pipeline at a glance
 
@@ -191,7 +191,7 @@ Measured with `direct()` on the bundled library:
 7. **The client's planned family** (`understanding.plannedFamily`, `ai.js`) is computed against the bundled library and can differ from the server's family once Blob uploads exist. It is diagnostics only, and becomes more likely to differ under PR #14.
 8. **PR #14, references without a family** (fixed by Phase 2) get the drawn family's rules and fallback palette, chosen independently of the image. For example, a new image can be described as "Drip curtain… yellow-green, olive, lavender" whatever it shows (checked with `discoverReferences` + `direct()` on the PR branch).
 
-## Proposed: Phase 2 (draft PR #15, not in Production)
+## Phase 2 (draft PR #15: approved 18 Oct, not in Production)
 
 These are the changes from Production, by stage. Audio analysis, the words gate, stage-2 scoring, every threshold, and the Gathered and Resolved prompts are unchanged.
 
@@ -222,10 +222,19 @@ None of them is scored. `quality`, the gate and the tier never read them. `api/g
 | Mood | always "tender" without words | none without words. With words, the words' mood, no longer confined to the reference's range |
 | Avoid | `REFERENCE_AVOID` | the same, plus "the reference's own layout or placement of colour" |
 
-The mapping is deterministic: the same measurements always give the same lines, and the seed still only picks the reference. It is an artistic choice, documented in the head of `direct/sound.js`, and not validated on images yet.
+The mapping is deterministic: the same measurements always give the same lines, and the seed still only picks the reference. It is an artistic choice, documented in the head of `direct/sound.js`.
 
 Measured on the same reference (`loose_02`) and seed with 7 lyric-free synthetic performances, the share of the request that differs between two performances goes from 0–9 % (mean 6 %) to 26–35 % (mean 31 %). In Production a rising and a falling melody produce the identical request. Text-only Loose (no reference attached, never used in Production) is unchanged.
 
-Real images (18 Oct, 16 images, one per cell, same seed, reference and performance in each pair; scored by eye): the 6 Production images on `loose_02` are near-copies of the reference's layout. In Phase 2, extent, clustering, density and open paper visibly follow the performance. Direction (rising vs falling) reads mostly through colour. Style fidelity drops slightly, because Phase 2 uses more open paper and adds new hues. The grids and scores are kept outside the repository, in the project's `generation-audit/phase2/ab-results.md`.
+Real images (18 Oct, 16 images, one per cell, same seed, reference and performance in each pair; scored by eye): the 6 Production images on `loose_02` are near-copies of the reference's layout. In Phase 2, extent, clustering, density and open paper visibly follow the performance. Direction (rising vs falling) reads mostly through colour. Style fidelity drops slightly, because Phase 2 uses more open paper and adds new hues. The grids and scores are kept outside the repository, in the project's `generation-audit/phase2/ab-results.md`. Han approved the direction on 18 Oct, including the palette flexibility: yellow and purple accents on a blue reference are acceptable.
 
-**Snapshots** (`tests/visual-freeze.test.mjs`): the 3 approved Loose Validation 4 runs (S1, S3, S6) and the 3 Loose per-reference snapshots change. They are now checked against proposed hashes (`looseProposed` in the fixture). The 7 Gathered and Resolved approved runs and the 19 Gathered and Resolved snapshots are byte-identical.
+**Snapshots** (`tests/visual-freeze.test.mjs`): the 3 Loose Validation 4 runs (S1, S3, S6) and the 3 Loose per-reference snapshots changed. Han approved them as the new Loose baseline on 18 Oct, and they are checked against `looseApproved` in the fixture. The 7 Gathered and Resolved approved runs and the 19 Gathered and Resolved snapshots are byte-identical to `main`. The Gathered and Resolved prompts were also compared to `main` across 2,052 combinations (every reference, 3 moods, 3 energies, 3 gestures including the new fields, 2 seeds, with and without words); all are identical.
+
+### Open issues (for future investigation)
+
+1. **Rising and falling are not directional enough.** On a full-bleed reference (`loose_02`), the rising and falling takes differ mainly in colour: one warms at the top and the other is cooler and heavier at the bottom. Both keep a similar diagonal, all-over layout. On `loose_03`, rising turned the drips upward, but the warm colour landed at the bottom. Two levers to look at:
+   - Give `MOVEMENT` a stronger, mutually exclusive layout, such as the empty part of the sheet: top for falling, bottom for rising.
+   - Check whether the family's own direction rules (bloom field's darkened edges, drip curtain's downward drips) still pull against the plan.
+2. **Staccato reads like a smooth, rising take, which points at analysis.** The "energetic staccato, wide leaps" test take was measured as connected flow, smooth line (`pitch.continuity ≥ 0.8`), no rhythm, moderate energy and rising contour. The plan followed those measurements, so the image looks like the rising one. Energy never reached "lively", and line was "smooth" on every synthetic take. Two things to investigate:
+   - Whether `pitch.continuity`, the onset measures and `energyFor` separate detached notes from legato on real phone recordings.
+   - Whether `expressionFor` needs a detached or staccato signal, for example from short notes with gaps. Any change here is analysis, not thresholds for the tier.

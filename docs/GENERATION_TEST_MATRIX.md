@@ -42,7 +42,12 @@ The table above describes Production. Phase 2 adds `test/engine/loose-performanc
 | 10 | The Loose colour line carries no hex values or "keep these proportions", and moves with the performance. Gathered and Resolved keep the measured palette and `REFERENCE_AUTHORITY`. |
 | 11 | A family-less reference gets no family rules, colours or composition language (Loose, Gathered, Resolved). The tier still holds. |
 | — | The new gesture fields leave every Gathered and Resolved prompt byte-identical. No Loose performance prompt names reference objects or people. `cleanSpec` drops unknown values. |
-| 5 (fidelity), all AI rows | Still open. A prompt-level A/B is not a visual result; see the real-image test below. |
+| 5 (fidelity), all AI rows | A 16-image A/B (18 Oct, one image per cell) showed Phase 2 Loose clearly following the performance, with slightly lower fidelity; Han approved it. There is still no automated visual check. |
+| — | `visual-freeze.test.mjs` pins the approved Phase 2 Loose prompts (`looseApproved`) and the unchanged Gathered and Resolved prompts. |
+
+Not covered yet, from the A/B (see the open issues in `GENERATION_LOGIC.md`):
+- A test that rising and falling get layouts that exclude each other, not only a different colour.
+- An analysis test that a detached, staccato take is told apart from a legato one. This needs a recorded or synthetic staccato fixture.
 
 Prompt-level A/B script, no network: `/mnt/project-files/generation-audit/phase2/loose-ab.mjs <main checkout> <branch checkout>`.
 
