@@ -85,7 +85,8 @@ test('every family follows one primary reference drawn by seed', () => {
     const d = direct(spec(FAMILIES[id].tier, { seed: 7, family: id }));
     assert.equal(d.reference.family, id);
     assert.ok(FAMILIES[id].refs.includes(d.reference.path.split('/').pop()), id);
-    assert.match(d.referencePrompt, /primary style reference/);
+    // Loose: the reference gives the language, the performance the picture.
+    assert.match(d.referencePrompt, FAMILIES[id].tier === 'loose' ? /defines the artistic language.*does not dictate the composition or the exact colours/ : /primary style reference/);
   }
   const seen = new Set(Array.from({ length: 40 }, (_, seed) => direct(spec('resolved', { seed, family: 'R4-lyrical-everyday' })).reference.id));
   assert.equal(seen.size, FAMILIES['R4-lyrical-everyday'].refs.length);

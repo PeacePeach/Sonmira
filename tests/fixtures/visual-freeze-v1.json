@@ -1,5 +1,5 @@
 {
- "approved": "Han, 16 Oct 2026: Validation 4 approved as the V1 three-tier artwork quality",
+ "approved": "Han, 16 Oct 2026: Validation 4 approved as the V1 three-tier artwork quality; Han, 18 Oct 2026: Phase 2 Loose (performance-driven) approved as the Loose baseline",
  "library": "68d7d4a86f0416e7",
  "image": {
   "model": "gpt-image-2",
@@ -7,9 +7,9 @@
   "size": "1024x1536"
  },
  "prompts": {
-  "loose/L1-line-over-wash/loose_01": "1a3f87afd458e633",
-  "loose/L2-bloom-field/loose_02": "3562b1b81f0c3602",
-  "loose/L3-drip-curtain/loose_03": "4362d9fe83a031c1",
+  "loose/L1-line-over-wash/loose_01": "da4d4aabe64fc281",
+  "loose/L2-bloom-field/loose_02": "5e4080fa3954fa60",
+  "loose/L3-drip-curtain/loose_03": "d05053b5880b8dd4",
   "gathered/G1-atmospheric-study/gathered_01": "c4c964573e5254b1",
   "gathered/G1-atmospheric-study/gathered_05": "8f88d982975761d6",
   "gathered/G2-splash-wash/gathered_02": "aefcc36c30a566d5",
@@ -29,5 +29,10 @@
   "resolved/R5-light-as-subject/resolved_09": "127aa76b16d0aeed",
   "resolved/R5-light-as-subject/resolved_10": "36c63028de9bdd30",
   "resolved/R6-misty-monochrome/resolved_11": "13fb27d041b7dfc3"
+ },
+ "looseApproved": {
+  "validation-4-S1-loose": "b311f78d7895a044",
+  "validation-4-S3-loose": "196ef66c4cc41ccd",
+  "validation-4-S6-loose": "1706de2704100472"
  }
 }

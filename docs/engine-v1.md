@@ -11,7 +11,7 @@ Sonmira on iPhone is this web app, added to the Home Screen. There is no native 
 | Words gate, tier decision | Client | `interpret/lyrics.js` (`GATE_CALIBRATION`), `understand.js` |
 | Emotion, motif, style family and seed | Client | `plan.js`, `direct/` |
 | Transcription and lyrics reading (prompt, models) | Server | `api/understand.js`, `providers/openai-understand.js` |
-| Image prompt, reference choice within the family, image call | Server | `api/generate.js`, `direct/`, `providers/openai.js` |
+| Image prompt, reference choice within the tier, image call | Server | `api/generate.js`, `direct/`, `providers/openai.js` |
 | Reference list (which images, which family) | Server, bundled in the code | `direct/references.js` |
 | Reference images | Server, Vercel Blob (private) | `providers/reference-store.js` |
 | Invites, limits, spend cap | Server | Production Readiness branch |
@@ -27,7 +27,7 @@ All of it. Client and server code ship together in one Vercel deploy, and the ne
 | Image prompts, family rules, composition | Code change, then deploy. `tests/visual-freeze.test.mjs` fails until the change is approved and the snapshot is refreshed. |
 | Singing thresholds, words gate, interpretation | Code change, then deploy. Re-check them for free in the Playground Singing test, which re-analyses the saved takes. |
 | Image or text models, image quality and size | Environment variables (`OPENAI_IMAGE_MODEL`, `OPENAI_IMAGE_QUALITY`, `OPENAI_IMAGE_SIZE`, `OPENAI_TRANSCRIBE_MODEL`, `OPENAI_TEXT_MODEL`), then redeploy |
-| New reference image | Upload it in the Vercel dashboard (Storage → the Blob store → `references/<tier>/`), named with its family code first, e.g. `R4-morning-window.jpg`. It joins that family's pool within a minute, with no deploy. |
+| New reference image | Upload it in the Vercel dashboard (Storage → the Blob store → `references/<tier>/`), with any file name, e.g. `resolved_15.jpg`. It joins that tier's pool within a minute, with no deploy. |
 | Original references (family, palette, retiring one) | Edit the bundled registry `src/engine/direct/references.js`, then deploy. The freeze test fails until the change is approved. |
 
 Iteration is safe in these ways:
@@ -39,9 +39,9 @@ If the app is ever wrapped as a native App Store app, the wrapper should load th
 
 ## Reference selection (Han, 16 and 17 Oct)
 
-`/api/generate` selects from the bundled registry (`src/engine/direct/references.js`), which has 22 active references in 12 families, plus any image uploaded to a family in Blob. The bundled registry keeps each original's family, measured palette and content; Blob's own `registry.json` is kept for `tools/references.mjs` but decides nothing (`tests/reference-source.test.mjs`).
+`/api/generate` selects from the bundled registry (`src/engine/direct/references.js`), which has 22 active references in 12 families, plus any image uploaded to a tier folder in Blob. Once the tier is decided, the reference is drawn by seed from every active reference of that tier, each equally likely, whatever its family (Han, 18 Oct; `selectInTier` in `direct/library.js`). The style family then follows the reference, so the written style matches the image; a reference with no family gets no family's rules, colours or composition language: the image alone sets the style (Phase 2, `REFERENCE_ONLY_STYLE` in `direct/index.js`). The bundled registry keeps each original's family, measured palette and content; Blob's own `registry.json` is kept for `tools/references.mjs` but decides nothing (`tests/reference-source.test.mjs`).
 
-**Adding a reference.** Upload the image into the private Blob store under `references/`, either named with its family code first (`references/resolved/R4-morning-window.jpg`) or inside a folder named after the family (`references/resolved/R4/morning-window.jpg`). The server lists `references/` at most every 30 s (`libraryFor` in `src/engine/providers/reference-store.js`) and adds it to that family's pool; anything without a family in its path is ignored. A new image has no measured palette, so its colour line comes from the family's observed schemes; the image itself is still sent as the style reference. To remove one, delete it in the dashboard. The store is private, so uploads are never publicly readable; `/api/reference` serves images only on Preview (or with `SONMIRA_REFERENCE_VIEW=1`).
+**Adding a reference.** Upload the image into the private Blob store straight into its tier folder, `references/loose/`, `references/gathered/` or `references/resolved/`, with any file name. Optionally, a family code first (`R4-morning-window.jpg`) or a family folder (`references/resolved/R4/…`) also gives it a family. The server lists `references/` at most every 30 s (`libraryFor` in `src/engine/providers/reference-store.js`) and adds it to that tier's pool; anything outside a tier or family folder is ignored. A new image has no measured palette: with a family code, its colour line comes from that family's observed schemes; without one, the prompt says to read the colour from the image. The image itself is always sent as the style reference. To remove one, delete it in the dashboard. The store is private, so uploads are never publicly readable; `/api/reference` serves images only on Preview (or with `SONMIRA_REFERENCE_VIEW=1`).
 
 There are two ways to check that every active image is readable in Blob, neither of which costs anything:
 - the Playground's References tab, **Check all references**, on any deployment with the Blob token;

@@ -126,11 +126,15 @@ export function referenceStoreFromEnv(env = process.env) {
 //   references/resolved/R4/morning-window.jpg   → R4-lyrical-everyday
 //   references/gathered/G2-splash-wash/blot.png → G2-splash-wash
 //
-// Anything else is ignored. A new image has no measured palette, so direct()
-// colours it from its family's observed schemes; the image itself is still
-// sent as the style reference.
+// Any other image directly under a tier folder (references/resolved/x.jpg)
+// joins that tier with no family; references are drawn from the whole tier
+// (library.selectInTier), so it needs no code in its name. Anything else is
+// ignored. A new image has no measured palette, so direct() colours it from
+// the drawn family's observed schemes; the image itself is still sent as the
+// style reference.
 
 const CODE = /^([A-Z]\d)(?:[\s_-]|$)/i;
+const TIERS = ['loose', 'gathered', 'resolved'];
 const familyOfName = (name) => FAMILIES[name] ? name : Object.keys(FAMILIES).find((id) => id.split('-')[0].toUpperCase() === name.toUpperCase()) || null;
 
 export function discoverReferences(paths, registry = REFERENCE_LIBRARY) {
@@ -142,13 +146,14 @@ export function discoverReferences(paths, registry = REFERENCE_LIBRARY) {
     const parts = path.split('/');
     const file = basename(path, extname(path));
     const family = parts.slice(0, -1).map(familyOfName).filter(Boolean).pop() || (CODE.test(file) ? familyOfName(file.match(CODE)[1]) : null);
-    if (!family) continue;
+    const tier = family ? null : TIERS.includes(parts[0]) && parts.length === 2 ? parts[0] : null;
+    if (!family && !tier) continue;
     const stem = file.replace(/[^A-Za-z0-9_-]+/g, '_').slice(0, 48);
     let id = stem;
-    if (ids.has(id)) id = `${family.split('-')[0]}_${stem}`;
+    if (ids.has(id)) id = `${family ? family.split('-')[0] : tier}_${stem}`;
     if (ids.has(id)) continue;
     ids.add(id);
-    added.push({ id, family, path, active: true });
+    added.push(family ? { id, family, path, active: true } : { id, tier, path, active: true });
   }
   return added.length ? [...registry, ...added] : registry;
 }

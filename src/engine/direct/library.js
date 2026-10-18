@@ -5,12 +5,18 @@
 //   Sound → interpretation → visual family → primary reference (here)
 //         → reference palette and art direction → image model
 //
-// Each family's pool is its active references in id order. One is drawn per
-// generation with the seed, every reference equally likely; the same seed
-// and the same library version always give the same reference.
+// Each tier's pool is its active references in id order, whatever their
+// family (a reference's tier is its family's, or its folder's when it has no
+// family). One is drawn per generation with the seed from the decided tier's
+// pool, every reference equally likely (selectInTier); the same seed and the
+// same library version always give the same reference. Family pools remain
+// for the family draw, a pinned family and the leakage check.
 
 import { rng, hashSeed } from '../render/rng.js';
 import { REFERENCE_LIBRARY } from './references.js';
+import { FAMILIES } from './families.js';
+
+export const tierOf = (e) => (e?.family ? FAMILIES[e.family]?.tier : e?.tier) ?? null;
 
 function fnv(str) {
   let h = 0x811c9dc5;
@@ -19,20 +25,23 @@ function fnv(str) {
 }
 
 export function createLibrary(entries = REFERENCE_LIBRARY) {
-  const active = entries.filter((e) => e.active && e.family).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const active = entries.filter((e) => e.active && tierOf(e)).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   const pools = new Map();
-  for (const e of active) pools.set(e.family, [...(pools.get(e.family) || []), e]);
+  const tiers = new Map();
+  for (const e of active) {
+    if (e.family) pools.set(e.family, [...(pools.get(e.family) || []), e]);
+    tiers.set(tierOf(e), [...(tiers.get(tierOf(e)) || []), e]);
+  }
   const byId = new Map(entries.map((e) => [e.id, e]));
+  const draw = (pool, seed) => (pool?.length ? pool[Math.floor(rng(hashSeed(seed >>> 0, 'primary-ref'))() * pool.length)] : null);
   return {
     // Changes whenever a reference is added, removed, reassigned or retired.
-    version: fnv(active.map((e) => `${e.family}:${e.id}:${e.path}`).join('|')),
+    version: fnv(active.map((e) => `${e.family ?? e.tier}:${e.id}:${e.path}`).join('|')),
     pool: (family) => (pools.get(family) || []).slice(),
+    tierPool: (tier) => (tiers.get(tier) || []).slice(),
     get: (id) => byId.get(id) || null,
-    select(family, seed = 0) {
-      const pool = pools.get(family) || [];
-      if (!pool.length) return null;
-      return pool[Math.floor(rng(hashSeed(seed >>> 0, 'primary-ref'))() * pool.length)];
-    },
+    select: (family, seed = 0) => draw(pools.get(family), seed),
+    selectInTier: (tier, seed = 0) => draw(tiers.get(tier), seed),
   };
 }
 
@@ -79,8 +88,29 @@ export function referencePalette(ref) {
   return { swatches: accent ? [...swatches, accent] : swatches, text };
 }
 
+// Loose: the reference's colour as a language to start from, not a palette
+// to keep. No hex values, shares or "keep these proportions": the
+// performance plan (sound.js) moves strength, key, temperature and hue.
+export function referenceColourLanguage(ref) {
+  const P = ref?.palette;
+  if (!P?.colors?.length) return 'Colour language: the attached reference\'s own, read from the image, as a starting point rather than a fixed palette.';
+  const names = [...new Set(P.colors.map((c) => colourName(c.hex)))];
+  const value = P.lightness > 0.72 ? 'high-key and light' : P.lightness < 0.5 ? 'low-key, with deep values' : 'mid-toned';
+  const sat = P.saturation > 0.3 ? 'saturated' : P.saturation < 0.15 ? 'soft, low saturation' : 'moderate saturation';
+  return `Colour language of the reference, as a starting point rather than a fixed palette: mostly ${names.join(', ')}; ${value}, ${sat}, ${P.temperature} in temperature, with ${P.paper > 0.3 ? 'plenty of' : 'some'} open paper.`;
+}
+
+// Loose (Han, 18 Oct): the reference defines the artistic language, not the
+// composition or the exact colours, which come from the performance plan.
+export const REFERENCE_AUTHORITY_LOOSE = [
+  'The attached image is the style reference for this painting: it defines the artistic language, meaning its medium and technique, paint behaviour, kind of marks and brushwork, texture, granulation and edges, and its degree of abstraction.',
+  'It does not dictate the composition or the exact colours: the arrangement, direction, density, movement and colour of this painting come from the written plan below, which describes how this particular voice moved. Do not copy or trace its layout, shapes or motifs, and do not reproduce any text, titles or watermarks in it.',
+  'Content never comes from the reference: its subjects, objects, figures, places and setting are not part of its style.',
+].join(' ');
+
 // What the prompt says when the reference image is attached: the reference is
-// the visual authority for everything except subject and arrangement.
+// the visual authority for everything except subject and arrangement
+// (Gathered and Resolved; Loose uses REFERENCE_AUTHORITY_LOOSE).
 export const REFERENCE_AUTHORITY = [
   'The attached image is the primary style reference for this painting and the visual authority: it overrides every written description below, including colour, light and composition notes.',
   'Controlled by the reference: (1) medium and technique: whether it reads as transparent washes, flat graphic colour, ink-like wash or dry-brush, and its paint behaviour, brush marks, texture, granulation and edges, including whether it has blooms and wet-in-wet at all; (2) dominant palette: its principal colour family, saturation, temperature and supporting accents; (3) colour distribution: the balance of dominant, secondary and accent colour; (4) composition language: visual weight, viewpoint, asymmetry, focal placement and spatial rhythm; (5) negative space: roughly how much open, lightly painted or untouched paper there is, and where; (6) detail distribution: where detail concentrates and where forms dissolve; (7) degree of stylisation and level of finish.',

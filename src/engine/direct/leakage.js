@@ -97,7 +97,7 @@ export function checkLeakage({ depicted, concept = null, note = '', reference = 
 // only for people.
 export function checkPrompt(direction, { library = LIBRARY } = {}) {
   const s = direction.sections ?? {};
-  const own = [s.family, s.content, s.form, s.composition, s.palette, s.emotion, s.energy, s.gesture, s.style].filter(Boolean).join('\n');
+  const own = [s.family, s.content, s.form, s.composition, s.marks, s.palette, s.emotion, s.energy, s.gesture, s.style].filter(Boolean).join('\n');
   const concept = direction.concept ?? null;
   const r = checkLeakage({ depicted: own, concept, reference: direction.reference?.id, family: direction.family, library });
   const words = checkLeakage({ depicted: [s.subject, s.meaning].filter(Boolean).join('\n'), concept: null, reference: null, family: '__none__', library });

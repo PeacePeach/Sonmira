@@ -1,5 +1,6 @@
-// Random style selection: tier first, then a family (every eligible family
-// equally likely), then one reference image inside it; a fresh draw for
+// Random style selection: tier first, then one reference image from every
+// active reference of that tier, each equally likely, whatever its family
+// (Han, 18 Oct); the style family follows the reference. A fresh draw for
 // every generation unless a seed is given explicitly.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,33 +24,46 @@ test('with words, every family of the tier is eligible for every motif, all with
   }
 });
 
-test('families are chosen equally often, not in proportion to their number of references', () => {
+test('every reference of the tier is equally likely, whatever its family', () => {
   const n = 12000;
   for (const t of TIERS) {
     const r = sampleReferences({ tier: t, n, seed: seeds(7) });
-    const fams = ofTier(t);
-    for (const id of fams) {
-      const share = (r.families[id] ?? 0) / n;
-      assert.ok(Math.abs(share - 1 / fams.length) < 0.02, `${t} ${id}: ${share.toFixed(3)} ${JSON.stringify(r.families)}`);
+    const active = LIBRARY.tierPool(t).map((e) => e.id).sort();
+    assert.deepEqual(Object.keys(r.references).sort(), active, `${t}: every reference is reachable`);
+    for (const id of active) {
+      const share = r.references[id] / n;
+      assert.ok(Math.abs(share - 1 / active.length) < 0.02, `${t} ${id}: ${share.toFixed(3)} ${JSON.stringify(r.references)}`);
     }
   }
-  // R4 has four references and resolved_13 is one of them: neither is favoured.
-  const r = sampleReferences({ tier: 'resolved', n, seed: seeds(11) });
-  assert.ok(r.families['R4-lyrical-everyday'] / n < 0.19, JSON.stringify(r.families));
-  assert.ok(r.references.resolved_13 / n < 0.06, JSON.stringify(r.references));
+  assert.deepEqual(TIERS.map((t) => LIBRARY.tierPool(t).length), [3, 5, 14]);
 });
 
-test('within a family, every active reference is equally likely', () => {
-  const n = 12000;
-  const r = sampleReferences({ tier: 'resolved', n, seed: seeds(3) });
-  for (const fam of ofTier('resolved')) {
-    const refs = LIBRARY.pool(fam).map((e) => e.id);
-    const total = refs.reduce((s, id) => s + (r.references[id] ?? 0), 0);
-    for (const id of refs) assert.ok(Math.abs(r.references[id] / total - 1 / refs.length) < 0.04, `${fam} ${id}: ${JSON.stringify(r.references)}`);
+test('the style family follows the drawn reference, so the written style matches the image', () => {
+  const next = seeds(9);
+  for (const t of TIERS) for (let i = 0; i < 200; i++) {
+    const d = direct({ completeness: t, emotion: 'tender', motif: 'water', seed: next(), energy: { value: 'calm' }, concept: words });
+    assert.equal(d.reference.family, d.family);
+    assert.equal(FAMILIES[d.family].tier, t);
   }
-  // Every active resolved reference in the library is reachable.
-  const active = REFERENCE_LIBRARY.filter((e) => e.active && FAMILIES[e.family]?.tier === 'resolved').map((e) => e.id).sort();
-  assert.deepEqual(Object.keys(r.references).sort(), active);
+});
+
+test('a reference uploaded straight into a tier folder joins that tier, with no family\'s rules or colours', () => {
+  const lib = createLibrary([...REFERENCE_LIBRARY, { id: 'resolved_15', tier: 'resolved', path: 'resolved/resolved_15.jpg', active: true }]);
+  assert.equal(lib.tierPool('resolved').length, 15);
+  assert.equal(lib.pool('R4-lyrical-everyday').length, LIBRARY.pool('R4-lyrical-everyday').length);
+  const next = seeds(13);
+  let hits = 0;
+  for (let i = 0; i < 1500; i++) {
+    const d = direct({ completeness: 'resolved', emotion: 'tender', motif: 'water', seed: next(), energy: { value: 'calm' }, concept: words, library: lib });
+    assert.equal(d.level, 'resolved');
+    if (d.reference.id === 'resolved_15') {
+      hits++;
+      assert.equal(d.family, null);
+      assert.deepEqual(d.swatches, []);
+      for (const F of Object.values(FAMILIES)) assert.ok(!d.prompt.includes(F.rules), 'no family rules for a family-less reference');
+    } else assert.equal(FAMILIES[d.family].tier, 'resolved');
+  }
+  assert.ok(Math.abs(hits / 1500 - 1 / 15) < 0.025, `resolved_15 drawn ${hits} times`);
 });
 
 test('without words, every family of the tier is still drawn, painting an atmosphere rather than its own subjects', () => {

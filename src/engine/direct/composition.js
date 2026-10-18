@@ -80,8 +80,19 @@ const STAGING = [
 export const NOT_CENTRED = 'Do not place the focus in the centre or on the vertical centre line, and avoid symmetrical layouts.';
 export const RESOLVED_COMPOSITION = 'Compose with real intent, as a painter would: a clear spatial hierarchy of one dominant shape, a few secondary ones and many small ones; asymmetry and one strong directional movement; varied scale and edges; the subject staged with purpose through viewpoint, cropping and partial reveal. Translate the reference\'s structural principles into a new, original arrangement; never copy its layout.';
 
+// For a reference with no family (an upload straight into a tier folder):
+// no family's composition language applies, so only principles true of any
+// reference, with the same seeded off-centre choices.
+export const NEUTRAL_COMPOSITION = {
+  principles: 'Follow the reference\'s own way of organising the picture, its balance of busy and quiet areas and its scale of marks, in a new arrangement; weight is asymmetric and the open areas are as deliberate as the painted ones.',
+  viewpoints: ['a level view', 'a slightly raised view', 'a slightly low view'],
+  placements: ['in the left third', 'in the right third', 'low in the right third', 'high in the left third'],
+  scales: ['small within generous open space', 'mid-sized, partly dissolving into its surroundings'],
+};
+
+// familyId null: a reference without a family (NEUTRAL_COMPOSITION).
 export function compositionPlan(familyId, seed) {
-  const C = COMPOSITION[familyId];
+  const C = familyId === null ? NEUTRAL_COMPOSITION : COMPOSITION[familyId];
   if (!C) return null;
   const r = rng(hashSeed(seed >>> 0, 'compose'));
   const pick = (xs) => xs[Math.floor(r() * xs.length)];

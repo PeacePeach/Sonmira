@@ -46,6 +46,11 @@ function cleanSpec(s) {
       flow: ['connected', 'broken'].includes(x.flow) ? x.flow : null,
       dynamics: ['even', 'swelling'].includes(x.dynamics) ? x.dynamics : null,
       vibrato: x.vibrato === true,
+      contour: ['rising', 'falling', 'arching', 'dipping', 'level'].includes(x.contour) ? x.contour : null,
+      register: ['low', 'mid', 'high'].includes(x.register) ? x.register : null,
+      phrasing: ['single', 'few', 'many'].includes(x.phrasing) ? x.phrasing : null,
+      rhythm: ['regular', 'irregular'].includes(x.rhythm) ? x.rhythm : null,
+      line: ['smooth', 'stepped'].includes(x.line) ? x.line : null,
     };
   }
   return out;
@@ -83,7 +88,8 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
     const library = await libraryFor(store);
     const direction = direct({ ...spec, library });
     // The decided tier is authoritative: never paint a family of another tier.
-    if (FAMILIES[direction.family].tier !== spec.completeness) {
+    // (A reference with no family has direction.family null; its tier is the level.)
+    if (direction.level !== spec.completeness) {
       res.status(409).json({ ok: false, error: `family ${direction.family} is not a ${spec.completeness} family`, code: 'tier_mismatch' });
       return;
     }
@@ -92,7 +98,7 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
       return;
     }
     const g = await generateFromDirection(direction, { loadReference: store?.loadImage, stream: true, env, fetchImpl });
-    res.status(200).json({ ok: true, provider: g.provider, model: g.model, quality: g.quality, size: g.size, ms: g.ms, usage: g.usage, prompt: direction.prompt, family: direction.family, familyLabel: direction.familyLabel, familyRefs: direction.refs, subjectSource: direction.subjectSource, subject: direction.subject, reference: direction.reference?.id ?? null, composition: direction.composition, settings: { tier: direction.level, emotion: spec.emotion, motif: spec.motif, energy: spec.energy.value, expression: spec.expression ?? null }, promptCheck: checkPrompt(direction, { library }), referenceSent: Boolean(g.reference), seed: direction.seed, libraryVersion: direction.libraryVersion, swatches: direction.swatches, image: `data:${g.mime};base64,${g.b64}` });
+    res.status(200).json({ ok: true, provider: g.provider, model: g.model, quality: g.quality, size: g.size, ms: g.ms, usage: g.usage, prompt: direction.prompt, family: direction.family, familyLabel: direction.familyLabel, familyRefs: direction.refs, subjectSource: direction.subjectSource, subject: direction.subject, reference: direction.reference?.id ?? null, composition: direction.composition, performance: direction.performance, settings: { tier: direction.level, emotion: spec.emotion, motif: spec.motif, energy: spec.energy.value, expression: spec.expression ?? null }, promptCheck: checkPrompt(direction, { library }), referenceSent: Boolean(g.reference), seed: direction.seed, libraryVersion: direction.libraryVersion, swatches: direction.swatches, image: `data:${g.mime};base64,${g.b64}` });
   } catch (e) {
     // A reference image missing or unreadable in the store happens before any
     // provider call: 503 no_reference, like a missing store.

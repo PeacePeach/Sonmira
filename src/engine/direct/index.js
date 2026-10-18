@@ -17,14 +17,16 @@
 
 import { rng, hashSeed } from '../render/rng.js';
 import { FAMILIES, familiesOfTier } from './families.js';
-import { LIBRARY, referencePalette, REFERENCE_AUTHORITY } from './library.js';
+import { LIBRARY, referencePalette, referenceColourLanguage, REFERENCE_AUTHORITY, REFERENCE_AUTHORITY_LOOSE, tierOf } from './library.js';
 import { PEOPLE } from './leakage.js';
 import { compositionPlan, compositionLine } from './composition.js';
+import { soundPlan } from './sound.js';
 
 export { FAMILIES, REFERENCES, LIBRARY_VERSION } from './families.js';
 export { LIBRARY, createLibrary, colourName, referencePalette } from './library.js';
 export { checkLeakage, checkPrompt } from './leakage.js';
-export const DIRECTION_VERSION = 7;
+export { soundPlan } from './sound.js';
+export const DIRECTION_VERSION = 8;
 
 // Global Sonmira constraints: true for every family and every tier.
 // Materiality is independent of abstraction: Loose, Gathered and Resolved all
@@ -67,6 +69,13 @@ export const AVOID = [
 // several families (flat R1, smooth R4/R6, deep-valued R2/R5) and pulled
 // every result toward one generic look.
 export const REFERENCE_STYLE = 'A hand-made painting in the artistic language of the attached reference: its medium, technique, texture, brushwork, colour treatment, composition language and degree of stylisation. An original composition, not a copy of the reference or of any existing artwork.';
+// Loose: the reference gives the language, the performance the picture.
+export const REFERENCE_STYLE_LOOSE = 'A hand-made painting in the artistic language of the attached reference: its medium, technique, texture, brushwork and degree of abstraction, with a new composition and colour shaped by this performance. An original painting, not a copy of the reference or of any existing artwork.';
+// A reference with no family (uploaded straight into a tier folder): no
+// family's rules or colours describe it, so the image alone sets the style.
+export const REFERENCE_ONLY_STYLE = 'Style: entirely the attached reference\'s own; follow its technique, marks, texture and edges as they are, without adding a technique it does not show. This describes only how it is painted, never what is depicted.';
+export const REFERENCE_ONLY_COLOUR = 'Colour: the attached reference\'s own colour language, read from the image.';
+
 export const REFERENCE_AVOID = [
   'text, letters, titles, signature, logo or watermark', 'a frame, border or mat', 'a photo of a painting on a table',
   'photorealism or a photograph', 'a photo-to-painting filter effect', 'glossy digital or 3D rendering',
@@ -97,7 +106,7 @@ export const LEVELS = {
     label: 'abstract watercolor',
     refLabel: 'abstract painting',
     form: 'Abstract: nothing is deliberately depicted, there is no focal point and no picture space to step into. The marks are the painting.',
-    refForm: 'Abstract: nothing is deliberately depicted and there is no picture space to step into; the reference\'s own marks, colour and texture are the painting.',
+    refForm: 'Abstract: nothing is deliberately depicted and there is no picture space to step into; the painting is made only of the reference\'s kind of marks, washes and texture, arranged and coloured as the performance plan below describes.',
   },
   gathered: {
     label: 'semi-abstract watercolor study',
@@ -120,6 +129,14 @@ const EMOTION_REF = {
   bright: 'Mood: bright, leaning toward the warmer, clearer end of the reference\'s own colour and value range.',
   melancholic: 'Mood: melancholic, leaning toward the cooler, quieter end of the reference\'s own colour and value range.',
   intense: 'Mood: intense, leaning toward the deeper, richer end of the reference\'s own colour and value range.',
+};
+// Loose with words: the words' mood, free of the reference's own range
+// (the performance plan sets the colour; the mood leans it).
+const EMOTION_LOOSE = {
+  tender: 'Mood, from the words: tender, so softer and gentler colour and light.',
+  bright: 'Mood, from the words: bright, so warmer, clearer colour and open light.',
+  melancholic: 'Mood, from the words: melancholic, so cooler, quieter colour and subdued light.',
+  intense: 'Mood, from the words: intense, so deeper, richer colour and stronger contrast.',
 };
 const ENERGY_REF = {
   calm: 'Pace of the marks, in the reference\'s own technique: slow and settled.',
@@ -196,9 +213,10 @@ function pickWeighted(list, r) {
   return list[list.length - 1][0];
 }
 
-// Families allowed for a tier, each equally likely: the style is chosen
-// first among families, then an image within the family (library.select),
-// so a family with more references is not chosen more often. Every family
+// Families allowed for a tier, each equally likely: the style family is
+// chosen among the tier's families, so a family with more references is not
+// chosen more often; the reference image is drawn separately from the whole
+// tier (library.selectInTier). Every family
 // can paint any subject (the subject never comes from the family), so a
 // family is left out only when it has no active reference. `motif` and
 // `concept` no longer change eligibility; kept for callers.
@@ -215,16 +233,27 @@ export function direct(spec) {
   const library = spec.library || LIBRARY;
   const drawn = pickWeighted(familiesFor(level, motif, library, { concept: Boolean(spec.concept?.text) }), r);
   // A developer override may pick any family; it brings its own tier rules.
-  const familyId = FAMILIES[spec.family] ? spec.family : drawn;
+  const pinned = FAMILIES[spec.family] ? spec.family : null;
+
+  // The primary reference: drawn by seed from every reference of the tier,
+  // whatever its family, each equally likely (Han, 18 Oct); from the family's
+  // pool when a tool pins the family. A given reference is used when it
+  // belongs to the pinned family, or else to the tier.
+  const tierOfDraw = FAMILIES[pinned ?? drawn].tier;
+  const given = spec.reference && library.get(spec.reference);
+  const fits = given?.active && (pinned ? given.family === pinned : tierOf(given) === tierOfDraw);
+  const reference = fits ? given : pinned ? library.select(pinned, spec.seed) : library.selectInTier(tierOfDraw, spec.seed);
+  // The style family follows the reference, so the written style matches
+  // the image; a reference with no family (uploaded straight into a tier
+  // folder) keeps the drawn family.
+  const familyId = pinned ?? reference?.family ?? drawn;
   const F = FAMILIES[familyId];
   const tier = F.tier;
+  // A reference with no family takes no family's rules, colours or
+  // composition language: only the drawn family's tier applies.
+  const refOnly = Boolean(reference) && !pinned && !reference.family;
   const subject = tier === 'loose' ? null : (ATMOSPHERES[motif] ?? ATMOSPHERES.abstract);
   const energy = spec.energy?.value || 'calm';
-
-  // The primary reference: drawn from the family's pool by seed (or given,
-  // e.g. by a tool, when it belongs to this family).
-  const given = spec.reference && library.get(spec.reference);
-  const reference = given && given.family === familyId && given.active ? given : library.select(familyId, spec.seed);
   const fromRef = referencePalette(reference);
 
   // Colour comes from the reference's measured hierarchy. Only a reference
@@ -235,7 +264,7 @@ export function direct(spec) {
   const rest = P.colors.slice(2);
   if (rest.length && (!P.accent || r() < 0.5)) chosen.push(rest[Math.floor(r() * rest.length)]);
   if (P.accent) chosen.push(P.accent);
-  const swatches = fromRef ? fromRef.swatches : chosen;
+  const swatches = fromRef ? fromRef.swatches : refOnly ? [] : chosen;
 
   // The subject: from the song's words when they are reliable, else from the
   // person's note (both arrive as `concept`, with source 'lyrics' or 'note');
@@ -243,39 +272,54 @@ export function direct(spec) {
   // atmosphere of the motif, with no objects or figures invented for it.
   const concept = spec.concept?.text ? spec.concept : null;
   const withRef = Boolean(reference);
+  // Loose with its reference (Han, 18 Oct): the reference gives the
+  // language; how this voice moved gives the composition, marks and colour
+  // (sound.js), and the reference no longer dictates layout or exact hues.
+  const performance = tier === 'loose' && withRef ? soundPlan({ expression: spec.expression, energy }) : null;
   const subjectLine = concept ? subjectFromConcept(tier, concept, withRef)
     : tier === 'loose' && spec.soundOnly ? `${article(labelOf('loose', withRef))} that expresses the sound of the voice itself, not any subject or story.`
     : `${article(labelOf(tier, withRef))}${subject ? ` of ${subject}` : ''}.`;
-  const avoid = withRef ? REFERENCE_AVOID : AVOID;
-  const plan = tier === 'loose' ? null : compositionPlan(familyId, spec.seed);
+  const avoid = withRef ? (performance ? [...REFERENCE_AVOID, 'the reference\'s own layout or placement of colour'] : REFERENCE_AVOID) : AVOID;
+  const plan = tier === 'loose' ? null : compositionPlan(refOnly ? null : familyId, spec.seed);
+  const familyLine = refOnly ? REFERENCE_ONLY_STYLE
+    : `Style — ${F.label}: ${F.rules} This describes only how it is painted, never what is depicted.${performance ? ' Where it describes a layout or a direction, the performance plan below decides instead.' : ''}`;
+  // The reference's light note can name its own objects ("sun through
+  // leaves", "windows under violet shadow"), so only its quality is kept.
+  const measured = fromRef ? fromRef.text.replace(/Light: [^.]*\./, 'Light: the reference\'s own quality and direction of light, carried onto the new subject.') : null;
+  const fallback = `Colour: ${P.colors.filter((p) => chosen.includes(p)).map((p) => p.name).join(', ')}, on white or warm white paper${P.accent ? `, with ${P.accent.name} as the only accent, kept small` : ''}.`;
   const sections = {
     subject: subjectLine,
     meaning: concept ? meaningLine(tier, concept) : null,
-    family: `Style — ${F.label}: ${F.rules} This describes only how it is painted, never what is depicted.`,
+    family: familyLine,
     content: CONTENT_RULE,
     form: withRef ? LEVELS[tier].refForm : LEVELS[tier].form,
-    // How the reference composes, drawn per seed: viewpoint, off-centre
-    // placement and scale (composition.js). Loose stays all-over.
-    composition: compositionLine(plan, tier),
-    // The reference's light note can name its own objects ("sun through
-    // leaves", "windows under violet shadow"), so only its quality is kept.
-    palette: fromRef ? fromRef.text.replace(/Light: [^.]*\./, 'Light: the reference\'s own quality and direction of light, carried onto the new subject.') : `Colour: ${P.colors.filter((p) => chosen.includes(p)).map((p) => p.name).join(', ')}, on white or warm white paper${P.accent ? `, with ${P.accent.name} as the only accent, kept small` : ''}.`,
-    // Sound varies mood and marks inside the reference's language, never its identity.
-    emotion: withRef ? (EMOTION_REF[spec.emotion] || EMOTION_REF.tender) : (EMOTION[spec.emotion] || EMOTION.tender),
-    energy: withRef ? ENERGY_REF[energy] : ENERGY[energy],
-    gesture: expressionLine(spec.expression, withRef),
-    style: withRef ? REFERENCE_STYLE : GLOBAL_STYLE,
+    // Gathered and Resolved: how the reference composes, drawn per seed
+    // (composition.js). Loose: how the voice moved (sound.js).
+    composition: performance ? performance.composition : compositionLine(plan, tier),
+    marks: performance?.marks ?? null,
+    palette: performance ? `${refOnly ? referenceColourLanguage(null) : referenceColourLanguage(reference)} ${performance.colour}`
+      : measured ?? (refOnly ? REFERENCE_ONLY_COLOUR : fallback),
+    // Gathered and Resolved: sound varies mood and marks inside the
+    // reference's language. Loose: the words' mood only when there are
+    // words (no default mood is invented for a wordless take); pace and
+    // gesture are in the performance plan.
+    emotion: performance ? (concept ? EMOTION_LOOSE[spec.emotion] || EMOTION_LOOSE.tender : null)
+      : withRef ? (EMOTION_REF[spec.emotion] || EMOTION_REF.tender) : (EMOTION[spec.emotion] || EMOTION.tender),
+    energy: performance ? null : withRef ? ENERGY_REF[energy] : ENERGY[energy],
+    gesture: performance ? null : expressionLine(spec.expression, withRef),
+    style: performance ? REFERENCE_STYLE_LOOSE : withRef ? REFERENCE_STYLE : GLOBAL_STYLE,
   };
-  const prompt = [sections.subject, sections.meaning, sections.family, sections.content, sections.form, sections.composition, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.energy, sections.gesture, sections.style, `Avoid: ${avoid.join(', ')}.`].filter(Boolean).join('\n');
+  const prompt = [sections.subject, sections.meaning, sections.family, sections.content, sections.form, sections.composition, sections.marks, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.energy, sections.gesture, sections.style, `Avoid: ${avoid.join(', ')}.`].filter(Boolean).join('\n');
   return {
     version: DIRECTION_VERSION, level: tier, requestedLevel: level,
-    family: familyId, familyLabel: F.label, refs: library.pool(familyId).map((e) => e.path.split('/').pop()),
+    family: refOnly ? null : familyId, familyLabel: refOnly ? 'From the reference' : F.label, refs: refOnly ? [] : library.pool(familyId).map((e) => e.path.split('/').pop()),
     // The one reference image to send with `referencePrompt + prompt`.
-    reference: reference ? { id: reference.id, path: reference.path, family: reference.family } : null,
-    referencePrompt: reference ? REFERENCE_AUTHORITY : null,
+    reference: reference ? { id: reference.id, path: reference.path, family: reference.family ?? null } : null,
+    referencePrompt: reference ? (performance ? REFERENCE_AUTHORITY_LOOSE : REFERENCE_AUTHORITY) : null,
     libraryVersion: library.version, seed: spec.seed >>> 0,
     concept: concept ?? null,
     composition: plan,
+    performance: performance?.variables ?? null,
     subject: concept ? concept.text : subject, subjectSource: concept ? (concept.source === 'note' ? 'note' : 'lyrics') : tier === 'loose' && spec.soundOnly ? 'sound' : 'atmosphere',
     pigments: swatches.map((p) => p.name), swatches, sections, prompt, avoid: avoid.slice(),
   };

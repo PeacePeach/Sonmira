@@ -20,17 +20,28 @@ export const UNDERSTAND_VERSION = 2;
 // Below this much sound there is nothing to transcribe: skip the paid call.
 export const MIN_SOUND_FOR_WORDS_SEC = 1.0;
 
-// How the voice moved → gesture words (never colour, never quality).
+// How the voice moved → gesture words (never a quality judgement). The
+// Loose plan (direct/sound.js) also turns them into colour character.
 export function expressionFor(features, singing) {
   const cents = singing?.expression?.pitchRangeCents ?? (features?.pitch?.rangeSemitones != null ? features.pitch.rangeSemitones * 100 : null);
   const sounding = Math.max(0.5, features?.activity?.soundingSec ?? 0);
   const pauseRate = (features?.pauses?.count ?? 0) / sounding;
   const dyn = features?.energy?.dynamicRangeDb ?? singing?.expression?.dynamicRangeDb ?? null;
+  const hz = features?.pitch?.medianHz ?? null, phrases = features?.phrases?.count ?? null, reg = features?.onsets?.regularityProxy ?? null;
+  const cont = features?.pitch?.continuity ?? null;
   return {
     range: cents == null ? null : cents < 300 ? 'narrow' : cents < 900 ? 'moderate' : 'wide',
     flow: features?.activity ? (pauseRate > 0.25 ? 'broken' : 'connected') : null,
     dynamics: dyn == null ? null : dyn > 12 ? 'swelling' : 'even',
     vibrato: (singing?.expression?.vibratoShare ?? 0) >= 0.3,
+    // For the Loose performance plan (direct/sound.js): the melody's shape,
+    // the voice's register, how many phrases, how even the note onsets
+    // were, and whether the pitch glides or steps.
+    contour: singing?.expression?.contour ?? null,
+    register: hz == null ? null : hz < 165 ? 'low' : hz < 300 ? 'mid' : 'high',
+    phrasing: phrases == null ? null : phrases <= 1 ? 'single' : phrases <= 3 ? 'few' : 'many',
+    rhythm: reg == null ? null : reg >= 0.6 ? 'regular' : 'irregular',
+    line: cont == null ? null : cont >= 0.8 ? 'smooth' : 'stepped',
   };
 }
 
