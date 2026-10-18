@@ -14,7 +14,7 @@
 //
 // The mapping is an artistic choice, not a measured truth:
 //   melody shape (contour)      → direction of movement, temperature shift
-//   register                    → where the visual weight sits, value key
+//   register                    → value key; where the weight sits when the melody holds level
 //   pitch range                 → how far the marks spread across the sheet
 //   pauses (flow) and phrases   → one continuous body or separate clusters
 //   onset regularity (rhythm)   → even or syncopated spacing
@@ -92,12 +92,15 @@ export function soundPlan({ expression = null, energy = null } = {}) {
   const x = expression ?? {};
   const e = energy?.value ?? energy ?? null;
   const variables = {
-    movement: x.contour ?? null, weight: x.register ?? null, extent: x.range ?? null,
+    movement: x.contour ?? null, weight: x.contour == null || x.contour === 'level' ? x.register ?? null : null, extent: x.range ?? null,
     body: x.flow ?? null, phrasing: x.phrasing ?? null, spacing: x.rhythm ?? null, stroke: x.line ?? null,
     density: e, load: x.dynamics ?? null, edges: typeof x.vibrato === 'boolean' ? x.vibrato : null,
   };
   const body = x.flow ? BODY[x.flow]?.[x.phrasing ?? 'few'] ?? null : null;
-  const arrangement = [pick(MOVEMENT, x.contour), pick(WEIGHT, x.register), pick(EXTENT, x.range), body, pick(SPACING, x.rhythm)].filter(Boolean);
+  // A rising or falling (or arched) melody already says where the weight
+  // goes; register places it only when the melody holds level.
+  const weight = x.contour == null || x.contour === 'level' ? pick(WEIGHT, x.register) : null;
+  const arrangement = [pick(MOVEMENT, x.contour), weight, pick(EXTENT, x.range), body, pick(SPACING, x.rhythm)].filter(Boolean);
   const marks = [pick(STROKE, x.line), pick(DENSITY, e), pick(LOAD, x.dynamics), variables.edges == null ? null : EDGE[variables.edges]].filter(Boolean);
   const colour = [pick(STRENGTH, e), pick(KEY, x.register), pick(TEMPERATURE, x.contour), x.dynamics === 'swelling' ? 'the strongest colour only at the swell' : null].filter(Boolean);
   return {

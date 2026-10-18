@@ -42,6 +42,8 @@ test('every performance variable changes the Loose prompt', () => {
   const alt = { range: 'wide', flow: 'broken', dynamics: 'swelling', vibrato: true, contour: 'falling', register: 'high', phrasing: 'many', rhythm: 'irregular', line: 'stepped' };
   const base = loose(GENTLE, 'calm').prompt;
   for (const [k, v] of Object.entries(alt)) assert.notEqual(loose({ ...GENTLE, [k]: v }, 'calm').prompt, base, k);
+  // A falling melody sung high must not also be told to sit high.
+  assert.doesNotMatch(loose({ ...GENTLE, contour: 'falling', register: 'high' }, 'calm').sections.composition, /sits high/);
   assert.notEqual(loose(GENTLE, 'lively').prompt, base, 'energy');
   for (const c of ['rising', 'falling', 'arching', 'dipping', 'level']) assert.ok(soundPlan({ expression: { contour: c } }).composition.length > 60, c);
 });
