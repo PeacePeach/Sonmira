@@ -70,9 +70,9 @@ export function cleanPerformance(p) {
   const level = (x) => ({ mean: num(x?.mean, -DB, 0) ?? 0, start: num(x?.start, -DB, 0) ?? 0, end: num(x?.end, -DB, 0) ?? 0 });
   const passages = p.passages.slice(0, 12).map((x) => ({
     t0: num(x?.t0, 0, T) ?? 0, t1: num(x?.t1, 0, T) ?? 0, phrase: num(x?.phrase, 0, 1000) ?? 0,
-    joinedBy: ['leap', 'unstable'].includes(x?.joinedBy) ? x.joinedBy : null,
+    joinedBy: ['leap', 'unstable', 'moving'].includes(x?.joinedBy) ? x.joinedBy : null,
     pitch: pitch(x?.pitch), level: level(x?.level),
-    unstable: num(x?.unstable, 0, 1) ?? 0, bend: num(x?.bend, 0, 1) ?? 0, run: num(x?.run, 0, 1) ?? 0, articulationPerSec: num(x?.articulationPerSec, 0, 50) ?? 0,
+    unstable: num(x?.unstable, 0, 1) ?? 0, bend: num(x?.bend, 0, 1) ?? 0, moving: num(x?.moving, 0, 1) ?? 0, articulationPerSec: num(x?.articulationPerSec, 0, 50) ?? 0,
     offGridCents: num(x?.offGridCents, 0, 50), maxLeapSt: num(x?.maxLeapSt, 0, ST) ?? 0, overshootCents: num(x?.overshootCents, 0, 6000),
     entryLeapSt: num(x?.entryLeapSt, -ST, ST), drops: num(x?.drops, 0, 100) ?? 0,
   })).filter((x) => x.t1 > x.t0);
@@ -84,7 +84,7 @@ export function cleanPerformance(p) {
     phraseCount: num(p.phraseCount, 1, 1000) ?? 1, firstPhraseVoicedSec: num(p.firstPhraseVoicedSec, 0, T) ?? 0,
     gapsSec: nums(p.gapsSec, 12, 0, T).filter((x) => x != null),
     passages,
-    episodes: (Array.isArray(p.episodes) ? p.episodes : []).slice(0, 12).map((e) => ({ t0: num(e?.t0, 0, T) ?? 0, sec: num(e?.sec, 0, T) ?? 0, kind: e?.kind === 'run' ? 'run' : 'unsteady', stops: num(e?.stops, 0, 100) ?? 0, passed: num(e?.passed, 0, 100) ?? 0 })),
+    episodes: (Array.isArray(p.episodes) ? p.episodes : []).slice(0, 12).map((e) => ({ t0: num(e?.t0, 0, T) ?? 0, sec: num(e?.sec, 0, T) ?? 0, kind: ['run', 'moving'].includes(e?.kind) ? e.kind : 'unsteady', stops: num(e?.stops, 0, 100) ?? 0, passed: num(e?.passed, 0, 100) ?? 0 })),
     global: {
       pitchRangeSt: num(g.pitchRangeSt, 0, ST), levelRangeDb: num(g.levelRangeDb, 0, DB), notesPerSec: num(g.notesPerSec, 0, 50), ioiCv: num(g.ioiCv, 0, 10),
       controlledShare: num(g.controlledShare, 0, 1), ornamentCents: num(g.ornamentCents, 0, 1200), pitchBreaks: num(g.pitchBreaks, 0, 1000) ?? 0, drops: num(g.drops, 0, 1000) ?? 0,

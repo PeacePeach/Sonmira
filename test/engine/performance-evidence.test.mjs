@@ -7,6 +7,13 @@
 //   2. A fast legato figure whose notes are too brief for the note finder is
 //      a run: painted as the stepping movement it is, never torn and never as
 //      a missed landing. Swinging, hunting and wide vibrato stay unsteady.
+//   3. The pitch line cannot tell a legato figure from a voice searching in
+//      steps, so the run / unsteady reading only chooses words: the passages,
+//      shares and indices are the same either way, a run or a stretch moving
+//      between brief pitches is never painted as controlled, and only a
+//      stretch where the voice held no pitch is painted torn (step 15).
+//   4. An overshoot is described as movement past the note, never as a
+//      missed landing.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SR, rng, sing, singers } from './synth.js';
@@ -39,6 +46,8 @@ const figure = (notes, dur) => (u, from, to) => {
 };
 const words = (m) => performanceDirection(m).decisions.map((d) => d.decision).join(' ');
 const FAULT = /missed landing|backrun|torn|lost (control|hold)|scrubbed|Fragmentation is local|uncontrolled|out of control/i;
+// Claims of control a stretch that did not settle cannot support.
+const CONTROL = /Edges are soft and planned|Water is controlled\.|No fragmented areas|blooms are planned/;
 
 test('arrival overshoot: a low neighbouring note just before the arrival is not an overshoot', () => {
   for (const seed of SEEDS) {
@@ -105,8 +114,9 @@ test('a fast legato figure too brief for the note finder is a run, not a fault (
     assert.equal(runs.length, 1, `seed ${seed}: ${JSON.stringify(m.episodes)}`);
     assert.ok(runs[0].stops >= RUN.minStops && runs[0].passed >= RUN.minPassed);
     const w = words(m);
-    assert.match(w, /steps quickly through \d pitches without settling on any/);
+    assert.match(w, /steps through \d brief pitches without settling on any/);
     assert.doesNotMatch(w, FAULT, `seed ${seed}`);
+    assert.doesNotMatch(w, CONTROL, `seed ${seed}`);
   }
 });
 
@@ -143,6 +153,42 @@ test('a voice that swings without settling is still painted torn (unstable takes
   }
 });
 
+test('the run reading changes only words: passages, shares and indices are the same either way, with no control claimed', () => {
+  // The step 14 benchmark's two errors: legato figures not read as runs, and
+  // voices hunting in steps read as runs. Either way the painting may differ
+  // only in the verb for the stretch.
+  const takes = [];
+  for (const seed of SEEDS) {
+    const r = rng(seed), dur = 0.09 + r() * 0.06, base = -900, fig = [base + 100, base + 400, base + 200, base + 100, base - 100];
+    takes.push(line([2, 0, 2, 0, -5, 0, 2, 0], { seed, at: 4, leadSec: fig.length * dur, lead: figure(fig, dur) }));
+    const steps = [0, 1, 2, 3].map(() => base + 700 + Math.round((r() - 0.5) * 300)), L = 0.12 + r() * 0.05;
+    takes.push(line([0, 4, 2, 7, 0, 4, 2, 0], { seed, at: 4, leadSec: steps.length * L, lead: figure(steps, L) }));
+  }
+  let both = 0;
+  for (const x of takes) {
+    const m = measurePerformance(x, SR), saved = RUN.minStops;
+    RUN.minStops = 99;
+    let off; try { off = measurePerformance(x, SR); } finally { RUN.minStops = saved; }
+    const d = performanceDirection(m), o = performanceDirection(off);
+    assert.deepEqual(d.indices, o.indices);
+    assert.deepEqual(d.passages.map((p) => [p.t0, p.joinedBy, p.unstable, p.moving]), o.passages.map((p) => [p.t0, p.joinedBy, p.unstable, p.moving]));
+    assert.deepEqual(d.decisions.map((x) => x.aspect), o.decisions.map((x) => x.aspect));
+    if (m.episodes.some((e) => e.kind === 'run' && e.sec >= 0.25)) both++;
+    if (m.episodes.some((e) => e.sec >= 0.25) && m.episodes.filter((e) => e.sec >= 0.25).every((e) => e.kind !== 'unsteady')) {
+      assert.doesNotMatch(words(m), CONTROL); assert.doesNotMatch(words(m), FAULT);
+    }
+  }
+  assert.ok(both > 0, 'some stretches are read as runs');
+});
+
+test('an overshoot of more than 150 c is movement past the note, not a missed landing', () => {
+  const m = measurePerformance(singers.weak(), SR);
+  m.passages[0].overshootCents = 220;
+  const w = words(m);
+  assert.match(w, /carries well past its mark before it turns back and settles/);
+  assert.doesNotMatch(w, /missed|misses|backrun|failure|mistake/i);
+});
+
 test('run rule calibration', () => {
-  assert.deepEqual(RUN, { stopSec: 0.06, stopCents: 30, passCents: 40, minStops: 3, minPassed: 2 });
+  assert.deepEqual(RUN, { stopSec: 0.06, stopCents: 30, passCents: 40, minStops: 3, minPassed: 2, movingStops: 2 });
 });

@@ -25,7 +25,7 @@ const withoutGain = ({ gainDb, ...m }) => m; // eslint-disable-line no-unused-va
 
 test('the measurement is numbers only and deterministic', () => {
   assert.deepEqual(measurePerformance(singers.strong(), SR), strong);
-  const walk = (x) => (Array.isArray(x) ? x.forEach(walk) : x && typeof x === 'object' ? Object.values(x).forEach(walk) : assert.ok(x == null || typeof x === 'number' || ['leap', 'unstable', 'run', 'unsteady'].includes(x), `unexpected ${x}`));
+  const walk = (x) => (Array.isArray(x) ? x.forEach(walk) : x && typeof x === 'object' ? Object.values(x).forEach(walk) : assert.ok(x == null || typeof x === 'number' || ['leap', 'unstable', 'moving', 'run', 'unsteady'].includes(x), `unexpected ${x}`));
   walk(strong);
   assert.equal(measurePerformance(new Float32Array(SR * 2), SR), null);
 });

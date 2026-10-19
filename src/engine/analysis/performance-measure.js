@@ -7,10 +7,11 @@
 // The summary is numbers only (no words, no audio), small enough to send
 // with the visual spec:
 //   passages  the take cut into stretches of singing: one per phrase, split
-//             again where the voice lost hold (an unstable episode) or leapt;
-//             each with its pitch path, loudness, stroke character and
-//             landings
-//   episodes  where the voice lost hold for ≥ 150 ms
+//             again where the pitch did not settle (an unstable episode) or
+//             leapt; each with its pitch path, loudness, stroke character
+//             and landings
+//   episodes  where the pitch did not settle on a note for ≥ 150 ms, and
+//             what the line did there
 //   global    whole-take measures, each anchored to the singing calibration
 //             in direct/performance.js
 //
@@ -47,6 +48,7 @@ export const RUN = {
   passCents: 40,    // passed through: the line is this far below on one side and above on the other
   minStops: 3,
   minPassed: 2,
+  movingStops: 2,   // a stretch that stops on this many pitches moved between pitches it reached
 };
 
 const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
@@ -235,30 +237,32 @@ function measureFrom(samples, sampleRate, cal) {
   }
   if (!phrases.length) return null;
 
-  // Unstable episodes: runs of unstable frames ≥ 150 ms. Each is either
-  //   unsteady  the voice swings, hunts or never reaches a pitch
-  //   run       the voice steps through pitches too brief for the note
-  //             finder (a fast legato figure): it stops on at least
-  //             RUN.minStops pitches and passes straight through at least
-  //             RUN.minPassed of them on its way somewhere else
-  // This only says what the pitch line did; it is not a judgement of intent.
-  // A stepping line can also be a voice searching in steps, so a run is
-  // painted as moving through pitches, never as controlled (step 14
-  // benchmark, 24 seeds per kind: 1 of 18 swinging or hunting episodes read
-  // as runs, 8 of 26 that hunt in steps or slide in stages, 0 of 79 in wide
-  // vibrato, 0 of 16 tracker artefacts; 11 of 24 fast legato melismas).
-  // Run frames are labelled 'run' here; the singing analysis is unchanged.
+  // Unstable episodes: runs of unstable frames ≥ 150 ms. What the pitch line
+  // did in each, measured, not judged:
+  //   run       it stops on at least RUN.minStops pitches and passes straight
+  //             through at least RUN.minPassed of them (a fast legato figure
+  //             looks like this, and so does a voice searching in steps)
+  //   moving    it stops on at least RUN.movingStops pitches, without that pattern
+  //   unsteady  it holds no pitch, or only one, for RUN.stopSec
+  // The kind only chooses how the stretch is described. It never changes the
+  // labels, the passage cuts or the shares, because the pitch line cannot
+  // tell a legato figure from searching (step 14 benchmark, 24 seeds per
+  // kind: 11 of 24 fast legato melismas read as runs, and so did 8 of 26
+  // stretches that hunt in steps or slide in stages). So a run or a moving
+  // stretch is never painted as controlled, and never as torn: only a
+  // stretch where the voice held no pitch is.
   const episodes = []; let s0 = null;
   label.forEach((l, i) => {
     if (l === 'unstable') { if (s0 == null) s0 = i; return; }
     if (s0 != null && (i - s0) * hop >= 0.15) episodes.push({ i0: s0, i1: i, t0: r(fr[s0].t), sec: r((i - s0) * hop) });
     s0 = null;
   });
+  const moving = new Array(fr.length).fill(false);
   for (const e of episodes) {
     const stops = pitchStops(fr, e.i0, e.i1, hop);
     e.stops = stops.length; e.passed = stops.filter((x) => x.passed).length;
-    e.kind = e.stops >= RUN.minStops && e.passed >= RUN.minPassed ? 'run' : 'unsteady';
-    if (e.kind === 'run') for (let i = e.i0; i < e.i1; i++) label[i] = 'run';
+    e.kind = e.stops >= RUN.minStops && e.passed >= RUN.minPassed ? 'run' : e.stops >= RUN.movingStops ? 'moving' : 'unsteady';
+    if (e.kind !== 'unsteady') for (let i = e.i0; i < e.i1; i++) moving[i] = true;
     delete e.i0; delete e.i1;
   }
 
@@ -267,7 +271,7 @@ function measureFrom(samples, sampleRate, cal) {
   for (const p of phrases) {
     const cuts = new Map();
     for (const n of N) if (Math.abs(n.leapSt ?? 0) >= PASSAGE.leapCutSt && n.start > p.t0 + PASSAGE.minSec && n.start < p.t1 - PASSAGE.minSec) cuts.set(r(n.start), 'leap');
-    for (const e of episodes) if (e.kind === 'unsteady' && e.sec >= PASSAGE.episodeMinSec && e.t0 > p.t0 + PASSAGE.minSec && e.t0 < p.t1 - PASSAGE.minSec) cuts.set(r(e.t0), 'unstable');
+    for (const e of episodes) if (e.sec >= PASSAGE.episodeMinSec && e.t0 > p.t0 + PASSAGE.minSec && e.t0 < p.t1 - PASSAGE.minSec) cuts.set(r(e.t0), e.kind === 'unsteady' ? 'unstable' : 'moving');
     const bounds = [p.t0, ...[...cuts.keys()].sort((a, b) => a - b), p.t1], own = [];
     for (let k = 0; k < bounds.length - 1; k++) {
       const [a, b] = [bounds[k], bounds[k + 1]];
@@ -291,7 +295,7 @@ function measureFrom(samples, sampleRate, cal) {
       t0: r(s.t0), t1: r(s.t1), phrase: s.phrase, joinedBy: s.joinedBy,
       pitch: { start: r(med(pitch.slice(0, k)), 1), end: r(med(pitch.slice(-k)), 1), median: r(med(pitch), 1), high: r(Math.max(...pitch), 1), low: r(Math.min(...pitch), 1) },
       level: { mean: r(mean(lv), 1), start: r(med(lv.slice(0, k)), 1), end: r(med(lv.slice(-k)), 1) },
-      unstable: r(share('unstable')), bend: r(share('bend')), run: r(share('run')),
+      unstable: r(share('unstable')), bend: r(share('bend')), moving: r(use.filter((i) => moving[i]).length / Math.max(1, use.length)),
       articulationPerSec: r(dips / Math.max(0.1, F.length * hop)),
       offGridCents: PN.length ? r(mean(PN.map((n) => n.offGridCents)), 0) : null,
       maxLeapSt: PN.length ? r(Math.max(0, ...PN.map((n) => (n.start > s.t0 + 0.02 ? Math.abs(n.leapSt ?? 0) : 0))), 1) : 0,
