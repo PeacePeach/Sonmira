@@ -13,7 +13,8 @@
 // reference's `content` (references.js, curated) lists the terms it depicts.
 //
 //   people       any person, figure or face: never allowed, whatever the
-//                words say (Sonmira paints no people)
+//                words say (Sonmira paints no people), except the small,
+//                faceless figures a Resolved scene names (checkPrompt)
 //   leaks        a term the reference depicts that is in the picture but not
 //                in the lyrics, their imagery or the note
 //   unrequested  any other term in the picture that the words do not name
@@ -58,7 +59,7 @@ export function affirmed(text) {
 }
 
 const conceptText = (concept, note) => [concept?.text, ...(concept?.theme ?? []), ...(concept?.imagery ?? []),
-  ...(concept?.figurative ?? []).flatMap((f) => [f.phrase, f.meaning]), note].filter(Boolean).join(' . ');
+  ...(concept?.figurative ?? []).flatMap((f) => [f.phrase, f.meaning]), ...Object.values(concept?.scene ?? {}), note].filter(Boolean).join(' . ');
 
 // What the reference depicts: its curated `content` (from the given
 // library, else the bundled registry, since a Blob registry may not carry
@@ -100,6 +101,13 @@ export function checkPrompt(direction, { library = LIBRARY } = {}) {
   const own = [s.family, s.content, s.form, s.composition, s.staging, s.passages, s.marks, s.contrast, s.palette, s.emotion, s.energy, s.gesture, s.disorder, s.style].filter(Boolean).join('\n');
   const concept = direction.concept ?? null;
   const r = checkLeakage({ depicted: own, concept, reference: direction.reference?.id, family: direction.family, library });
-  const words = checkLeakage({ depicted: [s.subject, s.meaning].filter(Boolean).join('\n'), concept: null, reference: null, family: '__none__', library });
+  const told = [s.subject, s.meaning, s.narrative].filter(Boolean).join('\n');
+  const words = checkLeakage({ depicted: told, concept: null, reference: null, family: '__none__', library });
+  // Resolved with a figure the scene names (direct: narrativeFor): small,
+  // distant, faceless figures are allowed; a face or portrait never is.
+  if (direction.narrative?.figure) {
+    const faces = [...affirmed(told).matchAll(/\b(?:portraits?|faces?|close-?ups?)\b/gi)].map((m) => m[0]);
+    return { ...r, people: faces, figures: [...new Set([...r.people, ...words.people])], verdict: faces.length || r.leaks.length ? 'leak' : r.unrequested.length ? 'review' : 'ok' };
+  }
   return { ...r, people: [...r.people, ...words.people], verdict: r.verdict === 'ok' && words.people.length ? 'leak' : r.verdict };
 }

@@ -96,13 +96,14 @@ export function cleanPerformance(p) {
 
 // The words' concept goes into the prompt, so it is bounded and flattened.
 const flat = (v, n) => String(v ?? '').replace(/[\u0000-\u001f"`]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
-function cleanConcept(c) {
+export function cleanConcept(c) {
   if (!c || typeof c !== 'object' || !flat(c.text, 240)) return null;
   const list = (xs, k, n) => (Array.isArray(xs) ? xs : []).map((x) => flat(x, n)).filter(Boolean).slice(0, k);
   return {
     source: c.source === 'note' ? 'note' : 'lyrics',
     text: flat(c.text, 240), theme: list(c.theme, 3, 60), imagery: list(c.imagery, 5, 60),
     figurative: (Array.isArray(c.figurative) ? c.figurative : []).slice(0, 4).map((f) => ({ phrase: flat(f?.phrase, 80), meaning: flat(f?.meaning, 120) })).filter((f) => f.phrase && f.meaning),
+    ...(flat(c.scene?.moment, 320) ? { scene: { situation: flat(c.scene.situation, 160), relationship: flat(c.scene.relationship, 160), tension: flat(c.scene.tension, 160), moment: flat(c.scene.moment, 320), figure: flat(c.scene.figure, 120) } } : {}),
   };
 }
 
@@ -136,7 +137,7 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
       return;
     }
     const g = await generateFromDirection(direction, { loadReference: store?.loadImage, stream: true, env, fetchImpl });
-    res.status(200).json({ ok: true, provider: g.provider, model: g.model, quality: g.quality, size: g.size, ms: g.ms, usage: g.usage, prompt: direction.prompt, family: direction.family, familyLabel: direction.familyLabel, familyRefs: direction.refs, subjectSource: direction.subjectSource, subject: direction.subject, reference: direction.reference?.id ?? null, composition: direction.composition, performance: direction.performance, performanceTrace: direction.performanceTrace, resolvedFinish: direction.resolvedFinish ?? null, settings: { tier: direction.level, emotion: spec.emotion, motif: spec.motif, energy: spec.energy.value, expression: spec.expression ?? null }, promptCheck: checkPrompt(direction, { library }), referenceSent: Boolean(g.reference), seed: direction.seed, libraryVersion: direction.libraryVersion, swatches: direction.swatches, image: `data:${g.mime};base64,${g.b64}` });
+    res.status(200).json({ ok: true, provider: g.provider, model: g.model, quality: g.quality, size: g.size, ms: g.ms, usage: g.usage, prompt: direction.prompt, family: direction.family, familyLabel: direction.familyLabel, familyRefs: direction.refs, subjectSource: direction.subjectSource, subject: direction.subject, reference: direction.reference?.id ?? null, composition: direction.composition, performance: direction.performance, performanceTrace: direction.performanceTrace, resolvedFinish: direction.resolvedFinish ?? null, narrative: direction.narrative ?? null, settings: { tier: direction.level, emotion: spec.emotion, motif: spec.motif, energy: spec.energy.value, expression: spec.expression ?? null }, promptCheck: checkPrompt(direction, { library }), referenceSent: Boolean(g.reference), seed: direction.seed, libraryVersion: direction.libraryVersion, swatches: direction.swatches, image: `data:${g.mime};base64,${g.b64}` });
   } catch (e) {
     // A reference image missing or unreadable in the store happens before any
     // provider call: 503 no_reference, like a missing store.
