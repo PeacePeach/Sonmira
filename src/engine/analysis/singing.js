@@ -43,10 +43,8 @@ export const SINGING_CALIBRATION = {
   intonation: { devGood: 12, devRandom: 28, minNotes: 4, minNoteSec: 0.25 },
   transitions: { overshoot: 50, minCount: 2 },
   weights: { stability: 0.3, intonation: 0.25, transitions: 0.15, control: 0.15, rhythm: 0.1, coherence: 0.05 },
-  // intonation 0.8 (was 0.6): on the first real takes (Han, 16 Oct) a casual
-  // and a careful take of the same song differed most in tuning consistency
-  // (0.755 vs 1.0); the singer heard the casual one as Gathered.
-  strong: { score: 0.8, confidence: 0.6, stability: 0.7, intonation: 0.8, transitions: 0.6 },
+  // Provisional strong thresholds; recalibrate with more labelled recordings.
+  strong: { score: 0.75, confidence: 0.6, stability: 0.7, intonation: 0.65, transitions: 0.6 },
   // Whole-performance control (performance.js). PROVISIONAL: set on
   // synthetic takes only (mixed-quality takes measure window p25 0.43–0.45
   // and 40 % weak windows; consistently controlled takes, including
