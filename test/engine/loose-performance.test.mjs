@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { direct, FAMILIES, LIBRARY, createLibrary, checkPrompt, REFERENCE_ONLY_STYLE } from '../../src/engine/direct/index.js';
-import { REFERENCE_AUTHORITY, REFERENCE_AUTHORITY_LOOSE } from '../../src/engine/direct/library.js';
+import { REFERENCE_AUTHORITY, REFERENCE_AUTHORITY_LOOSE, REFERENCE_AUTHORITY_RESOLVED } from '../../src/engine/direct/library.js';
 import { soundPlan, HUE_FREEDOM } from '../../src/engine/direct/sound.js';
 import { REFERENCE_LIBRARY } from '../../src/engine/direct/references.js';
 import { expressionFor } from '../../src/engine/understand.js';
@@ -59,8 +59,15 @@ test('Loose colour is a starting point that the performance moves; Gathered and 
   for (const [id, F] of Object.entries(FAMILIES)) {
     if (F.tier === 'loose') continue;
     const g = direct({ completeness: F.tier, emotion: 'tender', motif: 'water', seed: 1, family: id, energy: { value: 'calm' }, expression: ENERGETIC });
-    assert.match(g.sections.palette, /Keep these proportions/, id);
-    assert.equal(g.referencePrompt, REFERENCE_AUTHORITY, id);
+    // Resolved inherits the reference's colour range instead (Han, 19 Oct).
+    if (F.tier === 'resolved') {
+      assert.match(g.sections.palette, /measured from the reference: dominant.*Palette, inherited from the reference/, id);
+      assert.doesNotMatch(g.sections.palette, /Keep these proportions/, id);
+      assert.equal(g.referencePrompt, REFERENCE_AUTHORITY_RESOLVED, id);
+    } else {
+      assert.match(g.sections.palette, /Keep these proportions/, id);
+      assert.equal(g.referencePrompt, REFERENCE_AUTHORITY, id);
+    }
     assert.equal(g.performance, null, id);
   }
 });

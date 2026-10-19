@@ -19,7 +19,7 @@ import { analyzeTranscript, completionGate, decideTier, asrConfidence } from '..
 import { understandTake, semanticsFor } from '../../src/engine/understand.js';
 import { direct, createLibrary } from '../../src/engine/direct/index.js';
 import { REFERENCE_LIBRARY } from '../../src/engine/direct/references.js';
-import { REFERENCE_AUTHORITY } from '../../src/engine/direct/library.js';
+import { REFERENCE_AUTHORITY_RESOLVED } from '../../src/engine/direct/library.js';
 import { FAMILIES } from '../../src/engine/direct/families.js';
 import { createHandler as understandHandler } from '../../api/understand.js';
 import { createHandler as generateHandler } from '../../api/generate.js';
@@ -196,7 +196,7 @@ test('fixture 9: an unrelated reference keeps its style; the subject comes from 
   assert.match(d.sections.palette, /measured from the reference: dominant/, 'palette still from the reference');
   assert.match(d.sections.family, /only how it is painted, never what is depicted/);
   assert.match(d.sections.content, /add no objects, scenery or story/);
-  assert.equal(REFERENCE_AUTHORITY, d.referencePrompt);
+  assert.equal(REFERENCE_AUTHORITY_RESOLVED, d.referencePrompt);
 });
 
 test('Loose without words expresses the sound itself; unreliable words carry no meaning', () => {

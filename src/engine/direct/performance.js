@@ -247,11 +247,13 @@ export const visual = (t) => t
 
 export const PERFORMANCE_FORM = {
   loose: 'Abstract: nothing is depicted and there is no picture space to step into. The performance structure below is the whole painting.',
-  gathered: 'Semi-abstract: the subject only emerges, ambiguous and unfinished in places; no complete silhouettes or fully formed scenery, never a blurred illustration.',
+  gathered: 'Semi-abstract: the subject only emerges, ambiguous and unfinished in places; no complete silhouettes or fully formed scenery, never a blurred illustration. Mood-forward: the feeling leads, the story stays light and the subject may remain partly implied.',
   resolved: 'Finished and fully considered: the subject is clear and recognisable, carried through with full intent; never a realistic image.',
 };
 
-export function performanceSections(d, tier, colourLanguage) {
+// `palette` (Resolved): the reference's inherited colour range replaces the
+// palette-family line; the singing still sets how those colours relate.
+export function performanceSections(d, tier, colourLanguage, { palette = null } = {}) {
   const lines = d.decisions.map((x) => ({ aspect: x.aspect, text: visual(x.decision) }));
   const by = (...as) => lines.filter((x) => as.includes(x.aspect)).map((x) => x.text).join(' ');
   return {
@@ -263,7 +265,7 @@ export function performanceSections(d, tier, colourLanguage) {
     passages: `Passages, left to right: ${lines.filter((x) => x.aspect.startsWith('passage')).map((x) => x.text).join(' ')}`,
     marks: `Marks: ${by('rhythm', 'edges', 'water')}`,
     contrast: `Contrast: ${by('contrast')}`,
-    colour: `Colour, inside the reference's palette family (${colourLanguage}): ${by('harmony', 'temperature')}`,
+    colour: palette ? `${palette} Colour relations, from how it was sung: ${by('harmony', 'temperature').replace(/^Closely related hues that sit/, 'The distinct colours sit').replace(/^Mostly related hues/, 'Mostly harmonious relations between the distinct colours')}` : `Colour, inside the reference's palette family (${colourLanguage}): ${by('harmony', 'temperature')}`,
     disorder: `Fragmentation and tension: ${by('fragmentation', 'tension')}`,
   };
 }

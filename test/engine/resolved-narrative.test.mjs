@@ -12,7 +12,7 @@ import { analyzeTranscript } from '../../src/engine/interpret/lyrics.js';
 import { understandTake } from '../../src/engine/understand.js';
 import { cleanReading, SCENE_KEYS, SYSTEM } from '../../src/engine/providers/openai-understand.js';
 import { measurePerformance } from '../../src/engine/analysis/performance-measure.js';
-import { direct, RESOLVED_FINISH, NARRATIVE_RULE, NARRATIVE_STAGING, narrativeFor, checkPrompt, CONTENT_RULE, CONTENT_RULE_FIGURE, FIGURE_RULE, AVOID_PEOPLE, AVOID_PEOPLE_FIGURE } from '../../src/engine/direct/index.js';
+import { direct, RESOLVED_FINISH, NARRATIVE_RULE, NARRATIVE_STAGING, narrativeFor, checkPrompt, CONTENT_RULE, CONTENT_RULE_FIGURE, FIGURE_RULE, AVOID_PEOPLE, AVOID_PEOPLE_FIGURE, RESOLVED_SCENE, RESOLVED_IMAGINE } from '../../src/engine/direct/index.js';
 import { REFERENCE_AUTHORITY_PERFORMANCE_RESOLVED } from '../../src/engine/direct/library.js';
 import { cleanConcept } from '../../api/generate.js';
 
@@ -91,7 +91,11 @@ test('Resolved paints a scene brief, not a keyword: situation, relationship, ten
   // It sits right after the words' meaning and before the technique; everything else is unchanged.
   const lines = after.prompt.split('\n');
   assert.equal(lines.indexOf(n), lines.indexOf(after.sections.meaning) + 1);
-  assert.equal(lines.filter((l) => l !== n).join('\n'), before.prompt);
+  // Without a scene read from the words, the painting is told to imagine one;
+  // with it, only the scene requirement stays (Han, 19 Oct).
+  assert.equal(before.sections.scene, `${RESOLVED_SCENE} ${RESOLVED_IMAGINE}`);
+  assert.equal(after.sections.scene, RESOLVED_SCENE);
+  assert.equal(lines.filter((l) => l !== n).join('\n'), before.prompt.replace(before.sections.scene, after.sections.scene));
   assert.equal(checkPrompt(after).verdict, 'ok', JSON.stringify(checkPrompt(after)));
 });
 
