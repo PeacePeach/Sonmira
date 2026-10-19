@@ -84,7 +84,7 @@ export function cleanPerformance(p) {
     phraseCount: num(p.phraseCount, 1, 1000) ?? 1, firstPhraseVoicedSec: num(p.firstPhraseVoicedSec, 0, T) ?? 0,
     gapsSec: nums(p.gapsSec, 12, 0, T).filter((x) => x != null),
     passages,
-    episodes: (Array.isArray(p.episodes) ? p.episodes : []).slice(0, 12).map((e) => ({ t0: num(e?.t0, 0, T) ?? 0, sec: num(e?.sec, 0, T) ?? 0, kind: ['run', 'moving'].includes(e?.kind) ? e.kind : 'unsteady', stops: num(e?.stops, 0, 100) ?? 0, passed: num(e?.passed, 0, 100) ?? 0 })),
+    episodes: (Array.isArray(p.episodes) ? p.episodes : []).slice(0, 12).map((e) => ({ t0: num(e?.t0, 0, T) ?? 0, sec: num(e?.sec, 0, T) ?? 0, kind: ['run', 'moving', 'slide'].includes(e?.kind) ? e.kind : 'unsteady', stops: num(e?.stops, 0, 100) ?? 0, passed: num(e?.passed, 0, 100) ?? 0, directness: num(e?.directness, 0, 1), beyondCents: num(e?.beyondCents, 0, 5000) })),
     global: {
       pitchRangeSt: num(g.pitchRangeSt, 0, ST), levelRangeDb: num(g.levelRangeDb, 0, DB), notesPerSec: num(g.notesPerSec, 0, 50), ioiCv: num(g.ioiCv, 0, 10),
       controlledShare: num(g.controlledShare, 0, 1), ornamentCents: num(g.ornamentCents, 0, 1200), pitchBreaks: num(g.pitchBreaks, 0, 1000) ?? 0, drops: num(g.drops, 0, 1000) ?? 0,

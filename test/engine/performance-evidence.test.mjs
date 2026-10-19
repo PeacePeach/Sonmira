@@ -14,12 +14,14 @@
 //      stretch where the voice held no pitch is painted torn (step 15).
 //   4. An overshoot is described as movement past the note, never as a
 //      missed landing.
+//   5. A slide longer than the singing analysis's bend limit is painted as
+//      one continuous gesture, not torn (step 16).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SR, rng, sing, singers } from './synth.js';
 import { pitchTrack } from '../../src/engine/analysis/pitchtrack.js';
 import { singingAnalysis, findNotes, arrivalOvershoot, SINGING_CALIBRATION } from '../../src/engine/analysis/singing.js';
-import { measurePerformance, RUN } from '../../src/engine/analysis/performance-measure.js';
+import { measurePerformance, pathShape, RUN } from '../../src/engine/analysis/performance-measure.js';
 import { performanceDirection } from '../../src/engine/direct/performance.js';
 
 const SEEDS = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -187,6 +189,38 @@ test('an overshoot of more than 150 c is movement past the note, not a missed la
   const w = words(m);
   assert.match(w, /carries well past its mark before it turns back and settles/);
   assert.doesNotMatch(w, /missed|misses|backrun|failure|mistake/i);
+});
+
+test('a slide longer than 0.6 s is one continuous gesture, not torn; a swing or a plunge it comes back from is not a slide', () => {
+  // The singing analysis counts a slide longer than bendMaxSec as unstable.
+  // The pitch line cannot tell a deliberate slide from drifting, so it is
+  // painted as neutral continuous movement (step 16); a stretch that
+  // plunges past where it ends and comes back is not one-way travel.
+  let slides = 0;
+  for (const seed of SEEDS) {
+    const r = rng(seed * 13), L = 0.65 + r() * 0.25, st = 3 + Math.round(r() * 9), down = r() < 0.5;
+    const sts = [0, 4, 2, down ? st : 0, down ? 0 : st, 4, 2, 0];
+    const slide = line(sts, { seed, at: 4, leadSec: L, lead: (u, from, to) => from + (to - from) * ease(u / L) });
+    const m = measurePerformance(slide, SR);
+    const eps = m.episodes.filter((e) => e.sec >= 0.25);
+    assert.ok(eps.every((e) => e.kind !== 'unsteady'), `seed ${seed}: ${JSON.stringify(m.episodes)}`);
+    slides += eps.filter((e) => e.kind === 'slide').length;
+    const w = words(m);
+    assert.doesNotMatch(w, FAULT, `seed ${seed}`);
+    if (eps.length) { assert.match(w, /without settling/, `seed ${seed}`); assert.doesNotMatch(w, CONTROL, `seed ${seed}`); }
+
+  }
+  assert.ok(slides >= SEEDS.length / 2, `${slides} slides`);
+  // The shape test on the pitch line itself (10 ms frames): one-way travel,
+  // with or without vibrato on it, is a slide; a swing, or a plunge past the
+  // end that comes back (the chaotic take at 6.88 s), is not.
+  const P = SINGING_CALIBRATION.performance, n = 70;
+  const frames = (f) => Array.from({ length: n + 2 }, (_, i) => ({ t: i * 0.01, cents: f(Math.min(1, Math.max(0, (i - 1) / (n - 1))), i * 0.01) }));
+  const isSlide = (f) => { const x = pathShape(frames(f), 1, n + 1, 0.01, SINGING_CALIBRATION.smoothSec); return x.directness >= P.bendDirectness && Math.max(x.beyond, x.back) <= P.bendMarginCents; };
+  assert.ok(isSlide((u) => -900 + 700 * ease(u)), 'eased slide');
+  assert.ok(isSlide((u, t) => -900 + 700 * u + 40 * Math.sin(2 * Math.PI * 5.5 * t)), 'slide with vibrato');
+  assert.ok(!isSlide((u, t) => -900 + 300 * u + 200 * Math.sin(Math.PI * u) * Math.sin(2 * Math.PI * 6 * t)), 'swing');
+  assert.ok(!isSlide((u) => (u < 0.6 ? -600 - 750 * ease(u / 0.6) : -1350 + 250 * ease((u - 0.6) / 0.4))), 'plunge past the end and back');
 });
 
 test('run rule calibration', () => {

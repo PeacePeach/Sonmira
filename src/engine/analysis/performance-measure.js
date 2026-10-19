@@ -20,8 +20,8 @@
 // first scaled to a common loud level, and every frame quieter than
 // LEVEL.gateDb below that level counts as silence, whatever the gain.
 //
-// Voice drops: a quiet note far below both its neighbours (a creak or fry as
-// the voice gives way, typically at a phrase end) is real sound, but it is
+// Voice drops: a quiet note far below both its neighbours (often a creak or
+// fry, typically at a phrase end) is real sound, but it is
 // not a melodic leap. It counts as a voice break and is left out of the
 // pitch range, leaps and tuning of the passage around it.
 
@@ -90,6 +90,36 @@ export function pitchStops(fr, i0, i1, hop) {
     k = j;
   }
   return stops;
+}
+// The shape of the line over frames i0..i1, as frameLabels measures a bend:
+//   directness  net movement / path length on the vibrato-smoothed line, from
+//               0 (it comes back on itself) to 1 (one way throughout)
+//   beyond      how far the line goes past the span from its start to its
+//               end (cents): a dip or a spike it comes back from
+//   back        the most it moves back against its own direction (cents): a
+//               swing the smoothing hides
+// beyond and back are read on a 3-frame median line, so one tracker frame
+// does not count.
+export function pathShape(fr, i0, i1, hop, smoothSec) {
+  const half = Math.round(smoothSec / 2 / hop), path = [];
+  for (let i = i0; i < i1; i++) {
+    if (fr[i].cents == null) continue;
+    let sum = 0, cnt = 0;
+    for (let j = Math.max(0, i - half); j <= Math.min(fr.length - 1, i + half); j++) if (fr[j].cents != null) { sum += fr[j].cents; cnt++; }
+    path.push(sum / cnt);
+  }
+  if (!path.length) return { directness: 0, beyond: 0 };
+  let len = 0;
+  for (let k = 1; k < path.length; k++) len += Math.abs(path[k] - path[k - 1]);
+  const lo = Math.min(path[0], path.at(-1)), hi = Math.max(path[0], path.at(-1)), dir = Math.sign(path.at(-1) - path[0]) || 1;
+  let beyond = 0, back = 0, ahead = -Infinity;
+  for (let i = i0; i < i1; i++) {
+    if (fr[i].cents == null) continue;
+    const c = med([fr[i - 1], fr[i], fr[i + 1]].filter((f) => f?.cents != null).map((f) => f.cents));
+    beyond = Math.max(beyond, lo - c, c - hi);
+    ahead = Math.max(ahead, dir * c); back = Math.max(back, ahead - dir * c);
+  }
+  return { directness: len > 0 ? Math.abs(path.at(-1) - path[0]) / len : 1, beyond, back };
 }
 const unvoice = (f) => ({ ...f, hz: null, cents: null });
 const loudOf = (frames) => q(frames.filter((f) => f.cents != null).map((f) => f.rms), 0.95);
@@ -243,14 +273,22 @@ function measureFrom(samples, sampleRate, cal) {
   //             through at least RUN.minPassed of them (a fast legato figure
   //             looks like this, and so does a voice searching in steps)
   //   moving    it stops on at least RUN.movingStops pitches, without that pattern
-  //   unsteady  it holds no pitch, or only one, for RUN.stopSec
+  //   slide     it holds no pitch but travels one way, by the singing
+  //             analysis's own bend test: as directly as P.bendDirectness,
+  //             never more than P.bendMarginCents past where it starts and
+  //             ends, nor back against its direction. A slide longer than P.bendMaxSec, which the singing
+  //             analysis counts as unstable, looks like this, and so does a
+  //             voice drifting off its note
+  //   unsteady  it holds no pitch, or only one, for RUN.stopSec, and swings
+  //             back on itself or dips past where it ends
   // The kind only chooses how the stretch is described. It never changes the
   // labels, the passage cuts or the shares, because the pitch line cannot
   // tell a legato figure from searching (step 14 benchmark, 24 seeds per
   // kind: 11 of 24 fast legato melismas read as runs, and so did 8 of 26
   // stretches that hunt in steps or slide in stages). So a run or a moving
-  // stretch is never painted as controlled, and never as torn: only a
-  // stretch where the voice held no pitch is.
+  // stretch is never painted as controlled, and never as torn; nor is a
+  // slide (step 16). Only a stretch that held no pitch and swung back on
+  // itself is.
   const episodes = []; let s0 = null;
   label.forEach((l, i) => {
     if (l === 'unstable') { if (s0 == null) s0 = i; return; }
@@ -261,8 +299,13 @@ function measureFrom(samples, sampleRate, cal) {
   for (const e of episodes) {
     const stops = pitchStops(fr, e.i0, e.i1, hop);
     e.stops = stops.length; e.passed = stops.filter((x) => x.passed).length;
-    e.kind = e.stops >= RUN.minStops && e.passed >= RUN.minPassed ? 'run' : e.stops >= RUN.movingStops ? 'moving' : 'unsteady';
-    if (e.kind !== 'unsteady') for (let i = e.i0; i < e.i1; i++) moving[i] = true;
+    const shape = pathShape(fr, e.i0, e.i1, hop, cal.smoothSec);
+    e.directness = r(shape.directness); e.beyondCents = r(Math.max(shape.beyond, shape.back), 0);
+    e.kind = e.stops >= RUN.minStops && e.passed >= RUN.minPassed ? 'run' : e.stops >= RUN.movingStops ? 'moving'
+      : shape.directness >= P.bendDirectness && Math.max(shape.beyond, shape.back) <= P.bendMarginCents ? 'slide' : 'unsteady';
+    // A passage's moving share counts the stretches long enough to be drawn
+    // as their own event (PASSAGE.episodeMinSec), as everything else does.
+    if (e.kind !== 'unsteady' && e.sec >= PASSAGE.episodeMinSec) for (let i = e.i0; i < e.i1; i++) moving[i] = true;
     delete e.i0; delete e.i1;
   }
 

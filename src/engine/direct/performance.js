@@ -46,6 +46,8 @@ export const ANCHORS = {
   voiceBreaks: [0, 6, 'octave-size jumps between consecutive 10 ms frames, plus drops into a quiet creak far below the melody'],
 };
 const scale = (key, x) => ramp(x, ANCHORS[key][0], ANCHORS[key][1]);
+// Episode kinds painted as one continuous gesture (analysis/performance-measure.js).
+const CONTINUOUS = ['run', 'moving', 'slide'];
 export const EPISODE_MIN = 0.25; // s: an unstable episode this long tears the paint
 const ARTICULATION_LINE = 1.5;   // level dips per second: one per syllable at a moderate pace
 const BREATHLESS_SEC = 8;        // one phrase sung this long without a breath
@@ -156,7 +158,7 @@ export function performanceDirection(s) {
     // on it, measured; nothing says it was a mistake.
     const arrival = (p.overshootCents ?? 0) > ANCHORS.overshoot[1] ? `; one stroke carries well past its mark before it turns back and settles, with a bloom where it turns (${r(p.overshootCents / 100, 1)} st past the note)`
       : (p.overshootCents ?? 0) > 50 ? '; one stroke runs slightly past its mark before settling, with a small bloom where it stops' : '';
-    const drop = p.drops ? `; ${p.drops > 1 ? `${p.drops} times` : 'once'} the line sinks into a pale, dragged mark far below it, where the voice gave way` : '';
+    const drop = p.drops ? `; ${p.drops > 1 ? `${p.drops} times` : 'once'} the line sinks into a pale, dragged mark far below it, where the sound falls far below the melody and turns quiet` : '';
     add(`passage ${p.id}`, `${p.id}, ${p.t0}–${p.t1} s, ${pct(p.x0)}–${pct(p.x1)} across, ${heightWord(p.y)} band, ${dir}: ${stroke}; ${weight} pigment${fade}${arrival}${drop}.`, [
       ev('pitch start → end', `${p.pitch.start} → ${p.pitch.end}`, 'st', 'direction of travel'),
       ev('unstable (of which moving between brief pitches) / bend share', `${p.unstable} (${p.moving ?? 0}) / ${p.bend}`, 'share of voiced frames', 'unstable ≥ 0.2 → broken strokes, or quick unsettled strokes when most of it moved between brief pitches; bend ≥ 0.25 → slurred'),
@@ -185,10 +187,11 @@ export function performanceDirection(s) {
   // Every such stretch counts the same for passages and indices. Only where
   // the voice held no pitch is it painted torn; where the line moved between
   // brief pitches (a legato figure, or a voice searching in steps: the pitch
-  // line cannot tell which) it is painted as that movement, neither torn nor
-  // controlled.
+  // line cannot tell which) or slid one way (a deliberate slide, or a voice
+  // drifting: nor can it tell those) it is painted as that movement, neither
+  // torn nor controlled.
   const eps = (s.episodes ?? []).filter((e) => e.sec >= EPISODE_MIN);
-  const held = eps.filter((e) => e.kind !== 'run' && e.kind !== 'moving'), moves = eps.filter((e) => e.kind === 'run' || e.kind === 'moving');
+  const held = eps.filter((e) => !CONTINUOUS.includes(e.kind)), moves = eps.filter((e) => CONTINUOUS.includes(e.kind));
   const local = held.length > 0 || torn.length > 0, moving = moves.length > 0 || moved.length > 0;
   const hard = indices.control < 0.6 ? 'Most edges where colours meet are hard and collide'
     : local ? 'Soft edges, with hard edges only where the voice held no pitch'
@@ -210,10 +213,10 @@ export function performanceDirection(s) {
 
   // ---- Fragmentation, tension, water ----------------------------------------------------------
   const at = (e) => `${pct(clamp((e.t0 - span0) / span))} across (${e.t0} s, ${e.sec} s`;
-  const fragEv = [ev(`unstable episodes ≥ ${EPISODE_MIN} s`, eps.map((e) => `${e.t0} s: ${e.sec} s, ${e.kind}, ${e.stops ?? 0} pitches held ≥ 60 ms, ${e.passed ?? 0} passed through`).join('; ') || 'none', '', 'no pitch held → a torn area; two or more brief pitches → one continuous unsettled stroke; each at its time position'),
+  const fragEv = [ev(`unstable episodes ≥ ${EPISODE_MIN} s`, eps.map((e) => `${e.t0} s: ${e.sec} s, ${e.kind}, ${e.stops ?? 0} pitches held ≥ 60 ms, ${e.passed ?? 0} passed through, directness ${e.directness ?? '–'}, ${e.beyondCents ?? '–'} c past its ends or back`).join('; ') || 'none', '', 'no pitch held and swinging back → a torn area; two or more brief pitches, or one-way travel (as a bend: directness ≥ 0.7, ≤ 100 c past its ends or back) → one continuous unsettled stroke; each at its time position'),
     ev('fragmentation index', indices.fragmentation, '0–1', `mean(unstable share, voice breaks, breathless > ${BREATHLESS_SEC} s, worst passage)`)];
   if (held.length) add('fragmentation', `Fragmentation is local, not all-over: torn, dry-brush fragments with gaps in the pigment at ${held.map((e) => `${at(e)} with no pitch held)`).join('; ')}. Elsewhere the marks stay whole.`, fragEv);
-  if (moves.length) add('fragmentation', `Unsettled but continuous: ${moves.map((e) => `at ${at(e)}) the line ${e.kind === 'run' ? 'steps through' : 'moves between'} ${e.stops} brief pitches without settling on any, painted as one continuous stroke that changes height at each without coming to rest`).join('; ')}.${held.length ? '' : ' Elsewhere the marks stay whole.'}`, held.length ? [] : fragEv);
+  if (moves.length) add('fragmentation', `Unsettled but continuous: ${moves.map((e) => `at ${at(e)}) the line ${e.kind === 'slide' ? 'slides one way without settling on any pitch, painted as one continuous gesture that travels to its new height without a break' : `${e.kind === 'run' ? 'steps through' : 'moves between'} ${e.stops} brief pitches without settling on any, painted as one continuous stroke that changes height at each without coming to rest`}`).join('; ')}.${held.length ? '' : ' Elsewhere the marks stay whole.'}`, held.length ? [] : fragEv);
   if (!eps.length) add('fragmentation', 'No fragmented areas: every passage is painted whole.', fragEv);
   // Drops are already drawn in their passages; here the pitch snaps.
   const snaps = G.pitchBreaks ?? 0;

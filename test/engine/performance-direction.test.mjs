@@ -25,7 +25,7 @@ const withoutGain = ({ gainDb, ...m }) => m; // eslint-disable-line no-unused-va
 
 test('the measurement is numbers only and deterministic', () => {
   assert.deepEqual(measurePerformance(singers.strong(), SR), strong);
-  const walk = (x) => (Array.isArray(x) ? x.forEach(walk) : x && typeof x === 'object' ? Object.values(x).forEach(walk) : assert.ok(x == null || typeof x === 'number' || ['leap', 'unstable', 'moving', 'run', 'unsteady'].includes(x), `unexpected ${x}`));
+  const walk = (x) => (Array.isArray(x) ? x.forEach(walk) : x && typeof x === 'object' ? Object.values(x).forEach(walk) : assert.ok(x == null || typeof x === 'number' || ['leap', 'unstable', 'moving', 'run', 'slide', 'unsteady'].includes(x), `unexpected ${x}`));
   walk(strong);
   assert.equal(measurePerformance(new Float32Array(SR * 2), SR), null);
 });
@@ -51,7 +51,7 @@ test('a quiet creak far below the melody is a voice drop, not a leap', () => {
   assert.equal(creak.global.drops, 1);
   assert.ok(creak.global.pitchRangeSt <= plain.global.pitchRangeSt + 1, `range ${creak.global.pitchRangeSt} vs ${plain.global.pitchRangeSt}`);
   assert.ok(Math.max(...creak.passages.map((p) => p.maxLeapSt)) < 7, 'no melodic leap from the creak');
-  assert.match(performanceDirection(creak).decisions.map((d) => d.decision).join(' '), /where the voice gave way/);
+  assert.match(performanceDirection(creak).decisions.map((d) => d.decision).join(' '), /where the sound falls far below the melody and turns quiet/);
 });
 
 test('a short loud sound far above the singing (a start beep) is ignored', () => {
