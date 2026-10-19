@@ -257,6 +257,10 @@ export function createSessionHandler(deps = {}) {
     const now = deps.now ?? Date.now, log = deps.log ?? defaultLog;
     res.setHeader?.('cache-control', 'no-store');
     const deny = (status, code, error) => res.status(status).json({ ok: false, code, error });
+    // Han's PR #27 preview: automatic admission, with the full spend guard.
+    // The deployment environment and exact branch are server-owned.
+    const autoAccess = env.VERCEL_ENV === 'preview' && env.VERCEL_GIT_COMMIT_REF === 'claude/resolved-scene-palette-rules-i2ko7r';
+    if (req.method === 'GET') return res.status(200).json({ ok: true, autoAccess });
     if (req.method !== 'POST') return deny(405, 'method', 'POST only');
     if (!kv || !cfg.secret || !cfg.invites.length) return deny(503, 'not_configured', 'Invitations aren’t set up on this server yet.');
     if (Number(header(req, 'content-length') || 0) > cfg.maxBody.session) return deny(413, 'too_large', 'Request too large.');
@@ -276,7 +280,9 @@ export function createSessionHandler(deps = {}) {
         if (!live) return deny(401, 'invite_required', 'An invitation code is needed to paint.');
         return res.status(200).json({ ok: true, token: signToken(cfg.secret, { installId, invite, now: now() }) });
       }
-      const code = cfg.invites.find((c) => c === normalizeInvite(body.invite));
+      const code = autoAccess && body.preview === true && body.invite == null
+        ? cfg.invites[0]
+        : cfg.invites.find((c) => c === normalizeInvite(body.invite));
       if (!code) { log({ endpoint: 'session', outcome: 'invalid_invite' }); return deny(401, 'invalid_invite', 'That code didn’t work.'); }
       const invite = inviteId(code);
       const j = await kv.join(seatsOf(invite), installId, cfg.limits.INSTALLS_PER_INVITE, SEAT_TTL);

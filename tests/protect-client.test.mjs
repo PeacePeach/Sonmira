@@ -47,7 +47,7 @@ function server({ delay = 0, fail = () => false, verifyAccount } = {}) {
     const route = routes[url.pathname];
     if (!route) { calls.other += 1; return new Response('static', { status: 200 }); }
     const headers = Object.fromEntries(new Headers(init.headers).entries());
-    seen.push({ path: url.pathname, headers });
+    seen.push({ path: url.pathname, method: init.method || 'GET', headers });
     let status = 200, body = null;
     const res = { setHeader() {}, status(n) { status = n; return res; }, json(o) { body = o; return res; }, end() { return res; } };
     await route({ method: init.method || 'GET', url: url.href, headers: { ...headers, 'x-forwarded-for': '1.1.1.1' }, body: init.body ? JSON.parse(init.body) : {} }, res);
@@ -171,7 +171,7 @@ test('a changed id never uses the old token; a signed-in account gets its own wi
   id = 'account-aaaaaaaaaaaaaaaa'; session = 'acct-session';
   assert.equal((await post(client, '/api/generate', { spec: {} })).status, 200);
   assert.equal(asked, 1); // no second code
-  assert.equal(s.seen.filter((x) => x.path === '/api/session').length, 3);
+  assert.equal(s.seen.filter((x) => x.path === '/api/session' && x.method === 'POST').length, 3);
 });
 
 test('billing and sign-in requests carry the token for the id they name; only a purchase may ask for a code', async () => {

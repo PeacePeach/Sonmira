@@ -113,7 +113,14 @@ export function createApiClient({ fetchImpl, storage = globalThis.localStorage, 
 
   // A signed-in account first; then, if allowed, one invitation prompt at a
   // time, however many requests need it.
-  let asking = null;
+  let asking = null, previewAccess;
+  async function previewEnabled() {
+    previewAccess ??= fetchImpl(new URL('/api/session', origin).href)
+      .then((res) => res.ok ? res.json() : null)
+      .then((body) => body?.autoAccess === true)
+      .catch(() => false);
+    return previewAccess;
+  }
   async function obtainToken({ ask = true } = {}) {
     const installId = await currentId();
     const acct = accountToken();
@@ -125,6 +132,13 @@ export function createApiClient({ fetchImpl, storage = globalThis.localStorage, 
     }
     if (!ask) return null;
     asking ??= (async () => {
+      if (await previewEnabled()) {
+        // Keep the server's signed token, seats, rate limits and spend cap.
+        // Only the named Preview deployment allows this admission path.
+        const r = await session({ preview: true, installId: await currentId() });
+        if (r.res.ok && r.body?.token) { setToken(r.body.token); return r.body.token; }
+        return null;
+      }
       let error;
       for (let tries = 0; tries < 6; tries++) {
         const code = await askInvite({ error });
