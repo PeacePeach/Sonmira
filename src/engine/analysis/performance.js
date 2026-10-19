@@ -43,7 +43,9 @@ function gridOffset(centres) {
 // Smallest signed difference between two grid offsets (cents, -50..50).
 const offDiff = (a, b) => ((a - b + 150) % 100) - 50;
 
-export function performanceProfile(track, notes, P, smoothSec = 0.15) {
+// Every voiced frame's label (note | bend | edge | unstable; null when
+// unvoiced) and its phrase index (-1 outside phrases).
+export function frameLabels(track, notes, P, smoothSec = 0.15) {
   const fr = track.frames, hop = track.hopSec ?? TRACK_HOP_SEC;
   const label = fr.map((f) => (f.cents == null ? null : 'unstable'));
   const idxOf = (t) => Math.round(t / hop);
@@ -88,6 +90,13 @@ export function performanceProfile(track, notes, P, smoothSec = 0.15) {
     const lastOfPhrase = !fr.slice(i + 1, i + 1 + 3 * edge).some((f, j) => phraseOf[i + 1 + j] === p && label[i + 1 + j] === 'note');
     if ((toNote && firstOfPhrase) || (fromNote && lastOfPhrase)) label[i] = 'edge';
   }
+
+  return { label, phraseOf };
+}
+
+export function performanceProfile(track, notes, P, smoothSec = 0.15) {
+  const fr = track.frames, hop = track.hopSec ?? TRACK_HOP_SEC;
+  const { label } = frameLabels(track, notes, P, smoothSec);
 
   const voiced = label.map((l, i) => [l, i]).filter(([l]) => l);
   const controlled = (ls) => (ls.length ? ls.filter(([l]) => l !== 'unstable').length / ls.length : null);

@@ -26,7 +26,7 @@
 import { TRACK_HOP_SEC } from './pitchtrack.js';
 import { performanceProfile } from './performance.js';
 
-export const SINGING_VERSION = 5;
+export const SINGING_VERSION = 6;
 
 export const SINGING_CALIBRATION = {
   smoothSec: 0.15,          // removes vibrato (4–8 Hz) to see the note's slow line
@@ -39,11 +39,7 @@ export const SINGING_CALIBRATION = {
   minNoteSec: 0.12,
   bridgeSec: 0.03,          // unvoiced gaps this short stay inside a run
   stability: { wobbleOk: 8, wobbleBad: 38, driftOk: 30, driftBad: 150, jitterOk: 12, jitterBad: 40 },
-  // Intonation is judged on held notes (minNoteSec and longer): on fast
-  // syllabic runs the short notes are passing tones, and their measured
-  // centre is mostly the approach. On Han's well-sung take (18 Oct) the held
-  // notes sat on one grid (13 c) and the run's syllables ~25 c off it; with
-  // fewer than minNotes held notes, every note counts, as before.
+  // Judge fast passages by their held notes when enough are available.
   intonation: { devGood: 12, devRandom: 28, minNotes: 4, minNoteSec: 0.25 },
   transitions: { overshoot: 50, minCount: 2 },
   weights: { stability: 0.3, intonation: 0.25, transitions: 0.15, control: 0.15, rhythm: 0.1, coherence: 0.05 },
@@ -75,12 +71,8 @@ export const SINGING_CALIBRATION = {
                               // stretch as Resolved (16 Oct)
     maxTuningDriftCents: 50, // the singer's own key may not keep sliding
     minRhythm: 0.25,        // only extremely weak rhythm blocks Strong (timing is expressive)
+    missedLandingCents: 300, // unusually large pitch movement beyond a note, excluding an unrecognised held note
     minCoherence: 0.25,     // only extremely erratic leaps block Strong
-    // A missed landing: a note approach that runs this far past its note
-    // before settling (beyond the note's own vibrato swing). Expressive
-    // scoops and overshoots stay well under 100 c; the casual take's miss
-    // (18 Oct) went 461 c past, the chaotic take's largest was ~220 c.
-    missedLandingCents: 300,
   },
   // Sung vs spoken: share of voiced time spent on held notes. Synthetic
   // speech measures 0.13–0.19; syllabic sung lyrics 0.36–0.66 (very fast
@@ -365,28 +357,42 @@ export function melodicContour(notes, cents = CONTOUR_CENTS) {
   return 'level';
 }
 
-// Missed landing: how far the voice runs past note b after crossing it on
-// its way from note a, minus b's own vibrato swing. Only the voice's own
-// path between the two notes counts (note a's end to 80 ms into b), and
-// only after it crosses b's pitch coming from a's side: frames already past
-// b before any crossing belong to a neighbour (a low note of the melody), not
-// to an overshoot. A stretch held steady past b (≥ 0.12 s within 100 c) is a
-// note the finder missed, not an overshoot, and is left out.
-function landingOvershoot(track, a, b, dir, swing, hop) {
+// How far the voice runs past note b on its way in from note a, beyond b's
+// own settled swing (its vibrato is not overshoot). Shared by the
+// transitions score and the art direction (performance-measure.js).
+// Only the voice's own path counts, from a's end to 80 ms into b, and only
+// after it crosses b's pitch coming from a's side: frames already past b
+// before any crossing belong to a neighbouring note (a low note of the
+// melody just before b), not to an overshoot. A fixed window before b's
+// start (0.25 s, as before SINGING_VERSION 5) reached back into such notes
+// and read them as overshoots of up to 4–10 semitones. The path also ends at
+// an octave-size jump between voiced frames (a voice break into creak, or a
+// tracker octave error): that is a break, not the voice running past b.
+export const BREAK_CENTS = 900;
+export function arrivalOvershoot(track, a, b, hop = track.hopSec ?? TRACK_HOP_SEC, excludeHeld = false) {
+  const dir = Math.sign(b.center - a.center);
+  const settled = b.raw.slice(Math.round(0.08 / hop));
+  const swing = settled.length ? Math.max(0, ...settled.map((c) => dir * (c - b.center))) : 0;
   const fr = track.frames.filter((f) => f.cents != null && f.t >= a.end - hop / 2 && f.t <= b.start + 0.08);
   const past = (c) => dir * (c - b.center);
-  const cross = fr.findIndex((f, k) => k > 0 && past(fr[k - 1].cents) < 0 && past(f.cents) >= 0);
+  const brk = (k) => Math.abs(fr[k].cents - fr[k - 1].cents) > BREAK_CENTS;
+  const cross = fr.findIndex((f, k) => k > 0 && past(fr[k - 1].cents) < 0 && past(f.cents) >= 0 && !brk(k));
   if (cross < 0) return 0;
+  // Only the tier's large missed-landing check excludes an unrecognised
+  // held stretch after crossing the target; painting and scoring do not.
   const w = Math.max(2, Math.round(0.12 / hop));
   const held = (k) => {
-    for (let s = Math.max(0, k - w + 1); s <= k && s + w <= fr.length; s++) {
-      const seg = fr.slice(s, s + w).map((f) => f.cents);
-      if (fr[s + w - 1].t - fr[s].t <= 0.12 + hop && Math.max(...seg) - Math.min(...seg) <= 100) return true;
+    for (let t = Math.max(0, k - w + 1); t <= k && t + w <= fr.length; t++) {
+      const seg = fr.slice(t, t + w).map((f) => f.cents);
+      if (fr[t + w - 1].t - fr[t].t <= 0.12 + hop && Math.max(...seg) - Math.min(...seg) <= 100) return true;
     }
     return false;
   };
   let worst = 0;
-  for (let k = cross; k < fr.length; k++) if (past(fr[k].cents) > worst && !held(k)) worst = past(fr[k].cents);
+  for (let k = cross; k < fr.length && (k === cross || !brk(k)); k++) {
+    const amount = past(fr[k].cents);
+    if (amount > worst && (!excludeHeld || !held(k))) worst = amount;
+  }
   return Math.max(0, worst - swing);
 }
 
@@ -433,21 +439,13 @@ export function singingAnalysis(track, features = null, cal = SINGING_CALIBRATIO
   for (let i = 1; i < notes.length; i++) {
     const a = notes[i - 1], b = notes[i];
     if (a.run !== b.run || Math.abs(b.center - a.center) < 60) continue;
-    const dir = Math.sign(b.center - a.center);
-    const path = [...b.approach, ...b.raw.slice(0, Math.round(0.08 / hop))];
-    // Beyond what the note itself does once settled: its own vibrato swing
-    // is not overshoot.
-    const settled = b.raw.slice(Math.round(0.08 / hop));
-    const swing = settled.length ? Math.max(0, ...settled.map((c) => dir * (c - b.center))) : 0;
-    const overshoot = Math.max(0, Math.max(...path.map((c) => dir * (c - b.center))) - swing);
-    const landing = landingOvershoot(track, a, b, dir, swing, hop);
+    const overshoot = arrivalOvershoot(track, a, b, hop);
+    const landing = arrivalOvershoot(track, a, b, hop, true);
     tr.push({ interval: b.center - a.center, overshoot, clean: overshoot <= cal.transitions.overshoot, landing, at: b.start });
   }
   if (tr.length >= cal.transitions.minCount) C.transitions = { score: r3(tr.filter((t) => t.clean).length / tr.length), count: tr.length, meanOvershootCents: r3(mean(tr.map((t) => t.overshoot))) };
   else unavailable.push('transitions: too few note changes');
-  // The worst landing is checked even with too few changes to score transitions.
-  const landings = tr.filter((t) => t.landing != null);
-  const worstLanding = landings.length ? landings.reduce((a, t) => (t.landing > a.landing ? t : a)) : null;
+  const worstLanding = tr.length ? tr.reduce((a, t) => (t.landing > a.landing ? t : a)) : null;
 
   // 4. Vocal control: steady voiced sound inside notes, continuity in phrases.
   if (notes.length) {
