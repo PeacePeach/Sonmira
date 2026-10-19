@@ -258,9 +258,9 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .play-btn [data-icon=play] { margin-left: 2px; } /* optical centre of the triangle */
 .player .track { height: 4px; background: var(--track); border-radius: 2px; overflow: hidden; } /* thicker than the hairlines, so it reads as a control */
 .player .fill { height: 100%; width: 0; background: var(--ink); }
-/* the track sits on the button's centre line and the times hang below it:
-   the column's top padding matches the time row (11px gap + 12px digits) */
-.player > div { padding-top: 23px; }
+/* the track sits a little above the button's centre line, the times below
+   it: halfway between centring the track and centring track + times */
+.player > div { padding-top: 12px; }
 .player .times { display: flex; justify-content: space-between; gap: 10px; margin-top: 11px; font-size: 12px; line-height: 1; color: var(--muted); }
 .player .times span:last-child { text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
