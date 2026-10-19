@@ -103,7 +103,7 @@ export function cleanConcept(c) {
     source: c.source === 'note' ? 'note' : 'lyrics',
     text: flat(c.text, 240), theme: list(c.theme, 3, 60), imagery: list(c.imagery, 5, 60),
     figurative: (Array.isArray(c.figurative) ? c.figurative : []).slice(0, 4).map((f) => ({ phrase: flat(f?.phrase, 80), meaning: flat(f?.meaning, 120) })).filter((f) => f.phrase && f.meaning),
-    ...(flat(c.scene?.moment, 320) ? { scene: { situation: flat(c.scene.situation, 160), relationship: flat(c.scene.relationship, 160), tension: flat(c.scene.tension, 160), moment: flat(c.scene.moment, 320) } } : {}),
+    ...(flat(c.scene?.moment, 320) ? { scene: { situation: flat(c.scene.situation, 160), relationship: flat(c.scene.relationship, 160), tension: flat(c.scene.tension, 160), moment: flat(c.scene.moment, 320), figure: flat(c.scene.figure, 120) } } : {}),
   };
 }
 

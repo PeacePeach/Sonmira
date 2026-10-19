@@ -12,7 +12,7 @@ import { analyzeTranscript } from '../../src/engine/interpret/lyrics.js';
 import { understandTake } from '../../src/engine/understand.js';
 import { cleanReading, SCENE_KEYS } from '../../src/engine/providers/openai-understand.js';
 import { measurePerformance } from '../../src/engine/analysis/performance-measure.js';
-import { direct, RESOLVED_FINISH, NARRATIVE_RULE, NARRATIVE_STAGING, narrativeFor, checkPrompt } from '../../src/engine/direct/index.js';
+import { direct, RESOLVED_FINISH, NARRATIVE_RULE, NARRATIVE_STAGING, narrativeFor, checkPrompt, CONTENT_RULE, CONTENT_RULE_FIGURE, FIGURE_RULE, AVOID_PEOPLE, AVOID_PEOPLE_FIGURE } from '../../src/engine/direct/index.js';
 import { REFERENCE_AUTHORITY_PERFORMANCE_RESOLVED } from '../../src/engine/direct/library.js';
 import { cleanConcept } from '../../api/generate.js';
 
@@ -22,7 +22,11 @@ const SCENE = {
   relationship: 'Two directions pull apart; what was shared is behind and cannot be reached again.',
   tension: 'Hesitation and sadness at a choice that will separate, with no turning back.',
   moment: 'Roads diverging at dusk, footprints in the wet ground that stop where they split, the road behind washed out by rain, one lantern set down at the fork, its light reaching a little way down each road.',
+  figure: '',
 };
+// Han's crossroads choice: a small figure looking back at the intersection.
+const FIGURE = 'one small, distant figure on the far road, looking back at the fork';
+const FIGURE_SCENE = { ...SCENE, moment: `${SCENE.moment.replace(/\.$/, '')}, and far down one road ${FIGURE.replace(/^one /, 'a ')}.`, figure: FIGURE };
 const reading = (o = {}) => cleanReading({
   language: 'en', lexical: true, coherent: true, structure: 'clause', unfinished: false, linked: true, missing: '',
   phraseComplete: true, completionConfidence: 0.9, completionReason: 'a full line',
@@ -52,7 +56,8 @@ test('the reading carries a bounded scene plan', () => {
   assert.ok(long.scene.moment.length <= 320 && long.scene.tension.length <= 160);
   // A reading without a scene (an older model reply) gives empty strings, so no narrative.
   const none = reading({ scene: undefined });
-  assert.deepEqual(none.scene, { situation: '', relationship: '', tension: '', moment: '' });
+  assert.deepEqual(none.scene, { situation: '', relationship: '', tension: '', moment: '', figure: '' });
+  assert.ok(reading({ scene: { ...SCENE, figure: 'z'.repeat(400) } }).scene.figure.length <= 120);
 });
 
 test('a Resolved take carries the scene into its concept; Gathered does not', async () => {
@@ -119,7 +124,12 @@ test('Loose and Gathered are unchanged, even if a scene reaches them', () => {
     const a = paint(...t, WITH), b = paint(...t, WITHOUT);
     assert.equal(a.prompt, b.prompt, t[0]);
     assert.equal(a.sections.narrative, null);
-    assert.deepEqual(a.narrative, { applied: false, reason: `tier ${t[0]}` });
+    assert.deepEqual(a.narrative, { applied: false, reason: `tier ${t[0]}`, figure: null });
+    // A scene figure never reaches Loose or Gathered: the no-people rule holds.
+    const f = paint(...t, { ...WITH, scene: FIGURE_SCENE });
+    assert.equal(f.sections.content, CONTENT_RULE);
+    assert.ok(f.avoid.includes(AVOID_PEOPLE) && !f.avoid.includes(AVOID_PEOPLE_FIGURE));
+    assert.ok(!f.prompt.includes(FIGURE));
   }
 });
 
@@ -136,8 +146,58 @@ test('no people: a scene part naming people is dropped, a moment naming people i
   assert.deepEqual(partly.dropped, ['relationship']);
   assert.ok(!/woman|child/.test(partly.line));
   const moment = narrativeFor('resolved', { ...WITH, scene: { ...SCENE, moment: 'A lone figure stands at the fork.' } });
-  assert.deepEqual(moment, { applied: false, reason: 'the scene names people', line: null });
+  assert.deepEqual(moment, { applied: false, reason: 'the scene names people', line: null, figure: null });
   const d = paint(...R, { ...WITH, scene: { ...SCENE, relationship: 'Two lovers part at the fork.' } });
   assert.equal(checkPrompt(d).verdict, 'ok');
   assert.ok(d.prompt.includes('No people anywhere'));
+});
+
+// ── Small figures (Han, 19 Oct): Resolved only, optional, never prominent ──
+test('Resolved without a scene figure keeps the no-people rule: no figure is added because the tier is Resolved', () => {
+  for (const c of [WITH, WITHOUT]) {
+    const d = paint(...R, c);
+    assert.equal(d.narrative.figure, null);
+    assert.equal(d.sections.content, CONTENT_RULE);
+    assert.match(CONTENT_RULE, /No people anywhere/);
+    assert.ok(d.avoid.includes(AVOID_PEOPLE));
+    assert.ok(!d.prompt.includes(FIGURE_RULE));
+    assert.equal(checkPrompt(d).verdict, 'ok');
+  }
+});
+
+test('the crossroads: a small figure looking back at the fork, small, distant and faceless', () => {
+  const d = paint(...R, { ...WITH, text: FIGURE_SCENE.moment, scene: FIGURE_SCENE }), plain = paint(...R, WITH);
+  assert.equal(d.narrative.applied, true);
+  assert.equal(d.narrative.figure, FIGURE);
+  assert.ok(d.sections.narrative.includes(`Figure: ${FIGURE}. ${FIGURE_RULE}`));
+  assert.match(FIGURE_RULE, /Small, distant and faceless/);
+  assert.equal(d.sections.content, CONTENT_RULE_FIGURE);
+  assert.match(CONTENT_RULE_FIGURE, /never a portrait, a visible face, a large or foreground figure, or any people the scene does not name/);
+  assert.ok(d.avoid.includes(AVOID_PEOPLE_FIGURE) && !d.avoid.includes(AVOID_PEOPLE));
+  const c = checkPrompt(d);
+  assert.equal(c.verdict, 'ok', JSON.stringify(c));
+  assert.deepEqual(c.people, []);
+  assert.ok(c.figures.length > 0);
+  // Finish and performance stay as they were.
+  assert.equal(d.sections.finish, RESOLVED_FINISH);
+  for (const s of ['form', 'composition', 'staging', 'passages', 'marks', 'contrast', 'palette', 'disorder']) assert.equal(d.sections[s], plain.sections[s], s);
+});
+
+test('a prominent figure or a face is never painted', () => {
+  for (const figure of ['a large figure in the foreground', 'a portrait of her face', 'a crowd at the fork', 'close-up of his eyes']) {
+    const n = narrativeFor('resolved', { ...WITH, scene: { ...FIGURE_SCENE, figure } });
+    assert.equal(n.figure, null, figure);
+    assert.equal(n.applied, false, figure);
+    assert.match(n.reason, /too prominent/);
+    // Without a figure in the moment, the scene is still painted, with no people.
+    const traces = narrativeFor('resolved', { ...WITH, scene: { ...SCENE, figure } });
+    assert.equal(traces.applied, true);
+    assert.equal(traces.figure, null);
+    assert.deepEqual(traces.dropped, ['figure']);
+  }
+  const face = narrativeFor('resolved', { ...WITH, scene: { ...FIGURE_SCENE, moment: 'A small figure at the fork, her face turned back.' } });
+  assert.equal(face.applied, false);
+  // A face named in the subject is caught by the prompt check even with a figure.
+  const d = paint(...R, { ...WITH, text: 'a small figure at the fork, her face turned back', scene: FIGURE_SCENE });
+  assert.equal(checkPrompt(d).verdict, 'leak');
 });

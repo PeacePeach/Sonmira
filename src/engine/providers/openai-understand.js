@@ -6,7 +6,7 @@
 //   interpretLyrics(text)        → { lexical, coherent, structure, unfinished,
 //        linked, missing, phraseComplete,
 //        completionConfidence, theme, imagery, figurative, mood, motif,
-//        scene: { situation, relationship, tension, moment },
+//        scene: { situation, relationship, tension, moment, figure },
 //        concepts: { loose, gathered, resolved }, model, ms }
 //        a small text model with a strict JSON schema
 //
@@ -85,16 +85,17 @@ Meaning (only from the words; never invent meaning that is not there; if not lex
   - situation: the emotional situation, and the action, choice or implied event the words describe.
   - relationship: how the subjects or elements relate (who or what to whom, near or apart, holding on or letting go).
   - tension: the emotional tension or choice in the words.
-  - moment: one concrete, imaginative scene that shows the situation, the relationship and the tension at once: a complete scene with a setting, depth and light, its meaning carried by the arrangement, spacing and placement of places, objects, light and weather, and by the traces the subjects leave. Never a decorative symbol, a single keyword object or generic scenery: "standing at the intersection, unsure which way to go, while I cannot turn back" is not a cross, an empty crossroads or a symbolic path, but roads diverging at dusk, footprints in the wet ground that stop where they split, the road behind already washed out by rain, one lantern set down at the fork, its light reaching a little way down each road. Invent no story unrelated to the words; every added detail supports their meaning.
+  - moment: one concrete, imaginative scene that shows the situation, the relationship and the tension at once: a complete scene with a setting, depth and light, its meaning carried by the arrangement, spacing and placement of places, objects, light and weather, and by the traces the subjects leave. Never a decorative symbol, a single keyword object or generic scenery: "standing at the intersection, unsure which way to go, while I cannot turn back" is not a cross, an empty crossroads or a symbolic path, but roads diverging at dusk, footprints in the wet ground that stop where they split, the road behind already washed out by rain, one lantern set down at the fork, its light reaching a little way down each road, and far down one road a single small figure looking back at the fork (figure: "one small, distant figure on the far road, looking back at the fork"). Invent no story unrelated to the words; every added detail supports their meaning.
+  - figure: usually an empty string. Only when a person's presence is what the words' story turns on, and traces alone would not tell it, one short phrase for a few small, distant, faceless figures (at most a few) and what they do, e.g. "one small figure on the far road, looking back at the fork". Never a portrait, a face, a close-up or a large or foreground figure; never added just to fill the scene. When set, the moment may include that figure, small and distant.
 - concepts, in English, one sentence each, for a watercolor whose style comes from a separate reference image (so say nothing about colour palette or technique):
   - loose: no depicted objects at all; only movement, weight, rhythm, temperature and density of marks that carry the feeling.
   - gathered: the main image only suggested, ambiguous and emerging, nothing clearly identifiable.
   - resolved: the scene's moment as one clear, recognisable scene with a focal subject; for figurative words, a quiet visual equivalent of the meaning. No lettering, no distress or violence shown literally.
-  - every tier, and the scene: no people at all, no human figures, silhouettes, faces or body parts. When the words are about people (I, you, a mother, lovers, a crowd), carry them through the place, the light, the weather and the things they touch or leave behind, never through a person.`;
+  - every tier, and the scene: no people at all, no human figures, silhouettes, faces or body parts, except the scene's own figure (in the scene's moment and the resolved concept only). When the words are about people (I, you, a mother, lovers, a crowd), carry them through the place, the light, the weather and the things they touch or leave behind.`;
 
 // The Resolved scene plan: what happens, between what, with what tension,
-// and the one visual moment that shows it (Han, 19 Oct).
-export const SCENE_KEYS = ['situation', 'relationship', 'tension', 'moment'];
+// the one visual moment that shows it, and an optional small figure (Han, 19 Oct).
+export const SCENE_KEYS = ['situation', 'relationship', 'tension', 'moment', 'figure'];
 
 const SCHEMA = {
   name: 'lyrics_reading',
@@ -147,7 +148,7 @@ export function cleanReading(r) {
     figurative: (Array.isArray(r.figurative) ? r.figurative : []).slice(0, 4).map((f) => ({ phrase: short(f?.phrase, 80), meaning: short(f?.meaning, 120) })).filter((f) => f.phrase),
     mood: EMOTIONS.includes(r.mood) ? r.mood : null,
     motif: MOTIFS.includes(r.motif) ? r.motif : null,
-    scene: Object.fromEntries(SCENE_KEYS.map((k) => [k, short(r.scene?.[k], k === 'moment' ? 320 : 160)])),
+    scene: Object.fromEntries(SCENE_KEYS.map((k) => [k, short(r.scene?.[k], k === 'moment' ? 320 : k === 'figure' ? 120 : 160)])),
     concepts: { loose: short(r.concepts?.loose, 240), gathered: short(r.concepts?.gathered, 240), resolved: short(r.concepts?.resolved, 240) },
   };
 }

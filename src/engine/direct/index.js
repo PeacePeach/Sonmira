@@ -30,6 +30,9 @@ export { soundPlan } from './sound.js';
 export { performanceDirection, performanceSections } from './performance.js';
 export const DIRECTION_VERSION = 11;
 
+// Every tier's people rule in the Avoid line (Resolved with a scene figure: narrativeFor).
+export const AVOID_PEOPLE = 'people, human figures, silhouettes or faces';
+
 // Global Sonmira constraints: true for every family and every tier.
 // Materiality is independent of abstraction: Loose, Gathered and Resolved all
 // keep strong watercolor behaviour; only how recognisable the subject is
@@ -58,7 +61,7 @@ export const AVOID = [
   'a realistic image with paper texture applied',
   'glossy digital rendering', 'heavy black ink outlines',
   'text, letters, titles, signature, logo or watermark', 'a frame, border or mat', 'a photo of a painting on a table',
-  'people, human figures, silhouettes or faces',
+  AVOID_PEOPLE,
 ];
 
 // With a reference image attached, the reference is the style authority, so
@@ -84,14 +87,15 @@ export const REFERENCE_ONLY_COLOUR = 'Colour: the attached reference\'s own colo
 export const REFERENCE_AVOID = [
   'text, letters, titles, signature, logo or watermark', 'a frame, border or mat', 'a photo of a painting on a table',
   'photorealism or a photograph', 'a photo-to-painting filter effect', 'glossy digital or 3D rendering',
-  'people, human figures, silhouettes or faces', 'a centred, symmetrical composition',
+  AVOID_PEOPLE, 'a centred, symmetrical composition',
 ];
 
 // What may be depicted, for every tier and family. The references and the
 // family rules decide only how the painting is made; the subject above is
 // the whole content. No people in any tier: a reference with figures lends
 // its treatment, never its figures, and words about people are painted
-// through place, light and traces.
+// through place, light and traces. The one exception is a small figure a
+// Resolved scene names (CONTENT_RULE_FIGURE, narrativeFor).
 export const CONTENT_RULE = 'Content: paint only what the subject above names, in its own setting, and add no objects, scenery or story that it does not ask for. No people anywhere: no human figures, silhouettes, faces or body parts, however small or distant. When the words tell of love, loss or company, carry that through place, light, weather and the traces left behind.';
 
 // The subject when there are neither reliable words nor a note (Gathered and
@@ -209,27 +213,47 @@ function meaningLine(tier, c) {
 // (openai-understand.js `scene`), so a Resolved painting shows a meaningful
 // scene from the song, not an illustration of one keyword. The words decide
 // the scene; the reference still how finished; the performance still where
-// and how it moves. A scene part that names people is dropped (Sonmira
-// paints no people); without a usable moment there is no narrative.
+// and how it moves. Without a usable moment there is no narrative.
+// People (Han, 19 Oct): Resolved only, and only when the scene itself names
+// a figure (`scene.figure`, optional): small, distant and faceless, never a
+// portrait or a foreground character, never added because the tier is
+// Resolved. Without a figure the no-people rule holds as in every tier: a
+// scene part naming people is dropped, a moment naming people is not painted.
 export const NARRATIVE_RULE = 'A complete scene with narrative presence, one meaningful moment from the song: never a decorative symbol, a single keyword object or a generic landscape. The arrangement, spacing and placement of its elements, and the traces left in it, carry the relationship and the tension. It may stay poetic and painterly. Add nothing that does not serve the words\' meaning.';
 export const NARRATIVE_STAGING = 'Stage it inside the performance structure below: the decisive element sits at the focal passage, the gaps of paper between masses are the distances in the scene, and breaks in the singing stay breaks in it.';
+export const FIGURE_RULE = 'Small, distant and faceless, painted in a few strokes of the reference\'s own marks, part of the scene rather than its portrait.';
+// The content rule when the scene names a figure (Resolved only).
+export const CONTENT_RULE_FIGURE = 'Content: paint only what the subject above names, in its own setting, and add no objects, scenery or story that it does not ask for. People only as the scene above names them: small, distant and faceless, a few painterly strokes in the reference\'s own marks; never a portrait, a visible face, a large or foreground figure, or any people the scene does not name. Carry the rest of the story through place, light, weather and the traces left behind.';
+export const AVOID_PEOPLE_FIGURE = 'portraits, visible faces, close-up, large or foreground figures, and any people the scene does not name';
+// A figure that would be a portrait or a main character is not painted.
+export const PROMINENT = /\b(?:portraits?|faces?|close-?ups?|foreground|large|giant|huge|eyes|expressions?|crowds?)\b/i;
+const FACE = /\b(?:portraits?|faces?|close-?ups?)\b/i;
+const withFigure = (list, figure) => (figure ? list.map((x) => (x === AVOID_PEOPLE ? AVOID_PEOPLE_FIGURE : x)) : list);
 const sentence = (s) => String(s).trim().replace(/[.\s]+$/, '');
 export function narrativeFor(tier, c, { performance = false } = {}) {
-  if (tier !== 'resolved') return { applied: false, reason: `tier ${tier}`, line: null };
+  if (tier !== 'resolved') return { applied: false, reason: `tier ${tier}`, line: null, figure: null };
   const scene = c?.scene;
-  if (!scene?.moment) return { applied: false, reason: 'no scene read from the words', line: null };
-  if (PEOPLE.test(scene.moment)) return { applied: false, reason: 'the scene names people', line: null };
+  if (!scene?.moment) return { applied: false, reason: 'no scene read from the words', line: null, figure: null };
+  const asked = scene.figure && String(scene.figure).trim();
+  const figure = asked && !PROMINENT.test(asked) ? sentence(asked) : null;
+  if (PEOPLE.test(scene.moment) && (!figure || FACE.test(scene.moment))) return { applied: false, reason: figure ? 'the scene shows a face or portrait' : asked ? 'the scene\'s figure is too prominent' : 'the scene names people', line: null, figure: null };
   const parts = { situation: scene.situation, relationship: scene.relationship, tension: scene.tension };
-  const kept = Object.fromEntries(Object.entries(parts).filter(([, v]) => v && !PEOPLE.test(v)));
+  const ok = (v) => v && !FACE.test(v) && (figure || !PEOPLE.test(v));
+  const kept = Object.fromEntries(Object.entries(parts).filter(([, v]) => ok(v)));
   const line = [
     kept.situation ? `The moment from ${wordsOf(c)}: ${sentence(kept.situation)}.` : `The moment from ${wordsOf(c)}.`,
     kept.relationship ? `Relationship: ${sentence(kept.relationship)}.` : null,
     kept.tension ? `Tension: ${sentence(kept.tension)}.` : null,
     `Paint this scene: ${sentence(scene.moment)}.`,
+    figure ? `Figure: ${figure}. ${FIGURE_RULE}` : null,
     NARRATIVE_RULE,
     performance ? NARRATIVE_STAGING : null,
   ].filter(Boolean).join(' ');
-  return { applied: true, reason: 'Resolved: the words read as one story moment', scene: { ...kept, moment: scene.moment }, dropped: Object.keys(parts).filter((k) => parts[k] && !kept[k]), line };
+  return {
+    applied: true, reason: 'Resolved: the words read as one story moment', line, figure,
+    scene: { ...kept, moment: scene.moment, ...(figure ? { figure } : {}) },
+    dropped: [...Object.keys(parts).filter((k) => parts[k] && !kept[k]), ...(asked && !figure ? ['figure'] : [])],
+  };
 }
 
 const ENERGY = {
@@ -279,13 +303,13 @@ function directFromPerformance({ tier, F, refOnly, reference, concept, subjectLi
   const P = performanceSections(perf, tier, colourLanguage);
   const technique = refOnly ? REFERENCE_ONLY_STYLE
     : `Technique — ${F.label}: ${F.technique} This describes only how it is painted, never what is depicted or where.`;
-  const avoid = [...REFERENCE_AVOID, 'the reference\'s own layout or placement of colour', ...(perf.disorder ? ['smoothing over the breaks and clashes described above'] : [])];
+  const avoid = [...withFigure(REFERENCE_AVOID, narrative.figure), 'the reference\'s own layout or placement of colour', ...(perf.disorder ? ['smoothing over the breaks and clashes described above'] : [])];
   const sections = {
     subject: subjectLine,
     meaning: concept ? meaningLine(tier, concept) : null,
     narrative: narrative.line,
     family: technique,
-    content: CONTENT_RULE,
+    content: narrative.figure ? CONTENT_RULE_FIGURE : CONTENT_RULE,
     form: P.form,
     finish: tier === 'resolved' && withRef ? RESOLVED_FINISH : null,
     composition: P.structure,
@@ -359,7 +383,8 @@ export function direct(spec) {
   const subjectLine = concept ? subjectFromConcept(tier, concept, withRef)
     : tier === 'loose' && spec.soundOnly ? `${article(labelOf('loose', withRef))} that expresses the sound of the voice itself, not any subject or story.`
     : `${article(labelOf(tier, withRef))}${subject ? ` of ${subject}` : ''}.`;
-  const avoid = withRef ? (performance ? [...REFERENCE_AVOID, 'the reference\'s own layout or placement of colour'] : REFERENCE_AVOID) : AVOID;
+  const narrative = narrativeFor(tier, concept, { performance: Boolean(perf) });
+  const avoid = withFigure(withRef ? (performance ? [...REFERENCE_AVOID, 'the reference\'s own layout or placement of colour'] : REFERENCE_AVOID) : AVOID, narrative.figure);
   const plan = tier === 'loose' ? null : compositionPlan(refOnly ? null : familyId, spec.seed);
   const familyLine = refOnly ? REFERENCE_ONLY_STYLE
     : `Style — ${F.label}: ${F.rules} This describes only how it is painted, never what is depicted.${performance ? ' Where it describes a layout or a direction, the performance plan below decides instead.' : ''}`;
@@ -367,13 +392,12 @@ export function direct(spec) {
   // leaves", "windows under violet shadow"), so only its quality is kept.
   const measured = fromRef ? fromRef.text.replace(/Light: [^.]*\./, 'Light: the reference\'s own quality and direction of light, carried onto the new subject.') : null;
   const fallback = `Colour: ${P.colors.filter((p) => chosen.includes(p)).map((p) => p.name).join(', ')}, on white or warm white paper${P.accent ? `, with ${P.accent.name} as the only accent, kept small` : ''}.`;
-  const narrative = narrativeFor(tier, concept, { performance: Boolean(perf) });
   const sections = {
     subject: subjectLine,
     meaning: concept ? meaningLine(tier, concept) : null,
     narrative: narrative.line,
     family: familyLine,
-    content: CONTENT_RULE,
+    content: narrative.figure ? CONTENT_RULE_FIGURE : CONTENT_RULE,
     form: withRef ? LEVELS[tier].refForm : LEVELS[tier].form,
     // Gathered and Resolved: how the reference composes, drawn per seed
     // (composition.js). Loose: how the voice moved (sound.js).
@@ -405,7 +429,7 @@ export function direct(spec) {
     // Whether the Resolved painting was told to reach the reference's level of finish.
     resolvedFinish,
     // Whether the Resolved painting was given a story moment from the words.
-    narrative: { applied: narrative.applied, reason: narrative.reason, ...(narrative.applied ? { scene: narrative.scene, dropped: narrative.dropped } : {}) },
+    narrative: { applied: narrative.applied, reason: narrative.reason, figure: narrative.figure, ...(narrative.applied ? { scene: narrative.scene, dropped: narrative.dropped } : {}) },
     libraryVersion: library.version, seed: spec.seed >>> 0,
     concept: concept ?? null,
     composition: perf ? null : plan,
