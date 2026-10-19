@@ -118,6 +118,14 @@ export const REFERENCE_AUTHORITY_PERFORMANCE = [
   'Content never comes from the reference: its subjects, objects, figures, places and setting are not part of its style. Paint only the subject the text below asks for.',
 ].join(' ');
 
+// Resolved only (Han, 19 Oct): on top of its technique, the reference sets
+// the level of artistic finish the painting must reach. Still never its
+// content or composition.
+export const REFERENCE_AUTHORITY_PERFORMANCE_RESOLVED = [
+  REFERENCE_AUTHORITY_PERFORMANCE,
+  'Because this painting is Resolved, the reference also sets its level of artistic finish: it must be as finished, refined and accomplished as the reference, though its subject comes only from the text below.',
+].join(' ');
+
 // What the prompt says when the reference image is attached: the reference is
 // the visual authority for everything except subject and arrangement
 // (Gathered and Resolved; Loose uses REFERENCE_AUTHORITY_LOOSE).

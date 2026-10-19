@@ -17,7 +17,7 @@
 
 import { rng, hashSeed } from '../render/rng.js';
 import { FAMILIES, familiesOfTier } from './families.js';
-import { LIBRARY, referencePalette, referenceColourLanguage, REFERENCE_AUTHORITY, REFERENCE_AUTHORITY_LOOSE, REFERENCE_AUTHORITY_PERFORMANCE, tierOf } from './library.js';
+import { LIBRARY, referencePalette, referenceColourLanguage, REFERENCE_AUTHORITY, REFERENCE_AUTHORITY_LOOSE, REFERENCE_AUTHORITY_PERFORMANCE, REFERENCE_AUTHORITY_PERFORMANCE_RESOLVED, tierOf } from './library.js';
 import { PEOPLE } from './leakage.js';
 import { compositionPlan, compositionLine } from './composition.js';
 import { soundPlan } from './sound.js';
@@ -28,7 +28,7 @@ export { LIBRARY, createLibrary, colourName, referencePalette } from './library.
 export { checkLeakage, checkPrompt } from './leakage.js';
 export { soundPlan } from './sound.js';
 export { performanceDirection, performanceSections } from './performance.js';
-export const DIRECTION_VERSION = 9;
+export const DIRECTION_VERSION = 10;
 
 // Global Sonmira constraints: true for every family and every tier.
 // Materiality is independent of abstraction: Loose, Gathered and Resolved all
@@ -231,6 +231,18 @@ export function familiesFor(level, motif, library = LIBRARY, { concept = false }
   return (stocked.length ? stocked : all).map((id) => [id, 1]);
 }
 
+// Resolved finish inheritance (Han, 19 Oct): a Resolved painting must reach
+// the selected reference's level of artistic finish. The reference decides
+// how finished and how it is painted; the words what is painted; the
+// performance how the composition, movement and gestures unfold. Resolved
+// only: Loose and Gathered keep their own, less finished forms.
+export const RESOLVED_FINISH = [
+  'Level of finish, inherited from the reference: a finished work by an accomplished watercolour artist, not merely a beautiful watercolour sketch.',
+  'Match the reference\'s degree of finish, refinement, developed detail and technical sophistication through its own technique: deliberate focal detailing, sophisticated brushwork, layered pigment, controlled edges and an intentional visual hierarchy.',
+  'Finish is not photorealism, excessive detail or filling the whole sheet: keep expressive abstraction and open paper where the reference and the plan call for them.',
+  'Match its level of artistic accomplishment, never its content or composition.',
+].join(' ');
+
 // The performance-led direction (all tiers, with a reference and a measured
 // performance): the reference gives technique only, the words the subject,
 // the singing everything about how it is painted (performance.js).
@@ -247,6 +259,7 @@ function directFromPerformance({ tier, F, refOnly, reference, concept, subjectLi
     family: technique,
     content: CONTENT_RULE,
     form: P.form,
+    finish: tier === 'resolved' && withRef ? RESOLVED_FINISH : null,
     composition: P.structure,
     staging: P.staging,
     passages: P.passages,
@@ -258,7 +271,7 @@ function directFromPerformance({ tier, F, refOnly, reference, concept, subjectLi
     disorder: P.disorder,
     style: withRef ? REFERENCE_STYLE_PERFORMANCE : GLOBAL_STYLE,
   };
-  const prompt = [sections.subject, sections.meaning, sections.family, sections.content, sections.form, sections.composition, sections.staging, sections.passages, sections.marks, sections.contrast, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.disorder, sections.style, `Avoid: ${avoid.join(', ')}.`].filter(Boolean).join('\n');
+  const prompt = [sections.subject, sections.meaning, sections.family, sections.content, sections.form, sections.finish, sections.composition, sections.staging, sections.passages, sections.marks, sections.contrast, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.disorder, sections.style, `Avoid: ${avoid.join(', ')}.`].filter(Boolean).join('\n');
   return { sections, prompt, avoid };
 }
 
@@ -348,6 +361,9 @@ export function direct(spec) {
     gesture: performance ? null : expressionLine(spec.expression, withRef),
     style: performance ? REFERENCE_STYLE_LOOSE : withRef ? REFERENCE_STYLE : GLOBAL_STYLE,
   };
+  const resolvedFinish = tier !== 'resolved' ? { applied: false, reason: `tier ${tier}` }
+    : !perf ? { applied: false, reason: withRef ? 'no measured performance: the reference authority already sets the level of finish' : 'no reference' }
+      : { applied: true, reference: reference.id, reason: 'Resolved: the reference sets the level of finish; the words the subject; the performance the composition' };
   const led = perf ? directFromPerformance({ tier, F, refOnly, reference, concept, subjectLine, emotion: spec.emotion, perf, withRef }) : null;
   const prompt = led ? led.prompt : [sections.subject, sections.meaning, sections.family, sections.content, sections.form, sections.composition, sections.marks, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.energy, sections.gesture, sections.style, `Avoid: ${avoid.join(', ')}.`].filter(Boolean).join('\n');
   return {
@@ -355,7 +371,9 @@ export function direct(spec) {
     family: refOnly ? null : familyId, familyLabel: refOnly ? 'From the reference' : F.label, refs: refOnly ? [] : library.pool(familyId).map((e) => e.path.split('/').pop()),
     // The one reference image to send with `referencePrompt + prompt`.
     reference: reference ? { id: reference.id, path: reference.path, family: reference.family ?? null } : null,
-    referencePrompt: reference ? (perf ? REFERENCE_AUTHORITY_PERFORMANCE : performance ? REFERENCE_AUTHORITY_LOOSE : REFERENCE_AUTHORITY) : null,
+    referencePrompt: reference ? (perf ? (resolvedFinish.applied ? REFERENCE_AUTHORITY_PERFORMANCE_RESOLVED : REFERENCE_AUTHORITY_PERFORMANCE) : performance ? REFERENCE_AUTHORITY_LOOSE : REFERENCE_AUTHORITY) : null,
+    // Whether the Resolved painting was told to reach the reference's level of finish.
+    resolvedFinish,
     libraryVersion: library.version, seed: spec.seed >>> 0,
     concept: concept ?? null,
     composition: perf ? null : plan,

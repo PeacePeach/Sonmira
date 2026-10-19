@@ -7,7 +7,7 @@ import { measurePerformance } from '../../src/engine/analysis/performance-measur
 import { pitchTrack } from '../../src/engine/analysis/pitchtrack.js';
 import { performanceDirection, visual } from '../../src/engine/direct/performance.js';
 import { direct, FAMILIES, checkPrompt } from '../../src/engine/direct/index.js';
-import { REFERENCE_AUTHORITY_PERFORMANCE } from '../../src/engine/direct/library.js';
+import { REFERENCE_AUTHORITY_PERFORMANCE, REFERENCE_AUTHORITY_PERFORMANCE_RESOLVED } from '../../src/engine/direct/library.js';
 import { createHandler, cleanPerformance } from '../../api/generate.js';
 import { singers, voice, silence, sungLyrics, SR } from './synth.js';
 
@@ -89,7 +89,8 @@ test('every tier: the same performance sections; the reference gives technique o
     const d = Object.fromEntries(['loose', 'gathered', 'resolved'].map((t) => [t, run(t, m)]));
     for (const [tier, x] of Object.entries(d)) {
       assert.equal(x.level, tier);
-      assert.equal(x.referencePrompt, REFERENCE_AUTHORITY_PERFORMANCE);
+      // Resolved also inherits the reference's level of finish (Han, 19 Oct).
+      assert.equal(x.referencePrompt, tier === 'resolved' ? REFERENCE_AUTHORITY_PERFORMANCE_RESOLVED : REFERENCE_AUTHORITY_PERFORMANCE);
       assert.equal(x.composition, null, 'no reference composition plan');
       assert.match(x.prompt, /Performance structure/);
       assert.doesNotMatch(x.prompt, /in the reference's own language|composition language/);
