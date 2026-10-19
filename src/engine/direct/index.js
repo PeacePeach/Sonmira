@@ -21,14 +21,14 @@ import { LIBRARY, referencePalette, referenceColourLanguage, referenceColourRang
 import { PEOPLE } from './leakage.js';
 import { compositionPlan, compositionLine } from './composition.js';
 import { soundPlan } from './sound.js';
-import { performanceDirection, performanceSections } from './performance.js';
+import { performanceDirection, performanceSections, PERFORMANCE_FORM_GATHERED_MOTIF } from './performance.js';
 
 export { FAMILIES, REFERENCES, LIBRARY_VERSION } from './families.js';
 export { LIBRARY, createLibrary, colourName, referencePalette } from './library.js';
 export { checkLeakage, checkPrompt } from './leakage.js';
 export { soundPlan } from './sound.js';
 export { performanceDirection, performanceSections } from './performance.js';
-export const DIRECTION_VERSION = 12;
+export const DIRECTION_VERSION = 13;
 
 // Every tier's people rule in the Avoid line (Resolved with a scene figure: narrativeFor).
 export const AVOID_PEOPLE = 'people, human figures, silhouettes or faces';
@@ -131,6 +131,14 @@ export const RESOLVED_SCENE = 'Resolved means a scene, not a mood: one recognisa
 // reading that found none): the painting is told to imagine one.
 export const RESOLVED_IMAGINE = 'When the words name feelings rather than things, imagine where that feeling is lived and paint that place and moment, built from the song\'s own images: waiting, lingering, separation, a long journey, quiet endurance, traces of memory, distance, a parting of ways, a departure or an unfinished return. These are conditions to reason from, not pictures to reuse: invent an original, emotionally grounded situation for this song rather than a familiar or stock setting, with nothing disconnected or generic. Abstract meaning becomes a concrete poetic scene: neither a literal illustration nor an empty abstraction.';
 
+// Gathered with words (Han, 19 Oct): at least one motif from the words is
+// recognisable, however loosely painted, so the painting is visibly about
+// what was sung. Gathered keeps its ambiguity, atmosphere and unfinished
+// passages around it and takes no storyline (that stays Resolved's).
+// Without words (unreliable or none) nothing changes: the sound leads.
+export const GATHERED_MOTIF = 'The motif from the words must be recognisable at a glance: a viewer can name it. It may be loose, partial, gestural or unfinished, its edges dissolving into the washes, but it is never lost in them. Recognisability is mandatory; realism is not. One or two motifs at most, never every word illustrated, and no complete scene or storyline; everything around them stays atmospheric, ambiguous and only selectively detailed.';
+export const GATHERED_MOTIF_FORM = PERFORMANCE_FORM_GATHERED_MOTIF;
+
 export const LEVELS = {
   loose: {
     label: 'abstract watercolor',
@@ -215,7 +223,7 @@ const labelOf = (tier, withReference) => (withReference ? LEVELS[tier].refLabel 
 const wordsOf = (c) => (c.source === 'note' ? "the note written for this moment" : 'the sung words');
 function subjectFromConcept(tier, c, withReference = false) {
   if (tier === 'loose') return `${article(labelOf('loose', withReference))}. It depicts nothing; its marks carry the feeling of ${wordsOf(c)}: ${c.text}`;
-  if (tier === 'gathered') return `${article(labelOf('gathered', withReference))}, only suggesting, never spelling out: ${c.text}`;
+  if (tier === 'gathered') return `${article(labelOf('gathered', withReference))} with a recognisable motif from ${wordsOf(c)}: ${c.text}`;
   return `${article(labelOf('resolved', withReference))} of: ${c.text}`;
 }
 
@@ -318,10 +326,10 @@ export const RESOLVED_FINISH = [
 // The performance-led direction (all tiers, with a reference and a measured
 // performance): the reference gives technique only, the words the subject,
 // the singing everything about how it is painted (performance.js).
-function directFromPerformance({ tier, F, refOnly, reference, concept, subjectLine, emotion, perf, withRef, narrative, scene }) {
+function directFromPerformance({ tier, F, refOnly, reference, concept, subjectLine, emotion, perf, withRef, narrative, scene, motif }) {
   const colourLanguage = referenceColourLanguage(refOnly ? null : reference)
     .replace(/^Colour language(?: of the reference)?[^:]*: /, '').replace(/\.$/, '');
-  const P = performanceSections(perf, tier, colourLanguage, { palette: tier === 'resolved' ? referenceColourRange(refOnly ? null : reference).text : null });
+  const P = performanceSections(perf, tier, colourLanguage, { palette: tier === 'resolved' ? referenceColourRange(refOnly ? null : reference).text : null, motif: Boolean(motif) });
   const technique = refOnly ? REFERENCE_ONLY_STYLE
     : `Technique — ${F.label}: ${F.technique} This describes only how it is painted, never what is depicted or where.`;
   const avoid = [...withFigure(REFERENCE_AVOID, narrative.figure), 'the reference\'s own layout or placement of colour', ...(perf.disorder ? ['smoothing over the breaks and clashes described above'] : [])];
@@ -330,6 +338,7 @@ function directFromPerformance({ tier, F, refOnly, reference, concept, subjectLi
     meaning: concept ? meaningLine(tier, concept) : null,
     narrative: narrative.line,
     scene,
+    motif,
     family: technique,
     content: narrative.figure ? CONTENT_RULE_FIGURE : CONTENT_RULE,
     form: P.form,
@@ -345,7 +354,7 @@ function directFromPerformance({ tier, F, refOnly, reference, concept, subjectLi
     disorder: P.disorder,
     style: withRef ? REFERENCE_STYLE_PERFORMANCE : tier === 'resolved' ? GLOBAL_STYLE_RESOLVED : GLOBAL_STYLE,
   };
-  const prompt = [sections.subject, sections.meaning, sections.narrative, sections.scene, sections.family, sections.content, sections.form, sections.finish, sections.composition, sections.staging, sections.passages, sections.marks, sections.contrast, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.disorder, sections.style, `Avoid: ${avoid.join(', ')}.`].filter(Boolean).join('\n');
+  const prompt = [sections.subject, sections.meaning, sections.narrative, sections.scene, sections.motif, sections.family, sections.content, sections.form, sections.finish, sections.composition, sections.staging, sections.passages, sections.marks, sections.contrast, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.disorder, sections.style, `Avoid: ${avoid.join(', ')}.`].filter(Boolean).join('\n');
   return { sections, prompt, avoid };
 }
 
@@ -409,6 +418,7 @@ export function direct(spec) {
     : `${article(labelOf(tier, withRef))}${subject ? ` of ${subject}` : ''}.`;
   const narrative = narrativeFor(tier, concept, { performance: Boolean(perf) });
   const scene = tier !== 'resolved' ? null : concept && !narrative.applied ? `${RESOLVED_SCENE} ${RESOLVED_IMAGINE}` : RESOLVED_SCENE;
+  const motifLine = tier === 'gathered' && concept ? GATHERED_MOTIF : null;
   const avoid = withFigure(withRef ? (performance ? [...REFERENCE_AVOID, 'the reference\'s own layout or placement of colour'] : REFERENCE_AVOID) : AVOID, narrative.figure);
   const plan = tier === 'loose' ? null : compositionPlan(refOnly ? null : familyId, spec.seed);
   const familyLine = refOnly ? REFERENCE_ONLY_STYLE
@@ -426,9 +436,10 @@ export function direct(spec) {
     meaning: concept ? meaningLine(tier, concept) : null,
     narrative: narrative.line,
     scene,
+    motif: motifLine,
     family: familyLine,
     content: narrative.figure ? CONTENT_RULE_FIGURE : CONTENT_RULE,
-    form: withRef ? LEVELS[tier].refForm : LEVELS[tier].form,
+    form: motifLine ? GATHERED_MOTIF_FORM : withRef ? LEVELS[tier].refForm : LEVELS[tier].form,
     // Gathered and Resolved: how the reference composes, drawn per seed
     // (composition.js). Loose: how the voice moved (sound.js).
     composition: performance ? performance.composition : compositionLine(plan, tier),
@@ -448,8 +459,8 @@ export function direct(spec) {
   const resolvedFinish = tier !== 'resolved' ? { applied: false, reason: `tier ${tier}` }
     : !perf ? { applied: false, reason: withRef ? 'no measured performance: the reference authority already sets the level of finish' : 'no reference' }
       : { applied: true, reference: reference.id, reason: 'Resolved: the reference sets the level of finish; the words the subject; the performance the composition' };
-  const led = perf ? directFromPerformance({ tier, F, refOnly, reference, concept, subjectLine, emotion: spec.emotion, perf, withRef, narrative, scene }) : null;
-  const prompt = led ? led.prompt : [sections.subject, sections.meaning, sections.narrative, sections.scene, sections.family, sections.content, sections.form, sections.composition, sections.marks, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.energy, sections.gesture, sections.style, `Avoid: ${avoid.join(', ')}.`].filter(Boolean).join('\n');
+  const led = perf ? directFromPerformance({ tier, F, refOnly, reference, concept, subjectLine, emotion: spec.emotion, perf, withRef, narrative, scene, motif: motifLine }) : null;
+  const prompt = led ? led.prompt : [sections.subject, sections.meaning, sections.narrative, sections.scene, sections.motif, sections.family, sections.content, sections.form, sections.composition, sections.marks, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.energy, sections.gesture, sections.style, `Avoid: ${avoid.join(', ')}.`].filter(Boolean).join('\n');
   return {
     version: DIRECTION_VERSION, level: tier, requestedLevel: level,
     family: refOnly ? null : familyId, familyLabel: refOnly ? 'From the reference' : F.label, refs: refOnly ? [] : library.pool(familyId).map((e) => e.path.split('/').pop()),
@@ -462,6 +473,8 @@ export function direct(spec) {
     resolvedPalette: tier !== 'resolved' ? { applied: false, reason: `tier ${tier}` }
       : withRef ? (({ names, count, mono }) => ({ applied: true, families: names, count, mono }))(referenceColourRange(refOnly ? null : reference))
         : { applied: true, families: chosen.map((c) => c.name), count: chosen.length, reason: 'no reference: the family\'s whole observed scheme' },
+    // Whether the Gathered painting was told to show a recognisable motif from the words.
+    gatheredMotif: tier !== 'gathered' ? { applied: false, reason: `tier ${tier}` } : concept ? { applied: true, motif: concept.text, source: concept.source === 'note' ? 'note' : 'lyrics' } : { applied: false, reason: 'no reliable words: the sound leads' },
     // Whether the Resolved painting was given a story moment from the words.
     narrative: { applied: narrative.applied, reason: narrative.reason, figure: narrative.figure, ...(narrative.applied ? { scene: narrative.scene, dropped: narrative.dropped } : {}) },
     libraryVersion: library.version, seed: spec.seed >>> 0,

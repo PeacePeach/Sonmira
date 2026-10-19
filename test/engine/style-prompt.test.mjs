@@ -33,10 +33,11 @@ test('with a reference, no universal watercolor technique, composition or avoid 
 test('the subject comes from the lyrics and the tier still sets how recognisable it is', () => {
   const R = direct(spec('R1-graphic-snow')), G = direct(spec('G2-splash-wash')), L = direct(spec('L2-bloom-field'));
   assert.match(R.sections.subject, /^A finished painting of: a paper boat/);
-  assert.match(G.sections.subject, /^A semi-abstract painting, only suggesting/);
+  // Gathered with words shows a recognisable motif from them (Han, 19 Oct).
+  assert.match(G.sections.subject, /^A semi-abstract painting with a recognisable motif from the sung words: a paper boat/);
   assert.match(L.sections.subject, /^An abstract painting\. It depicts nothing/);
   assert.match(R.sections.form, /clear, recognisable subject/);
-  assert.match(G.sections.form, /no subject is clearly identifiable/);
+  assert.match(G.sections.form, /the motif from the words is recognisable/);
   assert.match(L.sections.form, /nothing is deliberately depicted/);
   assert.equal(R.subjectSource, 'lyrics');
   // The reference supplies no content.

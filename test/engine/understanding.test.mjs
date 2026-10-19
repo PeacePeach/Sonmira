@@ -174,7 +174,7 @@ test('fixture 7: sea lyrics → a related concept for each tier', () => {
     assert.equal(d.subjectSource, 'lyrics');
     assert.ok(d.prompt.includes(SEA.concepts[tier]));
     if (tier === 'loose') assert.match(d.prompt, /depicts nothing/);
-    if (tier === 'gathered') assert.match(d.prompt, /only suggesting/);
+    if (tier === 'gathered') assert.match(d.prompt, /recognisable motif from the sung words/);
   }
 });
 

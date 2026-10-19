@@ -253,14 +253,21 @@ export const PERFORMANCE_FORM = {
 
 // `palette` (Resolved): the reference's inherited colour range replaces the
 // palette-family line; the singing still sets how those colours relate.
-export function performanceSections(d, tier, colourLanguage, { palette = null } = {}) {
+// Gathered with words (Han, 19 Oct): the same Gathered form, but the motif
+// from the words is recognisable (direct/index.js GATHERED_MOTIF).
+export const PERFORMANCE_FORM_GATHERED_MOTIF = 'Semi-representational: the motif from the words is recognisable, loosely painted and partly dissolved, with unfinished passages; everything around it stays ambiguous and atmospheric, never a fully formed scene, a clear story or a blurred illustration. Mood-forward: the feeling leads and the story stays implied.';
+
+// `motif` (Gathered with words): the motif is recognisable and staged at the
+// focus; the performance shapes how it is painted, never whether it shows.
+export function performanceSections(d, tier, colourLanguage, { palette = null, motif = false } = {}) {
   const lines = d.decisions.map((x) => ({ aspect: x.aspect, text: visual(x.decision) }));
   const by = (...as) => lines.filter((x) => as.includes(x.aspect)).map((x) => x.text).join(' ');
   return {
-    form: PERFORMANCE_FORM[tier] ?? PERFORMANCE_FORM.gathered,
+    form: motif && tier === 'gathered' ? PERFORMANCE_FORM_GATHERED_MOTIF : PERFORMANCE_FORM[tier] ?? PERFORMANCE_FORM.gathered,
     structure: `Performance structure (decides the composition of this painting): ${by('composition')}`,
     staging: tier === 'loose' ? null
-      : tier === 'gathered' ? `Let the subject emerge out of this structure: its forms half-appear inside the masses, most legible at the focal passage (${d.focus}), dissolving elsewhere.`
+      : tier === 'gathered' ? (motif ? `Place the motif at the focal passage (${d.focus}), where it is most legible, and let it dissolve into the masses elsewhere. The performance decides how it is painted, its gesture, rhythm, softness and fragmentation, but never erases it: a broken passage breaks its edges, not its identity.`
+        : `Let the subject emerge out of this structure: its forms half-appear inside the masses, most legible at the focal passage (${d.focus}), dissolving elsewhere.`)
         : `Stage the subject along this structure: its main form sits at the focal passage (${d.focus}); everything else follows the path, density and breaks of the passages below. The subject is drawn in the performance's own marks, so a broken passage breaks the subject too.`,
     passages: `Passages, left to right: ${lines.filter((x) => x.aspect.startsWith('passage')).map((x) => x.text).join(' ')}`,
     marks: `Marks: ${by('rhythm', 'edges', 'water')}`,

@@ -82,7 +82,8 @@ test('the reading is told to turn abstract words into a concrete poetic scene, w
 
 test('Gathered stays mood-forward with its own palette line; Loose is untouched', () => {
   const g = paint('gathered', 'G2-splash-wash', 'gathered_02', { concept: WORDS });
-  assert.match(g.sections.form, /Mood-forward: the feeling leads, the story stays light/);
+  assert.match(g.sections.form, /Mood-forward: the feeling leads/);
+  assert.match(paint('gathered', 'G2-splash-wash', 'gathered_02').sections.form, /Mood-forward: the feeling leads, the story stays light/);
   assert.equal(g.sections.scene, null);
   assert.match(g.sections.palette, /^Colour, inside the reference's palette family/);
   assert.deepEqual(g.resolvedPalette, { applied: false, reason: 'tier gathered' });
