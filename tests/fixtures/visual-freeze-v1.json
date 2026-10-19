@@ -1,5 +1,5 @@
 {
- "approved": "Han, 16 Oct 2026: Validation 4 approved as the V1 three-tier artwork quality; Han, 18 Oct 2026: Phase 2 Loose (performance-driven) approved as the Loose baseline; Han, 19 Oct 2026: Resolved palette diversity and scene rules, Gathered mood-forward (PR #27); Han, 19 Oct 2026: Gathered lyric grounding, a recognisable motif from reliable words (PR #28); 19 Oct 2026: Resolved visual directions (PR #29), refreshed at review request",
+ "approved": "Han, 16 Oct 2026: Validation 4 approved as the V1 three-tier artwork quality; Han, 18 Oct 2026: Phase 2 Loose (performance-driven) approved as the Loose baseline; Han, 19 Oct 2026: Resolved palette diversity and scene rules, Gathered mood-forward (PR #27); Han, 19 Oct 2026: Gathered lyric grounding, a recognisable motif from reliable words (PR #28); 19 Oct 2026: Resolved visual directions (PR #29), refreshed at review request; Han, 19 Oct 2026: Resolved rolling-three wide scene and motif rule (PR #29)",
  "library": "159be0e27f364493",
  "image": {
   "model": "gpt-image-2",
@@ -39,8 +39,8 @@
   "validation-4-S1-gathered": "d2a67410afcda102",
   "validation-4-S1-resolved": "6cef6706155728d2",
   "validation-4-S3-gathered": "f6f84e2ffc132021",
-  "validation-4-S3-resolved": "896ea228f394311b",
-  "validation-4-S2-resolved": "b515e449c2e37027",
+  "validation-4-S3-resolved": "6d2702cfc285ca71",
+  "validation-4-S2-resolved": "f4c6c4720168effa",
   "validation-4-S4-resolved": "eae30d21d9892372",
   "validation-4-S5-gathered": "bcd8a4fa4ef038a4"
  }

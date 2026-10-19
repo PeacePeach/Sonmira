@@ -29,7 +29,7 @@ export { LIBRARY, createLibrary, colourName, referencePalette } from './library.
 export { checkLeakage, checkPrompt } from './leakage.js';
 export { soundPlan } from './sound.js';
 export { performanceDirection, performanceSections } from './performance.js';
-export const DIRECTION_VERSION = 14;
+export const DIRECTION_VERSION = 15;
 
 // Every tier's people rule in the Avoid line (Resolved with a scene figure: narrativeFor).
 export const AVOID_PEOPLE = 'people, human figures, silhouettes or faces';
@@ -515,7 +515,7 @@ export function direct(spec) {
     gatheredMotif: tier !== 'gathered' ? { applied: false, reason: `tier ${tier}` } : concept ? { applied: true, motif: concept.text, source: concept.source === 'note' ? 'note' : 'lyrics' } : { applied: false, reason: 'no reliable words: the sound leads' },
     // Which visual direction the Resolved painting was given, and why (looks.js).
     resolvedLook: !look ? { applied: false, reason: `tier ${tier}` }
-      : { applied: true, source: look.source, signature: signatureOf(look), rank: look.rank, reason: look.reason, recent: recentLooks.length, ...(look.considered ? { considered: look.considered } : {}), ...(unusable?.length ? { unusable } : {}) },
+      : { applied: true, source: look.source, signature: signatureOf(look), rank: look.rank, reason: look.reason, recent: recentLooks.length, diversity: look.diversity, ...(look.considered ? { considered: look.considered } : {}), ...(unusable?.length ? { unusable } : {}) },
     // Whether the Resolved painting was given a story moment from the words.
     narrative: { applied: narrative.applied, reason: narrative.reason, figure: narrative.figure, ...(narrative.near ? { near: true } : {}), ...(narrative.applied ? { scene: narrative.scene, dropped: narrative.dropped } : {}) },
     libraryVersion: library.version, seed: spec.seed >>> 0,

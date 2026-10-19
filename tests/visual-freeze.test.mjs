@@ -33,6 +33,10 @@
 // request): a visual direction chosen from several, varied across the last
 // five Resolved paintings. Only the Resolved prompts were refreshed; Loose
 // and Gathered are unchanged.
+// Resolved changed again on 19 Oct (Han's request, the last engine pass):
+// a wide scenic composition is named in the prompt when the chosen look is
+// one, as part of the rolling-three rule. Only the Resolved prompts were
+// refreshed; Loose and Gathered are unchanged.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -119,7 +123,7 @@ function currentSnapshot() {
   }
   const c = openaiConfig({ OPENAI_API_KEY: 'x' });
   return {
-    approved: 'Han, 16 Oct 2026: Validation 4 approved as the V1 three-tier artwork quality; Han, 18 Oct 2026: Phase 2 Loose (performance-driven) approved as the Loose baseline; Han, 19 Oct 2026: Resolved palette diversity and scene rules, Gathered mood-forward (PR #27); Han, 19 Oct 2026: Gathered lyric grounding, a recognisable motif from reliable words (PR #28); 19 Oct 2026: Resolved visual directions (PR #29), refreshed at review request',
+    approved: 'Han, 16 Oct 2026: Validation 4 approved as the V1 three-tier artwork quality; Han, 18 Oct 2026: Phase 2 Loose (performance-driven) approved as the Loose baseline; Han, 19 Oct 2026: Resolved palette diversity and scene rules, Gathered mood-forward (PR #27); Han, 19 Oct 2026: Gathered lyric grounding, a recognisable motif from reliable words (PR #28); 19 Oct 2026: Resolved visual directions (PR #29), refreshed at review request; Han, 19 Oct 2026: Resolved rolling-three wide scene and motif rule (PR #29)',
     library: sha(JSON.stringify(REFERENCE_LIBRARY)),
     image: { model: c.model, quality: c.quality, size: c.size },
     prompts,

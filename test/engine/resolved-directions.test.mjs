@@ -181,7 +181,10 @@ test('a near-duplicate of the last five is not chosen while a comparable option 
   assert.equal(only.direction, 'A');
   assert.match(only.reason, /every comparable option repeats a recent Resolved painting/);
   // An option far down the ranking is not comparable: rank 4 does not displace a near-duplicate rank 1.
-  const far = chooseLook({ options: [top, { ...top, image: 'b' }, { ...top, image: 'c' }, second], recent });
+  // (One of the last two is wide here, so the rolling-three wide rule, which
+  // may reach further down, does not apply: resolved-rolling.test.mjs.)
+  const wideLast = [...recent.slice(0, 3), signatureOf(opt('F', 'x', { distance: 'wide', angle: 'low', figures: 'several', space: 'interior', lead: 'space', figure: 'f' }))];
+  const far = chooseLook({ options: [top, { ...top, image: 'b' }, { ...top, image: 'c' }, second], recent: wideLast });
   assert.equal(far.direction, 'A');
 });
 
