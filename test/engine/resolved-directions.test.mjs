@@ -33,6 +33,7 @@ test('the reading asks for the emotional event and several directions, the lone 
   assert.match(SYSTEM, /- core: the symbolic core/);
   assert.match(SYSTEM, /what is the emotional event here, what is the strongest image for it, and if I do not draw the most literal scene, what image would best embody the feeling\?/);
   for (const d of ['A, expansive scenic narrative', 'B, intimate near view', 'C, symbolic image', 'D, trace or aftermath', 'E, interior or spatial scene', 'F, free invention']) assert.ok(SYSTEM.includes(`- ${d}`), d);
+  assert.match(SYSTEM, /Nothing readable: no words, letters, writing, numbers or signs in the picture, even as a symbol/); // PR #29 review: creative options keep the no-text rule
   assert.match(SYSTEM, /A lone figure standing in a vast landscape, one small figure in the middle distance, a horizon-led view or a figure facing away into scenery is one case of A, never the default/);
   assert.match(SYSTEM, /options, never templates; use at least three different directions/);
   assert.match(SYSTEM, /Vary these between options/);

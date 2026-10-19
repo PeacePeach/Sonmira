@@ -25,8 +25,8 @@ const songs = [
     opt('E', 'A station corridor seen from above, one door half open, its light falling across the empty floor.', { space: 'interior', lead: 'space', angle: 'birds_eye', distance: 'wide' })] },
   { name: 'Your letter burned but the words remain', event: 'Something destroyed that still speaks.', options: [
     lone('A figure in a field watching smoke drift from a small fire.'),
-    opt('C', 'Glowing words lifting from a charred page and hanging in the dark like embers.', { distance: 'close', lead: 'symbol', angle: 'low' }),
-    opt('D', 'A burnt envelope in a stone sink, its edges curling, one line still legible.', { distance: 'close', angle: 'high', space: 'interior', lead: 'object' })] },
+    opt('C', 'Sparks lifting from a charred page and hanging in the dark like embers, the page itself still glowing at its edges.', { distance: 'close', lead: 'symbol', angle: 'low' }),
+    opt('D', 'A burnt envelope in a stone sink, its edges curling, a corner of the paper left unburnt.', { distance: 'close', angle: 'high', space: 'interior', lead: 'object' })] },
   { name: 'We walked our separate ways at the river', event: 'A parting that both accept.', options: [
     lone('One figure on a riverbank watching another walk away across a bridge.'),
     opt('A', 'Two small figures seen from high above, walking away from each other on opposite banks of a winding river.', { distance: 'wide', angle: 'birds_eye', figures: 'several', lead: 'landscape', figure: 'two small, distant figures walking apart' }),

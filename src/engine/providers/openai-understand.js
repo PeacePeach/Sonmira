@@ -99,7 +99,7 @@ Meaning (only from the words; never invent meaning that is not there; if not lex
     - F, free invention: any other direction, still clearly tied to the words, story-driven or symbolically meaningful, specific and never a random atmospheric picture.
     These examples show kinds of image, not pictures to reuse: build every option from this song's own words and situation. For each option:
     - direction: A, B, C, D, E or F.
-    - image: one concrete sentence: what is seen, where, in what light, and how it shows the emotional event. Never generic scenery or a mood wash.
+    - image: one concrete sentence: what is seen, where, in what light, and how it shows the emotional event. Never generic scenery or a mood wash. Nothing readable: no words, letters, writing, numbers or signs in the picture, even as a symbol; a letter, page or sign is shown folded, blurred, burnt or turned away, its writing never legible.
     - distance: wide, medium or close. angle: eye_level, low, high or birds_eye. figures: none, one, several or many. space: interior or exterior. lead: what leads the image (person, object, landscape, symbol or space). Vary these between options: do not give every option the same distance, angle or kind of subject.
     - figure: empty unless figures is not none; then a short phrase for the person or people and what they do: one, several or many (a crowd only when the words call for one), seen far (A, E) or near (B), where a near view may show the face and its emotion when the words warrant it.
     - necessary: true only when the words genuinely demand this exact image and no other would do (rare); otherwise false.
