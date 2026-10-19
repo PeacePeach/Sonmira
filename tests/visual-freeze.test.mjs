@@ -18,8 +18,13 @@
 // A/B): its prompts now follow the performance (direct/sound.js), so the 3
 // Validation 4 Loose runs (S1, S3, S6) no longer rebuild to the prompts that
 // made those images. They are checked against the Phase 2 prompts Han
-// approved, recorded in the fixture (`looseApproved`), and the Gathered and
-// Resolved runs must still match Validation 4 exactly.
+// approved, recorded in the fixture (`looseApproved`).
+//
+// Gathered and Resolved changed on 19 Oct (Han approved the Resolved palette
+// diversity and scene rules, PR #27): Resolved inherits the reference's colour
+// range and must be a scene; Gathered gained one mood-forward sentence. Their
+// Validation 4 runs are checked against those prompts (`sceneApproved`); the
+// image settings, family and reference must still match Validation 4.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -54,7 +59,8 @@ async function paint(spec) {
   return { out, sent: form.get('prompt'), model: form.get('model'), quality: form.get('quality'), size: form.get('size'), fidelity: form.get('input_fidelity') };
 }
 
-const loose = {};
+const loose = {}, scene = {};
+const keepApproved = () => { const f = JSON.parse(readFileSync(FIXTURE, 'utf8')); return { looseApproved: f.looseApproved, sceneApproved: f.sceneApproved }; };
 
 test('the 10 approved Validation 4 requests are rebuilt exactly (Loose: as approved for Phase 2)', async () => {
   assert.equal(approved.runs.length, 10);
@@ -74,15 +80,24 @@ test('the 10 approved Validation 4 requests are rebuilt exactly (Loose: as appro
     if (o.tier === 'loose') {
       assert.notEqual(g.sent, r.prompt, `${run.id}: Loose now follows the performance`);
       loose[run.id] = sha(g.sent);
-    } else assert.equal(g.sent, r.prompt, `${run.id}: the prompt differs from the approved one`);
+    } else {
+      // Every Gathered and Resolved prompt changed with the 19 Oct rules.
+      assert.notEqual(g.sent, r.prompt, `${run.id}: ${o.tier} now carries the 19 Oct rules`);
+      assert.match(g.sent, o.tier === 'resolved' ? /Resolved means a scene, not a mood/ : /Mood-forward: the feeling leads/, run.id);
+      scene[run.id] = sha(g.sent);
+    }
     assert.deepEqual([g.model, g.quality, g.size], [r.model, r.quality, r.size], `${run.id}: image settings`);
   }
   assert.equal(Object.keys(loose).length, 3);
+  assert.equal(Object.keys(scene).length, 7);
+  // Loose is never rewritten here: its Phase 2 approval stands.
   if (process.env.FREEZE_WRITE) {
     const f = JSON.parse(readFileSync(FIXTURE, 'utf8'));
-    writeFileSync(FIXTURE, `${JSON.stringify({ ...f, looseApproved: loose }, null, 1)}\n`);
+    writeFileSync(FIXTURE, `${JSON.stringify({ ...f, sceneApproved: scene }, null, 1)}\n`);
   }
-  assert.deepEqual(loose, JSON.parse(readFileSync(FIXTURE, 'utf8')).looseApproved, 'the approved Phase 2 Loose prompts changed');
+  const f = JSON.parse(readFileSync(FIXTURE, 'utf8'));
+  assert.deepEqual(loose, f.looseApproved, 'the approved Phase 2 Loose prompts changed');
+  assert.deepEqual(scene, f.sceneApproved, 'the approved 19 Oct Gathered and Resolved prompts changed');
 });
 
 function currentSnapshot() {
@@ -96,7 +111,7 @@ function currentSnapshot() {
   }
   const c = openaiConfig({ OPENAI_API_KEY: 'x' });
   return {
-    approved: 'Han, 16 Oct 2026: Validation 4 approved as the V1 three-tier artwork quality; Han, 18 Oct 2026: Phase 2 Loose (performance-driven) approved as the Loose baseline',
+    approved: 'Han, 16 Oct 2026: Validation 4 approved as the V1 three-tier artwork quality; Han, 18 Oct 2026: Phase 2 Loose (performance-driven) approved as the Loose baseline; Han, 19 Oct 2026: Resolved palette diversity and scene rules, Gathered mood-forward (PR #27)',
     library: sha(JSON.stringify(REFERENCE_LIBRARY)),
     image: { model: c.model, quality: c.quality, size: c.size },
     prompts,
@@ -105,7 +120,7 @@ function currentSnapshot() {
 
 test('every reference at its tier gives the frozen V1 prompt', () => {
   const now = currentSnapshot();
-  if (process.env.FREEZE_WRITE) writeFileSync(FIXTURE, `${JSON.stringify({ ...now, looseApproved: JSON.parse(readFileSync(FIXTURE, 'utf8')).looseApproved }, null, 1)}\n`);
+  if (process.env.FREEZE_WRITE) writeFileSync(FIXTURE, `${JSON.stringify({ ...now, ...keepApproved() }, null, 1)}\n`);
   const frozen = JSON.parse(readFileSync(FIXTURE, 'utf8'));
   assert.equal(now.library, frozen.library, 'the reference library changed');
   assert.deepEqual(now.image, frozen.image, 'the image settings changed');

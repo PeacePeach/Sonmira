@@ -29,13 +29,22 @@ test('Resolved inherits at least three distinct colours, four to five when the r
   const rich = paint('resolved', 'R5-light-as-subject', 'resolved_10');
   assert.match(rich.sections.palette, /^Palette, inherited from the reference: carry its variety of colour, not only its dominant hue\./);
   assert.match(rich.sections.palette, /Use at least 3 clearly distinct colours from them, aiming for 4 to 5 colour families/);
-  assert.match(rich.sections.palette, /Never a monochrome or near-monochrome painting/);
+  assert.match(rich.sections.palette, /Never reduce it to a single hue/);
   assert.match(rich.sections.palette, /Colour relations, from how it was sung: /);
-  assert.deepEqual(rich.resolvedPalette, { applied: true, families: referenceColourRange(LIBRARY.get('resolved_10')).names, count: 5 });
-  // A reference with fewer families fills the third colour from its own values, never a new hue.
-  const mono = paint('resolved', 'R5-light-as-subject', 'resolved_04');
-  assert.match(mono.sections.palette, /take the rest from its own clearly different values .* never a hue it does not contain/);
-  assert.doesNotMatch(mono.sections.palette, /4 to 5/);
+  assert.deepEqual(rich.resolvedPalette, { applied: true, families: referenceColourRange(LIBRARY.get('resolved_10')).names, count: 5, mono: false });
+  // Near-monochrome (Han, 19 Oct): no third hue is forced; its own identity
+  // varies through tone, saturation and temperature.
+  for (const id of ['resolved_04', 'resolved_03', 'resolved_01']) {
+    const mono = paint('resolved', LIBRARY.get(id).family, id);
+    assert.ok(referenceColourRange(LIBRARY.get(id)).mono, id);
+    assert.match(mono.sections.palette, /keep its own colour identity.*Add no hue it does not contain.*tonal, saturation and temperature variation/, id);
+    assert.doesNotMatch(mono.sections.palette, /at least 3|4 to 5|single hue/, id);
+    assert.equal(mono.resolvedPalette.mono, true, id);
+  }
+  // Exactly three families: at least three, no four-to-five aim.
+  const three = paint('resolved', 'R3-vivid-wash-focal', 'resolved_02');
+  assert.match(three.sections.palette, /Use at least 3 clearly distinct colours from them, each/);
+  assert.equal(three.resolvedPalette.mono, false);
   assert.equal(rich.referencePrompt, REFERENCE_AUTHORITY_PERFORMANCE_RESOLVED);
   assert.ok(rich.referencePrompt.endsWith(RESOLVED_PALETTE_AUTHORITY));
   // Without a measured performance: the measured hierarchy, no "keep these proportions".
@@ -53,7 +62,8 @@ test('Resolved is a scene: words without a scene are imagined into one; no words
   const words = paint('resolved', 'R3-vivid-wash-focal', 'resolved_02', { concept: WORDS });
   assert.equal(words.narrative.applied, false);
   assert.equal(words.sections.scene, `${RESOLVED_SCENE} ${RESOLVED_IMAGINE}`);
-  assert.match(RESOLVED_IMAGINE, /waiting, lingering, separation, a long journey, quiet endurance, traces of memory, distance/);
+  assert.match(RESOLVED_IMAGINE, /waiting, lingering, separation, a long journey, quiet endurance, traces of memory, distance, a parting of ways/);
+  assert.match(RESOLVED_IMAGINE, /conditions to reason from, not pictures to reuse: invent an original, emotionally grounded situation/);
   assert.match(RESOLVED_SCENE, /never only an atmospheric wash, a pattern or a generic landscape/);
   const none = paint('resolved', 'R3-vivid-wash-focal', 'resolved_02', { motif: 'water' });
   assert.equal(none.sections.scene, RESOLVED_SCENE);
@@ -65,6 +75,9 @@ test('Resolved is a scene: words without a scene are imagined into one; no words
 test('the reading is told to turn abstract words into a concrete poetic scene, without stock imagery', () => {
   assert.match(SYSTEM, /emotionally rich but name few or no visible things .* never fall back to an abstract wash or a mood/);
   assert.match(SYSTEM, /a concrete poetic scene with a focal point and a sense of near and far: not a literal illustration, not an empty abstraction/);
+  // Han, 19 Oct: the conditions are not templates; each song gets its own scene.
+  assert.match(SYSTEM, /never pictures to reuse: do not default to a familiar or stock setting, and do not let one kind of scene recur from song to song/);
+  assert.match(SYSTEM, /Invent an original, emotionally grounded situation for this song.*nothing disconnected or generic/);
 });
 
 test('Gathered stays mood-forward with its own palette line; Loose is untouched', () => {

@@ -109,7 +109,7 @@ test('every tier: the same performance sections; the reference gives technique o
     const rel = (x) => x.sections.palette.split('): ')[1];
     assert.equal(rel(d.gathered), rel(d.loose));
     assert.match(d.resolved.sections.palette, /^Palette, inherited from the reference: .* Colour relations, from how it was sung: /);
-    assert.ok(d.resolved.sections.palette.endsWith(rel(d.loose).replace(/^Closely related hues that sit/, 'The distinct colours sit').replace(/^Mostly related hues/, 'Mostly harmonious relations between the distinct colours')));
+    assert.ok(d.resolved.sections.palette.endsWith(rel(d.loose).replace(/^Closely related hues that sit/, 'The colours sit').replace(/^Mostly related hues/, 'Mostly harmonious colour relations')));
     assert.notEqual(d.loose.sections.subject, d.resolved.sections.subject);
   }
 });

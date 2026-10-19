@@ -105,8 +105,10 @@ export function referenceColourLanguage(ref) {
 // as a monochrome Gathered study. The distinct colour families come from the
 // indexer's `families` (hue families, tonal steps merged); an entry measured
 // before that falls back to its colours and accent, one per colour name.
-// Fewer than three families: the third colour is the reference's own deepest
-// or lightest value, or its neutral, never a hue it does not show.
+// Multicolour (three or more families): at least three distinct colours,
+// four to five when the reference shows them. Near-monochrome (Han, 19 Oct):
+// no third hue is forced; its own colour identity is kept and varied through
+// tone, saturation and temperature, as the reference itself does.
 export const RESOLVED_PALETTE_MIN = 3;
 export function referenceColourRange(ref) {
   const P = ref?.palette;
@@ -115,16 +117,26 @@ export function referenceColourRange(ref) {
   const steps = [...new Set((P?.colors ?? []).map((c) => colourName(c.hex)))].filter((n) => !names.includes(n));
   const count = P?.families?.length ? P.families.length : names.length;
   const which = names.length ? `Its distinct colour families: ${names.join(', ')}${steps.length ? `; its tonal steps: ${steps.join(', ')}` : ''}.` : 'Read its distinct colour families from the image.';
+  const mono = names.length > 0 && count < RESOLVED_PALETTE_MIN;
+  if (mono) {
+    return {
+      count, names, mono,
+      text: [
+        'Palette, inherited from the reference: keep its own colour identity, which is restrained to few hues.',
+        which,
+        'Add no hue it does not contain. Give the painting its range through the tonal, saturation and temperature variation the reference itself shows (deep against pale, stronger against greyed, warmer against cooler), clearly enough that the scene\'s light, ground, focal element and distance read apart, never one flat tint.',
+      ].join(' '),
+    };
+  }
   const target = count >= 4 ? `Use at least ${RESOLVED_PALETTE_MIN} clearly distinct colours from them, aiming for 4 to 5 colour families as the reference itself shows`
-    : count === RESOLVED_PALETTE_MIN || !names.length ? `Use at least ${RESOLVED_PALETTE_MIN} clearly distinct colours from them`
-      : `Use at least ${RESOLVED_PALETTE_MIN} clearly distinct colours: where the reference shows fewer colour families, take the rest from its own clearly different values (its deepest and its lightest of the same hue) or its neutral, never a hue it does not contain`;
+    : `Use at least ${RESOLVED_PALETTE_MIN} clearly distinct colours from them`;
   return {
-    count, names,
+    count, names, mono,
     text: [
       'Palette, inherited from the reference: carry its variety of colour, not only its dominant hue.',
       which,
       `${target}, each clearly visible and given a role in the scene (the light, the ground, the focal element, the distance), not a token speck.`,
-      'Its dominant colour may stay dominant; keep its saturation, temperature and colour sophistication. Never a monochrome or near-monochrome painting.',
+      'Its dominant colour may stay dominant; keep its saturation, temperature and colour sophistication. Never reduce it to a single hue.',
     ].join(' '),
   };
 }
@@ -149,7 +161,7 @@ export const REFERENCE_AUTHORITY_PERFORMANCE = [
 
 // Resolved only (Han, 19 Oct): the reference's range of colour, not just its
 // palette family, is inherited (referenceColourRange).
-export const RESOLVED_PALETTE_AUTHORITY = 'It also sets the palette richness: carry its full range of distinct colours, not only its dominant hue. The reference controls style, level of finish, palette richness and mark-making; the words control the subject, scene, emotional situation and symbolic content.';
+export const RESOLVED_PALETTE_AUTHORITY = 'It also sets the palette diversity: carry its full range of colour, not only its dominant hue, and add no hue it does not contain. The reference decides how the painting looks (technique, palette diversity, style and finish); the words decide what it depicts (subject, scene, emotional situation and symbolic content).';
 
 // Resolved only (Han, 19 Oct): on top of its technique, the reference sets
 // the level of artistic finish the painting must reach. Still never its

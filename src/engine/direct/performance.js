@@ -265,7 +265,7 @@ export function performanceSections(d, tier, colourLanguage, { palette = null } 
     passages: `Passages, left to right: ${lines.filter((x) => x.aspect.startsWith('passage')).map((x) => x.text).join(' ')}`,
     marks: `Marks: ${by('rhythm', 'edges', 'water')}`,
     contrast: `Contrast: ${by('contrast')}`,
-    colour: palette ? `${palette} Colour relations, from how it was sung: ${by('harmony', 'temperature').replace(/^Closely related hues that sit/, 'The distinct colours sit').replace(/^Mostly related hues/, 'Mostly harmonious relations between the distinct colours')}` : `Colour, inside the reference's palette family (${colourLanguage}): ${by('harmony', 'temperature')}`,
+    colour: palette ? `${palette} Colour relations, from how it was sung: ${by('harmony', 'temperature').replace(/^Closely related hues that sit/, 'The colours sit').replace(/^Mostly related hues/, 'Mostly harmonious colour relations')}` : `Colour, inside the reference's palette family (${colourLanguage}): ${by('harmony', 'temperature')}`,
     disorder: `Fragmentation and tension: ${by('fragmentation', 'tension')}`,
   };
 }

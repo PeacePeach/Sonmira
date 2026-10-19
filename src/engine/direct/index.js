@@ -129,7 +129,7 @@ export const RESOLVED_PLACES = {
 export const RESOLVED_SCENE = 'Resolved means a scene, not a mood: one recognisable visual situation with a clear focal point and readable spatial logic (where things stand, near and far, what leads the eye), visibly about something happening or that has just happened. More specific, more detailed and more narratively legible than a semi-abstract study; never only an atmospheric wash, a pattern or a generic landscape. It may stay poetic.';
 // Resolved words with no scene read from them (an older reading, or a
 // reading that found none): the painting is told to imagine one.
-export const RESOLVED_IMAGINE = 'When the words name feelings rather than things, imagine where that feeling is lived and paint that place and moment, built from the song\'s own images: waiting, lingering, separation, a long journey, quiet endurance, traces of memory, distance, a parting of ways, a departure or an unfinished return. Abstract meaning becomes a concrete poetic scene: neither a literal illustration nor an empty abstraction.';
+export const RESOLVED_IMAGINE = 'When the words name feelings rather than things, imagine where that feeling is lived and paint that place and moment, built from the song\'s own images: waiting, lingering, separation, a long journey, quiet endurance, traces of memory, distance, a parting of ways, a departure or an unfinished return. These are conditions to reason from, not pictures to reuse: invent an original, emotionally grounded situation for this song rather than a familiar or stock setting, with nothing disconnected or generic. Abstract meaning becomes a concrete poetic scene: neither a literal illustration nor an empty abstraction.';
 
 export const LEVELS = {
   loose: {
@@ -460,7 +460,7 @@ export function direct(spec) {
     resolvedFinish,
     // Whether the Resolved painting was told to inherit the reference's colour range, and which.
     resolvedPalette: tier !== 'resolved' ? { applied: false, reason: `tier ${tier}` }
-      : withRef ? { applied: true, families: referenceColourRange(refOnly ? null : reference).names, count: referenceColourRange(refOnly ? null : reference).count }
+      : withRef ? (({ names, count, mono }) => ({ applied: true, families: names, count, mono }))(referenceColourRange(refOnly ? null : reference))
         : { applied: true, families: chosen.map((c) => c.name), count: chosen.length, reason: 'no reference: the family\'s whole observed scheme' },
     // Whether the Resolved painting was given a story moment from the words.
     narrative: { applied: narrative.applied, reason: narrative.reason, figure: narrative.figure, ...(narrative.applied ? { scene: narrative.scene, dropped: narrative.dropped } : {}) },
