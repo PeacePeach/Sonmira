@@ -217,6 +217,15 @@ export function createLedger({ kv, now = Date.now, holdTtlMs = 180_000, sleep = 
   return {
     resolve,
     erase,
+    /** Admin-only test action: replenish FREE attempts without touching purchases or history. */
+    async replenishTestFree(account) {
+      const id = await resolve(account);
+      return withAccount(id, null, async (a) => {
+        const state = a.wallet.snapshot();
+        a.wallet.replace({ ...state, free: 3 });
+        return view(a);
+      });
+    },
     applyTransaction,
     applyRenewal,
     merge,
