@@ -223,6 +223,14 @@ test('a slide longer than 0.6 s is one continuous gesture, not torn; a swing or 
   assert.ok(!isSlide((u) => (u < 0.6 ? -600 - 750 * ease(u / 0.6) : -1350 + 250 * ease((u - 0.6) / 0.4))), 'plunge past the end and back');
 });
 
+test('every decision carries its evidence when torn and continuous stretches share a take', () => {
+  const m = measurePerformance(singers.weak(), SR), t = m.passages[0].t0;
+  m.episodes = [{ t0: t + 0.2, sec: 0.3, kind: 'unsteady', stops: 0, passed: 0 }, { t0: t + 0.8, sec: 0.3, kind: 'moving', stops: 2, passed: 1 }];
+  const d = performanceDirection(m);
+  assert.ok(d.decisions.some((x) => /Unsettled but continuous/.test(x.decision)) && d.decisions.some((x) => /Fragmentation is local/.test(x.decision)));
+  for (const x of d.decisions) assert.ok(x.evidence.length > 0, `${x.aspect}: ${x.decision.slice(0, 60)}`);
+});
+
 test('run rule calibration', () => {
   assert.deepEqual(RUN, { stopSec: 0.06, stopCents: 30, passCents: 40, minStops: 3, minPassed: 2, movingStops: 2 });
 });
