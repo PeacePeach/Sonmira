@@ -44,7 +44,7 @@ export const SINGING_CALIBRATION = {
   transitions: { overshoot: 50, minCount: 2 },
   weights: { stability: 0.3, intonation: 0.25, transitions: 0.15, control: 0.15, rhythm: 0.1, coherence: 0.05 },
   // Provisional strong thresholds; recalibrate with more labelled recordings.
-  strong: { score: 0.75, confidence: 0.6, stability: 0.7, intonation: 0.65, transitions: 0.6 },
+  strong: { score: 0.7, confidence: 0.6, stability: 0.7, intonation: 0.6, transitions: 0.6 },
   // Whole-performance control (performance.js). PROVISIONAL: set on
   // synthetic takes only (mixed-quality takes measure window p25 0.43–0.45
   // and 40 % weak windows; consistently controlled takes, including
