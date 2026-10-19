@@ -58,7 +58,9 @@ export function semanticsFor(tier, transcript, lyrics) {
   if (!reliable || !text) return { source: 'sound', concept: null, mood: null, motif: null, reason: transcript?.lexicalWords ? 'words not reliable enough to carry meaning' : 'no words' };
   return {
     source: 'lyrics',
-    concept: { text, theme: lyrics.theme ?? [], imagery: lyrics.imagery ?? [], figurative: lyrics.figurative ?? [] },
+    concept: { text, theme: lyrics.theme ?? [], imagery: lyrics.imagery ?? [], figurative: lyrics.figurative ?? [],
+      // Resolved only: the lyrics read as one story moment (direct: narrative section).
+      ...(tier === 'resolved' && lyrics.scene?.moment ? { scene: lyrics.scene } : {}) },
     mood: lyrics.mood ?? null,
     motif: lyrics.motif ?? null,
     reason: 'coherent words',

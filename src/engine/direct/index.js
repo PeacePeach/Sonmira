@@ -28,7 +28,7 @@ export { LIBRARY, createLibrary, colourName, referencePalette } from './library.
 export { checkLeakage, checkPrompt } from './leakage.js';
 export { soundPlan } from './sound.js';
 export { performanceDirection, performanceSections } from './performance.js';
-export const DIRECTION_VERSION = 10;
+export const DIRECTION_VERSION = 11;
 
 // Global Sonmira constraints: true for every family and every tier.
 // Materiality is independent of abstraction: Loose, Gathered and Resolved all
@@ -205,6 +205,33 @@ function meaningLine(tier, c) {
   return line.trim() || null;
 }
 
+// Resolved narrative (Han, 19 Oct): the words read as one story moment
+// (openai-understand.js `scene`), so a Resolved painting shows a meaningful
+// scene from the song, not an illustration of one keyword. The words decide
+// the scene; the reference still how finished; the performance still where
+// and how it moves. A scene part that names people is dropped (Sonmira
+// paints no people); without a usable moment there is no narrative.
+export const NARRATIVE_RULE = 'A complete scene with narrative presence, one meaningful moment from the song: never a decorative symbol, a single keyword object or a generic landscape. The arrangement, spacing and placement of its elements, and the traces left in it, carry the relationship and the tension. It may stay poetic and painterly. Add nothing that does not serve the words\' meaning.';
+export const NARRATIVE_STAGING = 'Stage it inside the performance structure below: the decisive element sits at the focal passage, the gaps of paper between masses are the distances in the scene, and breaks in the singing stay breaks in it.';
+const sentence = (s) => String(s).trim().replace(/[.\s]+$/, '');
+export function narrativeFor(tier, c, { performance = false } = {}) {
+  if (tier !== 'resolved') return { applied: false, reason: `tier ${tier}`, line: null };
+  const scene = c?.scene;
+  if (!scene?.moment) return { applied: false, reason: 'no scene read from the words', line: null };
+  if (PEOPLE.test(scene.moment)) return { applied: false, reason: 'the scene names people', line: null };
+  const parts = { situation: scene.situation, relationship: scene.relationship, tension: scene.tension };
+  const kept = Object.fromEntries(Object.entries(parts).filter(([, v]) => v && !PEOPLE.test(v)));
+  const line = [
+    kept.situation ? `The moment from ${wordsOf(c)}: ${sentence(kept.situation)}.` : `The moment from ${wordsOf(c)}.`,
+    kept.relationship ? `Relationship: ${sentence(kept.relationship)}.` : null,
+    kept.tension ? `Tension: ${sentence(kept.tension)}.` : null,
+    `Paint this scene: ${sentence(scene.moment)}.`,
+    NARRATIVE_RULE,
+    performance ? NARRATIVE_STAGING : null,
+  ].filter(Boolean).join(' ');
+  return { applied: true, reason: 'Resolved: the words read as one story moment', scene: { ...kept, moment: scene.moment }, dropped: Object.keys(parts).filter((k) => parts[k] && !kept[k]), line };
+}
+
 const ENERGY = {
   calm: 'Marks: slow and settled.',
   moderate: 'Marks: settled washes with a few quick strokes.',
@@ -246,7 +273,7 @@ export const RESOLVED_FINISH = [
 // The performance-led direction (all tiers, with a reference and a measured
 // performance): the reference gives technique only, the words the subject,
 // the singing everything about how it is painted (performance.js).
-function directFromPerformance({ tier, F, refOnly, reference, concept, subjectLine, emotion, perf, withRef }) {
+function directFromPerformance({ tier, F, refOnly, reference, concept, subjectLine, emotion, perf, withRef, narrative }) {
   const colourLanguage = referenceColourLanguage(refOnly ? null : reference)
     .replace(/^Colour language(?: of the reference)?[^:]*: /, '').replace(/\.$/, '');
   const P = performanceSections(perf, tier, colourLanguage);
@@ -256,6 +283,7 @@ function directFromPerformance({ tier, F, refOnly, reference, concept, subjectLi
   const sections = {
     subject: subjectLine,
     meaning: concept ? meaningLine(tier, concept) : null,
+    narrative: narrative.line,
     family: technique,
     content: CONTENT_RULE,
     form: P.form,
@@ -271,7 +299,7 @@ function directFromPerformance({ tier, F, refOnly, reference, concept, subjectLi
     disorder: P.disorder,
     style: withRef ? REFERENCE_STYLE_PERFORMANCE : GLOBAL_STYLE,
   };
-  const prompt = [sections.subject, sections.meaning, sections.family, sections.content, sections.form, sections.finish, sections.composition, sections.staging, sections.passages, sections.marks, sections.contrast, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.disorder, sections.style, `Avoid: ${avoid.join(', ')}.`].filter(Boolean).join('\n');
+  const prompt = [sections.subject, sections.meaning, sections.narrative, sections.family, sections.content, sections.form, sections.finish, sections.composition, sections.staging, sections.passages, sections.marks, sections.contrast, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.disorder, sections.style, `Avoid: ${avoid.join(', ')}.`].filter(Boolean).join('\n');
   return { sections, prompt, avoid };
 }
 
@@ -339,9 +367,11 @@ export function direct(spec) {
   // leaves", "windows under violet shadow"), so only its quality is kept.
   const measured = fromRef ? fromRef.text.replace(/Light: [^.]*\./, 'Light: the reference\'s own quality and direction of light, carried onto the new subject.') : null;
   const fallback = `Colour: ${P.colors.filter((p) => chosen.includes(p)).map((p) => p.name).join(', ')}, on white or warm white paper${P.accent ? `, with ${P.accent.name} as the only accent, kept small` : ''}.`;
+  const narrative = narrativeFor(tier, concept, { performance: Boolean(perf) });
   const sections = {
     subject: subjectLine,
     meaning: concept ? meaningLine(tier, concept) : null,
+    narrative: narrative.line,
     family: familyLine,
     content: CONTENT_RULE,
     form: withRef ? LEVELS[tier].refForm : LEVELS[tier].form,
@@ -364,8 +394,8 @@ export function direct(spec) {
   const resolvedFinish = tier !== 'resolved' ? { applied: false, reason: `tier ${tier}` }
     : !perf ? { applied: false, reason: withRef ? 'no measured performance: the reference authority already sets the level of finish' : 'no reference' }
       : { applied: true, reference: reference.id, reason: 'Resolved: the reference sets the level of finish; the words the subject; the performance the composition' };
-  const led = perf ? directFromPerformance({ tier, F, refOnly, reference, concept, subjectLine, emotion: spec.emotion, perf, withRef }) : null;
-  const prompt = led ? led.prompt : [sections.subject, sections.meaning, sections.family, sections.content, sections.form, sections.composition, sections.marks, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.energy, sections.gesture, sections.style, `Avoid: ${avoid.join(', ')}.`].filter(Boolean).join('\n');
+  const led = perf ? directFromPerformance({ tier, F, refOnly, reference, concept, subjectLine, emotion: spec.emotion, perf, withRef, narrative }) : null;
+  const prompt = led ? led.prompt : [sections.subject, sections.meaning, sections.narrative, sections.family, sections.content, sections.form, sections.composition, sections.marks, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.energy, sections.gesture, sections.style, `Avoid: ${avoid.join(', ')}.`].filter(Boolean).join('\n');
   return {
     version: DIRECTION_VERSION, level: tier, requestedLevel: level,
     family: refOnly ? null : familyId, familyLabel: refOnly ? 'From the reference' : F.label, refs: refOnly ? [] : library.pool(familyId).map((e) => e.path.split('/').pop()),
@@ -374,6 +404,8 @@ export function direct(spec) {
     referencePrompt: reference ? (perf ? (resolvedFinish.applied ? REFERENCE_AUTHORITY_PERFORMANCE_RESOLVED : REFERENCE_AUTHORITY_PERFORMANCE) : performance ? REFERENCE_AUTHORITY_LOOSE : REFERENCE_AUTHORITY) : null,
     // Whether the Resolved painting was told to reach the reference's level of finish.
     resolvedFinish,
+    // Whether the Resolved painting was given a story moment from the words.
+    narrative: { applied: narrative.applied, reason: narrative.reason, ...(narrative.applied ? { scene: narrative.scene, dropped: narrative.dropped } : {}) },
     libraryVersion: library.version, seed: spec.seed >>> 0,
     concept: concept ?? null,
     composition: perf ? null : plan,

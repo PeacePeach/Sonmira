@@ -124,7 +124,7 @@ export function mountDevPanel(app) {
           ['windows', p.windows.map((w) => `${w.t0}–${w.t1}s ${w.controlled}`).join(' · ')], ['key drift cents', p.tuning?.driftCents], ['grid per window', p.tuning?.localOffsets?.join(' ')]]));
         out.push(section('semantics', [['source', s?.source], ['why', s?.reason], ['concept', s?.concept?.text], ['theme', s?.concept?.theme?.join(', ')], ['imagery', s?.concept?.imagery?.join(', ')], ['figurative', s?.concept?.figurative], ['mood', u.emotion?.value + ' · ' + u.emotion?.source], ['motif', u.motif?.value + ' · ' + u.motif?.source]]));
       }
-      if (!g.error) out.push(section('generation', [['engine', engineId], ['provider', g.provider], ['model', g.model], ['quality', g.quality], ['tier', g.tier], ['family', g.family], ['subject from', g.subjectSource], ['resolved finish', g.resolvedFinish ? `${g.resolvedFinish.applied ? 'applied' : 'not applied'} (${g.resolvedFinish.reason})` : undefined],
+      if (!g.error) out.push(section('generation', [['engine', engineId], ['provider', g.provider], ['model', g.model], ['quality', g.quality], ['tier', g.tier], ['family', g.family], ['subject from', g.subjectSource], ['resolved finish', g.resolvedFinish ? `${g.resolvedFinish.applied ? 'applied' : 'not applied'} (${g.resolvedFinish.reason})` : undefined], ['narrative scene', g.narrative ? (g.narrative.applied ? g.narrative.scene.moment : `not applied (${g.narrative.reason})`) : undefined],
         ['reference', g.reference], ['ref sent', g.referenceSent], ['library', g.libraryVersion], ['seed', g.seed], ['time', g.ms ? `${(g.ms / 1000).toFixed(1)} s` : null]], true));
       else out.push(...rows([['engine', engineId]]));
     }

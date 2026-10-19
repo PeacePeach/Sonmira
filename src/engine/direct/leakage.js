@@ -58,7 +58,7 @@ export function affirmed(text) {
 }
 
 const conceptText = (concept, note) => [concept?.text, ...(concept?.theme ?? []), ...(concept?.imagery ?? []),
-  ...(concept?.figurative ?? []).flatMap((f) => [f.phrase, f.meaning]), note].filter(Boolean).join(' . ');
+  ...(concept?.figurative ?? []).flatMap((f) => [f.phrase, f.meaning]), ...Object.values(concept?.scene ?? {}), note].filter(Boolean).join(' . ');
 
 // What the reference depicts: its curated `content` (from the given
 // library, else the bundled registry, since a Blob registry may not carry
