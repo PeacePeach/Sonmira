@@ -26,7 +26,7 @@
 import { TRACK_HOP_SEC } from './pitchtrack.js';
 import { performanceProfile } from './performance.js';
 
-export const SINGING_VERSION = 5;
+export const SINGING_VERSION = 6;
 
 export const SINGING_CALIBRATION = {
   smoothSec: 0.15,          // removes vibrato (4–8 Hz) to see the note's slow line
@@ -39,7 +39,8 @@ export const SINGING_CALIBRATION = {
   minNoteSec: 0.12,
   bridgeSec: 0.03,          // unvoiced gaps this short stay inside a run
   stability: { wobbleOk: 8, wobbleBad: 38, driftOk: 30, driftBad: 150, jitterOk: 12, jitterBad: 40 },
-  intonation: { devGood: 12, devRandom: 28, minNotes: 4 },
+  // Judge fast passages by their held notes when enough are available.
+  intonation: { devGood: 12, devRandom: 28, minNotes: 4, minNoteSec: 0.25 },
   transitions: { overshoot: 50, minCount: 2 },
   weights: { stability: 0.3, intonation: 0.25, transitions: 0.15, control: 0.15, rhythm: 0.1, coherence: 0.05 },
   // intonation 0.8 (was 0.6): on the first real takes (Han, 16 Oct) a casual
@@ -70,6 +71,7 @@ export const SINGING_CALIBRATION = {
                               // stretch as Resolved (16 Oct)
     maxTuningDriftCents: 50, // the singer's own key may not keep sliding
     minRhythm: 0.25,        // only extremely weak rhythm blocks Strong (timing is expressive)
+    missedLandingCents: 300, // unusually large pitch movement beyond a note, excluding an unrecognised held note
     minCoherence: 0.25,     // only extremely erratic leaps block Strong
   },
   // Sung vs spoken: share of voiced time spent on held notes. Synthetic
@@ -367,7 +369,7 @@ export function melodicContour(notes, cents = CONTOUR_CENTS) {
 // an octave-size jump between voiced frames (a voice break into creak, or a
 // tracker octave error): that is a break, not the voice running past b.
 export const BREAK_CENTS = 900;
-export function arrivalOvershoot(track, a, b, hop = track.hopSec ?? TRACK_HOP_SEC) {
+export function arrivalOvershoot(track, a, b, hop = track.hopSec ?? TRACK_HOP_SEC, excludeHeld = false) {
   const dir = Math.sign(b.center - a.center);
   const settled = b.raw.slice(Math.round(0.08 / hop));
   const swing = settled.length ? Math.max(0, ...settled.map((c) => dir * (c - b.center))) : 0;
@@ -376,8 +378,21 @@ export function arrivalOvershoot(track, a, b, hop = track.hopSec ?? TRACK_HOP_SE
   const brk = (k) => Math.abs(fr[k].cents - fr[k - 1].cents) > BREAK_CENTS;
   const cross = fr.findIndex((f, k) => k > 0 && past(fr[k - 1].cents) < 0 && past(f.cents) >= 0 && !brk(k));
   if (cross < 0) return 0;
-  let worst = past(fr[cross].cents);
-  for (let k = cross + 1; k < fr.length && !brk(k); k++) worst = Math.max(worst, past(fr[k].cents));
+  // Only the tier's large missed-landing check excludes an unrecognised
+  // held stretch after crossing the target; painting and scoring do not.
+  const w = Math.max(2, Math.round(0.12 / hop));
+  const held = (k) => {
+    for (let t = Math.max(0, k - w + 1); t <= k && t + w <= fr.length; t++) {
+      const seg = fr.slice(t, t + w).map((f) => f.cents);
+      if (fr[t + w - 1].t - fr[t].t <= 0.12 + hop && Math.max(...seg) - Math.min(...seg) <= 100) return true;
+    }
+    return false;
+  };
+  let worst = 0;
+  for (let k = cross; k < fr.length && (k === cross || !brk(k)); k++) {
+    const amount = past(fr[k].cents);
+    if (amount > worst && (!excludeHeld || !held(k))) worst = amount;
+  }
   return Math.max(0, worst - swing);
 }
 
@@ -409,11 +424,14 @@ export function singingAnalysis(track, features = null, cal = SINGING_CALIBRATIO
   } else unavailable.push('stability: no held notes long enough');
 
   // 2. Relative intonation (consistency of note centres, not correctness).
-  const inNotes = notes.filter((n) => n.sec >= 0.15);
+  const pitched = notes.filter((n) => n.sec >= 0.15);
+  const held = pitched.filter((n) => n.sec >= cal.intonation.minNoteSec);
+  const inNotes = held.length >= cal.intonation.minNotes ? held : pitched;
   if (inNotes.length >= cal.intonation.minNotes) {
     const { deviation, offset } = intonationDeviation(inNotes);
     C.intonation = { measures: 'relative tuning consistency: notes on one semitone grid at the singer\'s own tuning, not the song\'s notes',
-      score: r3(goodBad(deviation, cal.intonation.devGood, cal.intonation.devRandom)), deviationCents: r3(deviation), tuningOffsetCents: offset, notes: inNotes.length };
+      score: r3(goodBad(deviation, cal.intonation.devGood, cal.intonation.devRandom)), deviationCents: r3(deviation), tuningOffsetCents: offset, notes: inNotes.length,
+      basis: inNotes === held ? `held notes (≥ ${cal.intonation.minNoteSec} s)` : 'all notes (too few held notes)' };
   } else unavailable.push(`intonation: fewer than ${cal.intonation.minNotes} notes`);
 
   // 3. Transitions: does the voice arrive cleanly, or hunt around the target?
@@ -422,10 +440,12 @@ export function singingAnalysis(track, features = null, cal = SINGING_CALIBRATIO
     const a = notes[i - 1], b = notes[i];
     if (a.run !== b.run || Math.abs(b.center - a.center) < 60) continue;
     const overshoot = arrivalOvershoot(track, a, b, hop);
-    tr.push({ interval: b.center - a.center, overshoot, clean: overshoot <= cal.transitions.overshoot });
+    const landing = arrivalOvershoot(track, a, b, hop, true);
+    tr.push({ interval: b.center - a.center, overshoot, clean: overshoot <= cal.transitions.overshoot, landing, at: b.start });
   }
   if (tr.length >= cal.transitions.minCount) C.transitions = { score: r3(tr.filter((t) => t.clean).length / tr.length), count: tr.length, meanOvershootCents: r3(mean(tr.map((t) => t.overshoot))) };
   else unavailable.push('transitions: too few note changes');
+  const worstLanding = tr.length ? tr.reduce((a, t) => (t.landing > a.landing ? t : a)) : null;
 
   // 4. Vocal control: steady voiced sound inside notes, continuity in phrases.
   if (notes.length) {
@@ -489,6 +509,7 @@ export function singingAnalysis(track, features = null, cal = SINGING_CALIBRATIO
     { id: 'key_drift', ok: perf.tuning.driftCents <= SP.maxTuningDriftCents, value: perf.tuning.driftCents, need: `≤ ${SP.maxTuningDriftCents} cents` },
     { id: 'rhythm', ok: !C.rhythm || C.rhythm.score >= SP.minRhythm, value: C.rhythm?.score ?? 'not measured', need: `≥ ${SP.minRhythm} (only extreme cases)` },
     { id: 'coherence', ok: !C.coherence || C.coherence.score >= SP.minCoherence, value: C.coherence?.score ?? 'not measured', need: `≥ ${SP.minCoherence} (only extreme cases)` },
+    { id: 'no_missed_landing', ok: !worstLanding || worstLanding.landing < SP.missedLandingCents, value: worstLanding ? r3(worstLanding.landing) : 'no landings seen', at: worstLanding?.at ?? null, need: `every landing < ${SP.missedLandingCents} cents past its note` },
   ];
   const strong = strongChecks.every((c) => c.ok);
 
