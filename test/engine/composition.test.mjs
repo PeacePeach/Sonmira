@@ -35,7 +35,9 @@ test('arrangements vary from one generation to the next within a family', () => 
 test('same words, mood, tier and seed: the three validation references compose differently', () => {
   const ds = [['R1-graphic-snow', 'resolved_01'], ['R2-aerial-shallows', 'resolved_12'], ['R4-lyrical-everyday', 'resolved_06']]
     .map(([family, reference]) => direct({ completeness: 'resolved', emotion: 'tender', motif: 'water', seed: 1, family, reference, energy: { value: 'calm' }, concept: SEA }));
-  assert.equal(new Set(ds.map((d) => d.composition.viewpoint)).size, 3);
+  assert.equal(new Set(ds.map((d) => d.composition.principles)).size, 3);
+  // The distance and angle of view come from the Resolved visual direction (Han, 19 Oct; looks.js).
+  for (const d of ds) assert.equal(d.composition.viewpoint, 'the viewpoint above');
   assert.match(ds[0].sections.composition, /directional geometry.*diagonals/);
   assert.match(ds[1].sections.composition, /from directly or steeply above, with no horizon/);
   assert.match(ds[2].sections.composition, /Atmospheric depth.*warm and cool.*negative space/);

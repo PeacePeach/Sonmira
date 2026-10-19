@@ -17,6 +17,7 @@ import { protect, timedFetch } from '../server/protect/index.js';
 import { wiring } from '../server/wire.js';
 import { fakeProviderOn, fakeOpenAIFetch, fakeReferenceStore } from '../server/dev/fake-openai.js';
 import { rng, hashSeed } from '../src/engine/render/rng.js';
+import { cleanOptions, cleanRecent, RECENT_LOOKS } from '../src/engine/direct/looks.js';
 
 // References come from private Vercel Blob in production (registry and
 // images), or SONMIRA_REFS_DIR locally. The selected primary reference's
@@ -104,7 +105,8 @@ export function cleanConcept(c) {
     source: c.source === 'note' ? 'note' : 'lyrics',
     text: flat(c.text, 240), theme: list(c.theme, 3, 60), imagery: list(c.imagery, 5, 60),
     figurative: (Array.isArray(c.figurative) ? c.figurative : []).slice(0, 4).map((f) => ({ phrase: flat(f?.phrase, 80), meaning: flat(f?.meaning, 120) })).filter((f) => f.phrase && f.meaning),
-    ...(flat(c.scene?.moment, 320) ? { scene: { situation: flat(c.scene.situation, 160), relationship: flat(c.scene.relationship, 160), tension: flat(c.scene.tension, 160), moment: flat(c.scene.moment, 320), figure: flat(c.scene.figure, 120) } } : {}),
+    ...(flat(c.scene?.moment, 320) ? { scene: { situation: flat(c.scene.situation, 160), relationship: flat(c.scene.relationship, 160), tension: flat(c.scene.tension, 160), moment: flat(c.scene.moment, 320), figure: flat(c.scene.figure, 120),
+      event: flat(c.scene.event, 160), core: flat(c.scene.core, 160), options: cleanOptions(c.scene.options) } } : {}),
   };
 }
 
@@ -161,6 +163,22 @@ async function reserveRecentReference(kv, account, library, spec, key) {
   });
 }
 
+// The person's last five Resolved looks (signatures only, never the words),
+// so the next Resolved painting can differ from them (direct/looks.js).
+const LOOKS_TTL = 90 * 86400;
+const looksKey = (account) => `looks:resolved:${account}`;
+export async function recentLooks(kv, account) {
+  if (!kv || !account) return [];
+  try { return cleanRecent(JSON.parse((await kv.get(looksKey(account))) || '[]')); } catch { return []; }
+}
+export async function rememberLook(kv, account, signature) {
+  if (!kv || !account || !signature) return;
+  try {
+    const history = await recentLooks(kv, account);
+    await kv.set(looksKey(account), JSON.stringify([...history, signature].slice(-RECENT_LOOKS)), LOOKS_TTL);
+  } catch { /* variety is best effort; never fail a painting for it */ }
+}
+
 export const createHandler = ({ store = referenceStoreFromEnv(), env = process.env, fetchImpl = fetch, kv = wiring().kv } = {}) => async function handler(req, res) {
   res.setHeader('cache-control', 'no-store');
   if (req.method === 'GET') {
@@ -184,7 +202,8 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
     const key = String(req.headers?.['idempotency-key'] || '');
     const selected = await reserveRecentReference(kv, account, library, spec, key);
     if (selected) reservedReference = { account, key };
-    const direction = direct({ ...spec, ...(selected ? { reference: selected.id } : {}), library });
+    const looks = spec.completeness === 'resolved' ? await recentLooks(kv, account) : [];
+    const direction = direct({ ...spec, ...(selected ? { reference: selected.id } : {}), recentLooks: looks, library });
     // The decided tier is authoritative: never paint a family of another tier.
     // (A reference with no family has direction.family null; its tier is the level.)
     if (direction.level !== spec.completeness) {
@@ -196,7 +215,8 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
       return;
     }
     const g = await generateFromDirection(direction, { loadReference: store?.loadImage, stream: true, env, fetchImpl });
-    res.status(200).json({ ok: true, provider: g.provider, model: g.model, quality: g.quality, size: g.size, ms: g.ms, usage: g.usage, prompt: direction.prompt, family: direction.family, familyLabel: direction.familyLabel, familyRefs: direction.refs, subjectSource: direction.subjectSource, subject: direction.subject, reference: direction.reference?.id ?? null, composition: direction.composition, performance: direction.performance, performanceTrace: direction.performanceTrace, resolvedFinish: direction.resolvedFinish ?? null, narrative: direction.narrative ?? null, settings: { tier: direction.level, emotion: spec.emotion, motif: spec.motif, energy: spec.energy.value, expression: spec.expression ?? null }, promptCheck: checkPrompt(direction, { library }), referenceSent: Boolean(g.reference), seed: direction.seed, libraryVersion: direction.libraryVersion, swatches: direction.swatches, image: `data:${g.mime};base64,${g.b64}` });
+    if (direction.resolvedLook?.applied) await rememberLook(kv, account, direction.resolvedLook.signature);
+    res.status(200).json({ ok: true, provider: g.provider, model: g.model, quality: g.quality, size: g.size, ms: g.ms, usage: g.usage, prompt: direction.prompt, family: direction.family, familyLabel: direction.familyLabel, familyRefs: direction.refs, subjectSource: direction.subjectSource, subject: direction.subject, reference: direction.reference?.id ?? null, composition: direction.composition, performance: direction.performance, performanceTrace: direction.performanceTrace, resolvedFinish: direction.resolvedFinish ?? null, narrative: direction.narrative ?? null, resolvedLook: direction.resolvedLook ?? null, settings: { tier: direction.level, emotion: spec.emotion, motif: spec.motif, energy: spec.energy.value, expression: spec.expression ?? null }, promptCheck: checkPrompt(direction, { library }), referenceSent: Boolean(g.reference), seed: direction.seed, libraryVersion: direction.libraryVersion, swatches: direction.swatches, image: `data:${g.mime};base64,${g.b64}` });
   } catch (e) {
     if (reservedReference) {
       try { await mutateRecent(kv, reservedReference.account, (history) => {

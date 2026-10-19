@@ -19,6 +19,7 @@ import { rng, hashSeed } from '../render/rng.js';
 import { FAMILIES, familiesOfTier } from './families.js';
 import { LIBRARY, referencePalette, referenceColourLanguage, referenceColourRange, REFERENCE_AUTHORITY, REFERENCE_AUTHORITY_RESOLVED, REFERENCE_AUTHORITY_LOOSE, REFERENCE_AUTHORITY_PERFORMANCE, REFERENCE_AUTHORITY_PERFORMANCE_RESOLVED, tierOf } from './library.js';
 import { PEOPLE } from './leakage.js';
+import { chooseLook, lookLine, signatureOf, cleanRecent, cleanOptions } from './looks.js';
 import { compositionPlan, compositionLine } from './composition.js';
 import { soundPlan } from './sound.js';
 import { performanceDirection, performanceSections, PERFORMANCE_FORM_GATHERED_MOTIF } from './performance.js';
@@ -28,7 +29,7 @@ export { LIBRARY, createLibrary, colourName, referencePalette } from './library.
 export { checkLeakage, checkPrompt } from './leakage.js';
 export { soundPlan } from './sound.js';
 export { performanceDirection, performanceSections } from './performance.js';
-export const DIRECTION_VERSION = 13;
+export const DIRECTION_VERSION = 14;
 
 // Every tier's people rule in the Avoid line (Resolved with a scene figure: narrativeFor).
 export const AVOID_PEOPLE = 'people, human figures, silhouettes or faces';
@@ -126,7 +127,7 @@ export const RESOLVED_PLACES = {
 };
 
 // Resolved is a scene, not a mood (Han, 19 Oct), on every Resolved path.
-export const RESOLVED_SCENE = 'Resolved means a scene, not a mood: one recognisable visual situation with a clear focal point and readable spatial logic (where things stand, near and far, what leads the eye), visibly about something happening or that has just happened. More specific, more detailed and more narratively legible than a semi-abstract study; never only an atmospheric wash, a pattern or a generic landscape. It may stay poetic.';
+export const RESOLVED_SCENE = 'Resolved means a scene, not a mood: one recognisable visual situation, symbolic event or emotionally readable moment with a clear focal point and readable spatial logic (where things stand, near and far, what leads the eye), visibly about something happening or that has just happened. More specific, more scene-aware, more compositionally intentional and more narratively or symbolically meaningful than a semi-abstract study, not only more finished; never only an atmospheric wash, a pattern or a generic landscape. It may stay poetic, and the viewer must still feel how it answers the words.';
 // Resolved words with no scene read from them (an older reading, or a
 // reading that found none): the painting is told to imagine one.
 export const RESOLVED_IMAGINE = 'When the words name feelings rather than things, imagine where that feeling is lived and paint that place and moment, built from the song\'s own images: waiting, lingering, separation, a long journey, quiet endurance, traces of memory, distance, a parting of ways, a departure or an unfinished return. These are conditions to reason from, not pictures to reuse: invent an original, emotionally grounded situation for this song rather than a familiar or stock setting, with nothing disconnected or generic. Abstract meaning becomes a concrete poetic scene: neither a literal illustration nor an empty abstraction.';
@@ -248,23 +249,35 @@ function meaningLine(tier, c) {
 // portrait or a foreground character, never added because the tier is
 // Resolved. Without a figure the no-people rule holds as in every tier: a
 // scene part naming people is dropped, a moment naming people is not painted.
-export const NARRATIVE_RULE = 'A complete scene with narrative presence, one meaningful moment from the song: never a decorative symbol, a single keyword object or a generic landscape. The arrangement, spacing and placement of its elements, and the traces left in it, carry the relationship and the tension. It may stay poetic and painterly. Add nothing that does not serve the words\' meaning.';
+export const NARRATIVE_RULE = 'A complete image with narrative or symbolic presence, one meaningful moment from the song: never a decorative symbol or a keyword illustrated for its own sake, and never a generic landscape; an object or symbol may lead only when it embodies the song\'s emotional event. The arrangement, spacing and placement of its elements, and the traces left in it, carry the relationship and the tension. It may stay poetic and painterly. Add nothing that does not serve the words\' meaning.';
 export const NARRATIVE_STAGING = 'Stage it inside the performance structure below: the decisive element sits at the focal passage, the gaps of paper between masses are the distances in the scene, and breaks in the singing stay breaks in it.';
 export const FIGURE_RULE = 'Small, distant and faceless, painted in a few strokes of the reference\'s own marks, part of the scene rather than its portrait.';
 // The content rule when the scene names a figure (Resolved only).
 export const CONTENT_RULE_FIGURE = 'Content: paint only what the subject above names, in its own setting, and add no objects, scenery or story that it does not ask for. People only as the scene above names them: small, distant and faceless, a few painterly strokes in the reference\'s own marks; never a portrait, a visible face, a large or foreground figure, or any people the scene does not name. Carry the rest of the story through place, light, weather and the traces left behind.';
 export const AVOID_PEOPLE_FIGURE = 'portraits, visible faces, close-up, large or foreground figures, and any people the scene does not name';
+// An intimate near view (Han, 19 Oct, direction B): part of a person, seen
+// near, turned away or cropped; still never a portrait or a shown face.
+export const FIGURE_RULE_NEAR = 'Seen near and only in part (hands, shoulders, a back, an arm, an upper body or a silhouette), turned away or cropped so that no features show, painted in the reference\'s own marks; never a portrait.';
+export const CONTENT_RULE_FIGURE_NEAR = 'Content: paint only what the subject above names, in its own setting, and add no objects, scenery or story that it does not ask for. People only as the scene above names them: seen near and only in part, turned away or cropped so that no features show; never a portrait, a visible face, a face looking out, or any people the scene does not name. Carry the rest of the story through gesture, the things held or touched, place and light.';
+export const AVOID_PEOPLE_FIGURE_NEAR = 'portraits, visible faces, eyes or facial features, and any people the scene does not name';
 // A figure that would be a portrait or a main character is not painted.
 export const PROMINENT = /\b(?:portraits?|faces?|close-?ups?|foreground|large|giant|huge|eyes|expressions?|crowds?)\b/i;
 const FACE = /\b(?:portraits?|faces?|close-?ups?)\b/i;
-const withFigure = (list, figure) => (figure ? list.map((x) => (x === AVOID_PEOPLE ? AVOID_PEOPLE_FIGURE : x)) : list);
+// A near view (direction B) is close by design; only a face or portrait is not painted.
+const NEAR_PROMINENT = /\b(?:portraits?|faces?|eyes|expressions?|crowds?)\b/i;
+const withFigure = (list, figure, near = false) => (figure ? list.map((x) => (x === AVOID_PEOPLE ? (near ? AVOID_PEOPLE_FIGURE_NEAR : AVOID_PEOPLE_FIGURE) : x)) : list);
+const contentRule = (n) => (n.figure ? (n.near ? CONTENT_RULE_FIGURE_NEAR : CONTENT_RULE_FIGURE) : CONTENT_RULE);
 const sentence = (s) => String(s).trim().replace(/[.\s]+$/, '');
-export function narrativeFor(tier, c, { performance = false } = {}) {
+export function narrativeFor(tier, c, { performance = false, look = null } = {}) {
   if (tier !== 'resolved') return { applied: false, reason: `tier ${tier}`, line: null, figure: null };
-  const scene = c?.scene;
+  // A visual direction chosen from the reading's options (looks.js) is the
+  // image to paint, with its own figure, if any.
+  const chosen = look?.source === 'words' ? look : null;
+  const scene = chosen ? { ...c?.scene, moment: chosen.image, figure: chosen.figures !== 'none' ? chosen.figure : '' } : c?.scene;
   if (!scene?.moment) return { applied: false, reason: 'no scene read from the words', line: null, figure: null };
+  const near = Boolean(chosen && chosen.distance === 'close');
   const asked = scene.figure && String(scene.figure).trim();
-  const figure = asked && !PROMINENT.test(asked) ? sentence(asked) : null;
+  const figure = asked && !(near ? NEAR_PROMINENT : PROMINENT).test(asked) ? sentence(asked) : null;
   if (PEOPLE.test(scene.moment) && (!figure || FACE.test(scene.moment))) return { applied: false, reason: figure ? 'the scene shows a face or portrait' : asked ? 'the scene\'s figure is too prominent' : 'the scene names people', line: null, figure: null };
   const parts = { situation: scene.situation, relationship: scene.relationship, tension: scene.tension };
   const ok = (v) => v && !FACE.test(v) && (figure || !PEOPLE.test(v));
@@ -274,12 +287,12 @@ export function narrativeFor(tier, c, { performance = false } = {}) {
     kept.relationship ? `Relationship: ${sentence(kept.relationship)}.` : null,
     kept.tension ? `Tension: ${sentence(kept.tension)}.` : null,
     `Paint this scene: ${sentence(scene.moment)}.`,
-    figure ? `Figure: ${figure}. ${FIGURE_RULE}` : null,
+    figure ? `Figure: ${figure}. ${near ? FIGURE_RULE_NEAR : FIGURE_RULE}` : null,
     NARRATIVE_RULE,
     performance ? NARRATIVE_STAGING : null,
   ].filter(Boolean).join(' ');
   return {
-    applied: true, reason: 'Resolved: the words read as one story moment', line, figure,
+    applied: true, reason: chosen ? `Resolved: direction ${chosen.direction} chosen from the reading's options` : 'Resolved: the words read as one story moment', line, figure, near: Boolean(figure && near),
     scene: { ...kept, moment: scene.moment, ...(figure ? { figure } : {}) },
     dropped: [...Object.keys(parts).filter((k) => parts[k] && !kept[k]), ...(asked && !figure ? ['figure'] : [])],
   };
@@ -332,7 +345,7 @@ function directFromPerformance({ tier, F, refOnly, reference, concept, subjectLi
   const P = performanceSections(perf, tier, colourLanguage, { palette: tier === 'resolved' ? referenceColourRange(refOnly ? null : reference).text : null, motif: Boolean(motif) });
   const technique = refOnly ? REFERENCE_ONLY_STYLE
     : `Technique — ${F.label}: ${F.technique} This describes only how it is painted, never what is depicted or where.`;
-  const avoid = [...withFigure(REFERENCE_AVOID, narrative.figure), 'the reference\'s own layout or placement of colour', ...(perf.disorder ? ['smoothing over the breaks and clashes described above'] : [])];
+  const avoid = [...withFigure(REFERENCE_AVOID, narrative.figure, narrative.near), 'the reference\'s own layout or placement of colour', ...(perf.disorder ? ['smoothing over the breaks and clashes described above'] : [])];
   const sections = {
     subject: subjectLine,
     meaning: concept ? meaningLine(tier, concept) : null,
@@ -340,7 +353,7 @@ function directFromPerformance({ tier, F, refOnly, reference, concept, subjectLi
     scene,
     motif,
     family: technique,
-    content: narrative.figure ? CONTENT_RULE_FIGURE : CONTENT_RULE,
+    content: contentRule(narrative),
     form: P.form,
     finish: tier === 'resolved' && withRef ? RESOLVED_FINISH : null,
     composition: P.structure,
@@ -413,14 +426,35 @@ export function direct(spec) {
   // decides how it is painted, the reference only the technique.
   const perf = withRef && spec.performance ? performanceDirection(spec.performance) : null;
   const performance = !perf && tier === 'loose' && withRef ? soundPlan({ expression: spec.expression, energy }) : null;
-  const subjectLine = concept ? subjectFromConcept(tier, concept, withRef)
+  let subjectLine = concept ? subjectFromConcept(tier, concept, withRef)
     : tier === 'loose' && spec.soundOnly ? `${article(labelOf('loose', withRef))} that expresses the sound of the voice itself, not any subject or story.`
     : `${article(labelOf(tier, withRef))}${subject ? ` of ${subject}` : ''}.`;
-  const narrative = narrativeFor(tier, concept, { performance: Boolean(perf) });
-  const scene = tier !== 'resolved' ? null : concept && !narrative.applied ? `${RESOLVED_SCENE} ${RESOLVED_IMAGINE}` : RESOLVED_SCENE;
+  // Resolved (Han, 19 Oct): the strongest of the reading's visual directions
+  // that the person's last five Resolved paintings did not already use
+  // (looks.js); an option that cannot be painted (it would show a face or
+  // unnamed people) gives way to the next.
+  const recentLooks = cleanRecent(spec.recentLooks);
+  const options = cleanOptions(concept?.scene?.options);
+  let look = tier === 'resolved' ? chooseLook({ options, recent: recentLooks, seed: spec.seed }) : null;
+  let narrative = narrativeFor(tier, concept, { performance: Boolean(perf), look });
+  const unusable = [];
+  while (look?.source === 'words' && !narrative.applied) {
+    unusable.push({ direction: look.direction, rank: look.rank, reason: narrative.reason });
+    look = chooseLook({ options, recent: recentLooks, seed: spec.seed, exclude: unusable.map((u) => u.rank) });
+    if (look.source !== 'words') { narrative = narrativeFor(tier, concept, { performance: Boolean(perf) }); break; }
+    narrative = narrativeFor(tier, concept, { performance: Boolean(perf), look });
+  }
+  if (look) look.recentLooks = recentLooks;
+  // The chosen direction's image is the subject (the reading's Resolved
+  // concept describes only its first option).
+  if (look?.source === 'words' && narrative.applied) subjectLine = `${article(labelOf('resolved', withRef))} of: ${look.image}`;
+  const lookText = tier === 'resolved' ? lookLine(look) : null;
+  const scene = tier !== 'resolved' ? null : [concept && !narrative.applied ? `${RESOLVED_SCENE} ${RESOLVED_IMAGINE}` : RESOLVED_SCENE, lookText].join(' ');
   const motifLine = tier === 'gathered' && concept ? GATHERED_MOTIF : null;
-  const avoid = withFigure(withRef ? (performance ? [...REFERENCE_AVOID, 'the reference\'s own layout or placement of colour'] : REFERENCE_AVOID) : AVOID, narrative.figure);
-  const plan = tier === 'loose' ? null : compositionPlan(refOnly ? null : familyId, spec.seed);
+  const avoid = withFigure(withRef ? (performance ? [...REFERENCE_AVOID, 'the reference\'s own layout or placement of colour'] : REFERENCE_AVOID) : AVOID, narrative.figure, narrative.near);
+  const drawnPlan = tier === 'loose' ? null : compositionPlan(refOnly ? null : familyId, spec.seed);
+  // Resolved: the visual direction decides the distance and angle of view.
+  const plan = drawnPlan && look ? { ...drawnPlan, viewpoint: look.source === 'words' ? 'the view the visual direction above gives' : 'the viewpoint above' } : drawnPlan;
   const familyLine = refOnly ? REFERENCE_ONLY_STYLE
     : `Style — ${F.label}: ${F.rules} This describes only how it is painted, never what is depicted.${performance ? ' Where it describes a layout or a direction, the performance plan below decides instead.' : ''}`;
   // The reference's light note can name its own objects ("sun through
@@ -438,7 +472,7 @@ export function direct(spec) {
     scene,
     motif: motifLine,
     family: familyLine,
-    content: narrative.figure ? CONTENT_RULE_FIGURE : CONTENT_RULE,
+    content: contentRule(narrative),
     form: motifLine ? GATHERED_MOTIF_FORM : withRef ? LEVELS[tier].refForm : LEVELS[tier].form,
     // Gathered and Resolved: how the reference composes, drawn per seed
     // (composition.js). Loose: how the voice moved (sound.js).
@@ -475,6 +509,9 @@ export function direct(spec) {
         : { applied: true, families: chosen.map((c) => c.name), count: chosen.length, reason: 'no reference: the family\'s whole observed scheme' },
     // Whether the Gathered painting was told to show a recognisable motif from the words.
     gatheredMotif: tier !== 'gathered' ? { applied: false, reason: `tier ${tier}` } : concept ? { applied: true, motif: concept.text, source: concept.source === 'note' ? 'note' : 'lyrics' } : { applied: false, reason: 'no reliable words: the sound leads' },
+    // Which visual direction the Resolved painting was given, and why (looks.js).
+    resolvedLook: !look ? { applied: false, reason: `tier ${tier}` }
+      : { applied: true, source: look.source, signature: signatureOf(look), rank: look.rank, reason: look.reason, recent: recentLooks.length, ...(look.considered ? { considered: look.considered } : {}), ...(unusable?.length ? { unusable } : {}) },
     // Whether the Resolved painting was given a story moment from the words.
     narrative: { applied: narrative.applied, reason: narrative.reason, figure: narrative.figure, ...(narrative.applied ? { scene: narrative.scene, dropped: narrative.dropped } : {}) },
     libraryVersion: library.version, seed: spec.seed >>> 0,

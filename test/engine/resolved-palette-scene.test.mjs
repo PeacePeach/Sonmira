@@ -61,12 +61,12 @@ test('Resolved inherits at least three distinct colours, four to five when the r
 test('Resolved is a scene: words without a scene are imagined into one; no words still make a place', () => {
   const words = paint('resolved', 'R3-vivid-wash-focal', 'resolved_02', { concept: WORDS });
   assert.equal(words.narrative.applied, false);
-  assert.equal(words.sections.scene, `${RESOLVED_SCENE} ${RESOLVED_IMAGINE}`);
+  assert.ok(words.sections.scene.startsWith(`${RESOLVED_SCENE} ${RESOLVED_IMAGINE} Viewpoint: `));
   assert.match(RESOLVED_IMAGINE, /waiting, lingering, separation, a long journey, quiet endurance, traces of memory, distance, a parting of ways/);
   assert.match(RESOLVED_IMAGINE, /conditions to reason from, not pictures to reuse: invent an original, emotionally grounded situation/);
   assert.match(RESOLVED_SCENE, /never only an atmospheric wash, a pattern or a generic landscape/);
   const none = paint('resolved', 'R3-vivid-wash-focal', 'resolved_02', { motif: 'water' });
-  assert.equal(none.sections.scene, RESOLVED_SCENE);
+  assert.ok(none.sections.scene.startsWith(`${RESOLVED_SCENE} Viewpoint: `));
   assert.ok(none.sections.subject.includes(RESOLVED_PLACES.water));
   assert.doesNotMatch(none.sections.subject, /as atmosphere/);
   for (const d of [words, none]) assert.equal(checkPrompt(d).verdict, 'ok', JSON.stringify(checkPrompt(d)));
@@ -74,7 +74,7 @@ test('Resolved is a scene: words without a scene are imagined into one; no words
 
 test('the reading is told to turn abstract words into a concrete poetic scene, without stock imagery', () => {
   assert.match(SYSTEM, /emotionally rich but name few or no visible things .* never fall back to an abstract wash or a mood/);
-  assert.match(SYSTEM, /a concrete poetic scene with a focal point and a sense of near and far: not a literal illustration, not an empty abstraction/);
+  assert.match(SYSTEM, /a concrete poetic scene, symbolic event or emotionally readable moment with a focal point: not a literal illustration, not an empty abstraction/);
   // Han, 19 Oct: the conditions are not templates; each song gets its own scene.
   assert.match(SYSTEM, /never pictures to reuse: do not default to a familiar or stock setting, and do not let one kind of scene recur from song to song/);
   assert.match(SYSTEM, /Invent an original, emotionally grounded situation for this song.*nothing disconnected or generic/);
