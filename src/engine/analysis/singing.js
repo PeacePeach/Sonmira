@@ -26,7 +26,7 @@
 import { TRACK_HOP_SEC } from './pitchtrack.js';
 import { performanceProfile } from './performance.js';
 
-export const SINGING_VERSION = 4;
+export const SINGING_VERSION = 5;
 
 export const SINGING_CALIBRATION = {
   smoothSec: 0.15,          // removes vibrato (4–8 Hz) to see the note's slow line
@@ -355,6 +355,32 @@ export function melodicContour(notes, cents = CONTOUR_CENTS) {
   return 'level';
 }
 
+// How far the voice runs past note b on its way in from note a, beyond b's
+// own settled swing (its vibrato is not overshoot). Shared by the
+// transitions score and the art direction (performance-measure.js).
+// Only the voice's own path counts, from a's end to 80 ms into b, and only
+// after it crosses b's pitch coming from a's side: frames already past b
+// before any crossing belong to a neighbouring note (a low note of the
+// melody just before b), not to an overshoot. A fixed window before b's
+// start (0.25 s, as before SINGING_VERSION 5) reached back into such notes
+// and read them as overshoots of up to 4–10 semitones. The path also ends at
+// an octave-size jump between voiced frames (a voice break into creak, or a
+// tracker octave error): that is a break, not the voice running past b.
+export const BREAK_CENTS = 900;
+export function arrivalOvershoot(track, a, b, hop = track.hopSec ?? TRACK_HOP_SEC) {
+  const dir = Math.sign(b.center - a.center);
+  const settled = b.raw.slice(Math.round(0.08 / hop));
+  const swing = settled.length ? Math.max(0, ...settled.map((c) => dir * (c - b.center))) : 0;
+  const fr = track.frames.filter((f) => f.cents != null && f.t >= a.end - hop / 2 && f.t <= b.start + 0.08);
+  const past = (c) => dir * (c - b.center);
+  const brk = (k) => Math.abs(fr[k].cents - fr[k - 1].cents) > BREAK_CENTS;
+  const cross = fr.findIndex((f, k) => k > 0 && past(fr[k - 1].cents) < 0 && past(f.cents) >= 0 && !brk(k));
+  if (cross < 0) return 0;
+  let worst = past(fr[cross].cents);
+  for (let k = cross + 1; k < fr.length && !brk(k); k++) worst = Math.max(worst, past(fr[k].cents));
+  return Math.max(0, worst - swing);
+}
+
 export function singingAnalysis(track, features = null, cal = SINGING_CALIBRATION) {
   const hop = track.hopSec ?? TRACK_HOP_SEC;
   const { notes, voicedSec } = findNotes(track, cal);
@@ -395,13 +421,7 @@ export function singingAnalysis(track, features = null, cal = SINGING_CALIBRATIO
   for (let i = 1; i < notes.length; i++) {
     const a = notes[i - 1], b = notes[i];
     if (a.run !== b.run || Math.abs(b.center - a.center) < 60) continue;
-    const dir = Math.sign(b.center - a.center);
-    const path = [...b.approach, ...b.raw.slice(0, Math.round(0.08 / hop))];
-    // Beyond what the note itself does once settled: its own vibrato swing
-    // is not overshoot.
-    const settled = b.raw.slice(Math.round(0.08 / hop));
-    const swing = settled.length ? Math.max(0, ...settled.map((c) => dir * (c - b.center))) : 0;
-    const overshoot = Math.max(0, Math.max(...path.map((c) => dir * (c - b.center))) - swing);
+    const overshoot = arrivalOvershoot(track, a, b, hop);
     tr.push({ interval: b.center - a.center, overshoot, clean: overshoot <= cal.transitions.overshoot });
   }
   if (tr.length >= cal.transitions.minCount) C.transitions = { score: r3(tr.filter((t) => t.clean).length / tr.length), count: tr.length, meanOvershootCents: r3(mean(tr.map((t) => t.overshoot))) };

@@ -21,7 +21,7 @@
 // height: the one fixed convention, so the painting can be read against the
 // recording. Deterministic: the same summary always gives the same direction.
 
-export const PERFORMANCE_DIRECTION_VERSION = 1;
+export const PERFORMANCE_DIRECTION_VERSION = 2;
 
 const clamp = (x) => Math.max(0, Math.min(1, x));
 const ramp = (x, lo, hi) => (x == null || !isFinite(x) ? 0 : clamp((x - lo) / (hi - lo)));
@@ -137,7 +137,8 @@ export function performanceDirection(s) {
   for (const p of passages) {
     const a = p.articulationPerSec ?? 0;
     const stroke = p.unstable >= 0.2 ? 'broken, scrubbed strokes that stop, restart and change direction; pigment lifted and re-laid'
-      : p.bend >= 0.25 ? 'long slurred strokes that bend from one colour into the next without lifting the brush'
+      : (p.run ?? 0) >= 0.2 ? 'quick, connected strokes that step from one height to the next without lifting the brush or settling'
+        : p.bend >= 0.25 ? 'long slurred strokes that bend from one colour into the next without lifting the brush'
         : a >= ARTICULATION_LINE + tol(p) ? 'a row of short, separate touches, each set down on its own and allowed to dry apart'
           : a > ARTICULATION_LINE - tol(p) ? 'short touches mixed with fuller loaded strokes'
             : 'measured, fully loaded strokes, each placed once';
@@ -149,7 +150,7 @@ export function performanceDirection(s) {
     const drop = p.drops ? `; ${p.drops > 1 ? `${p.drops} times` : 'once'} the line sinks into a pale, dragged mark far below it, where the voice gave way` : '';
     add(`passage ${p.id}`, `${p.id}, ${p.t0}–${p.t1} s, ${pct(p.x0)}–${pct(p.x1)} across, ${heightWord(p.y)} band, ${dir}: ${stroke}; ${weight} pigment${fade}${arrival}${drop}.`, [
       ev('pitch start → end', `${p.pitch.start} → ${p.pitch.end}`, 'st', 'direction of travel'),
-      ev('unstable / bend share', `${p.unstable} / ${p.bend}`, 'share of voiced frames', 'unstable ≥ 0.2 → broken strokes; bend ≥ 0.25 → slurred'),
+      ev('unstable / run / bend share', `${p.unstable} / ${p.run ?? 0} / ${p.bend}`, 'share of voiced frames', 'unstable ≥ 0.2 → broken strokes; run ≥ 0.2 → quick connected strokes; bend ≥ 0.25 → slurred'),
       ev('articulations', a, 'dips ≥ 8 dB per s', `≥ ${ARTICULATION_LINE} → separate touches; within ±${r(tol(p), 2)} (one dip over the passage) → mixed`),
       ev('mean level, start → end', `${p.level.mean} (${p.level.start} → ${p.level.end})`, 'dB', 'loudness → pigment load; a fade of ≥ 6 dB dries the stroke'),
       ...(p.overshootCents != null ? [ev('largest landing overshoot', p.overshootCents, 'c', '> 50 c bloom; > 150 c missed landing')] : []),
@@ -172,7 +173,13 @@ export function performanceDirection(s) {
   [ev('voiced level range p10–p95', G.levelRangeDb, 'dB', ANCHORS.levelRange[2])]);
   // Where the voice lost hold for a moment in an otherwise controlled take,
   // that place is painted as it was sung, not smoothed into the rest.
-  const eps = (s.episodes ?? []).filter((e) => e.sec >= EPISODE_MIN), local = eps.length > 0 || torn.length > 0;
+  // A run (the voice stepping through pitches too brief to be notes,
+  // analysis/performance-measure.js) is not a loss of hold: it is painted as
+  // the movement it is, never torn, and never as more controlled than that.
+  const eps = (s.episodes ?? []).filter((e) => e.sec >= EPISODE_MIN && e.kind !== 'run'), local = eps.length > 0 || torn.length > 0;
+  const runs = (s.episodes ?? []).filter((e) => e.sec >= EPISODE_MIN && e.kind === 'run');
+  if (runs.length) add('rhythm', `${runs.map((e) => `At ${pct(clamp((e.t0 - span0) / span))} across (${e.t0} s, ${e.sec} s) the line steps quickly through ${e.stops} pitches without settling on any: one unbroken stroke that moves to a new height at each step`).join('; ')}.`,
+    [ev('runs', runs.map((e) => `${e.t0} s: ${e.sec} s, ${e.stops} stops, ${e.passed} passed through`).join('; '), '', 'an unstable stretch that stops on ≥ 3 pitches and passes through ≥ 2 of them → one connected stepping stroke')]);
   const hard = indices.control < 0.6 ? 'Most edges where colours meet are hard and collide' : indices.control < 0.85 || local ? 'Soft edges, with hard edges only where the singing lost control' : 'Edges are soft and planned';
   add('contrast', `${hard} (control index ${indices.control}).`, [ev('control index', indices.control, '0–1', '1 − mean(unstable share, landing overshoot, voice breaks), each scaled to its anchor'), ev('torn joins and unsteady episodes', torn.length + eps.length, 'count', 'any → hard edges there')]);
 

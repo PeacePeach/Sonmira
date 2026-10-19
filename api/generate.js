@@ -10,6 +10,7 @@
 
 import { direct, FAMILIES, checkPrompt } from '../src/engine/direct/index.js';
 import { generateFromDirection, openaiConfig } from '../src/engine/providers/openai.js';
+import { MEASURE_VERSION } from '../src/engine/analysis/performance-measure.js';
 import { referenceStoreFromEnv, libraryFor } from '../src/engine/providers/reference-store.js';
 import { REFERENCE_LIBRARY } from '../src/engine/direct/references.js';
 import { protect, timedFetch } from '../server/protect/index.js';
@@ -63,7 +64,7 @@ function cleanSpec(s) {
 const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : null);
 const nums = (xs, k, lo, hi) => (Array.isArray(xs) ? xs.slice(0, k).map((x) => num(x, lo, hi)) : []);
 export function cleanPerformance(p) {
-  if (!p || typeof p !== 'object' || p.version !== 1 || !Array.isArray(p.passages) || !p.passages.length) return null;
+  if (!p || typeof p !== 'object' || p.version !== MEASURE_VERSION || !Array.isArray(p.passages) || !p.passages.length) return null;
   const T = 600, ST = 60, DB = 120;
   const pitch = (x) => ({ start: num(x?.start, -ST, ST) ?? 0, end: num(x?.end, -ST, ST) ?? 0, median: num(x?.median, -ST, ST) ?? 0, high: num(x?.high, -ST, ST) ?? 0, low: num(x?.low, -ST, ST) ?? 0 });
   const level = (x) => ({ mean: num(x?.mean, -DB, 0) ?? 0, start: num(x?.start, -DB, 0) ?? 0, end: num(x?.end, -DB, 0) ?? 0 });
@@ -71,19 +72,19 @@ export function cleanPerformance(p) {
     t0: num(x?.t0, 0, T) ?? 0, t1: num(x?.t1, 0, T) ?? 0, phrase: num(x?.phrase, 0, 1000) ?? 0,
     joinedBy: ['leap', 'unstable'].includes(x?.joinedBy) ? x.joinedBy : null,
     pitch: pitch(x?.pitch), level: level(x?.level),
-    unstable: num(x?.unstable, 0, 1) ?? 0, bend: num(x?.bend, 0, 1) ?? 0, articulationPerSec: num(x?.articulationPerSec, 0, 50) ?? 0,
+    unstable: num(x?.unstable, 0, 1) ?? 0, bend: num(x?.bend, 0, 1) ?? 0, run: num(x?.run, 0, 1) ?? 0, articulationPerSec: num(x?.articulationPerSec, 0, 50) ?? 0,
     offGridCents: num(x?.offGridCents, 0, 50), maxLeapSt: num(x?.maxLeapSt, 0, ST) ?? 0, overshootCents: num(x?.overshootCents, 0, 6000),
     entryLeapSt: num(x?.entryLeapSt, -ST, ST), drops: num(x?.drops, 0, 100) ?? 0,
   })).filter((x) => x.t1 > x.t0);
   if (!passages.length) return null;
   const g = p.global ?? {};
   return {
-    version: 1, durationSec: num(p.durationSec, 0, T), voicedSec: num(p.voicedSec, 0, T), gainDb: num(p.gainDb, -100, 100),
+    version: MEASURE_VERSION, durationSec: num(p.durationSec, 0, T), voicedSec: num(p.voicedSec, 0, T), gainDb: num(p.gainDb, -100, 100),
     span: nums(p.span, 2, 0, T), pitchSpan: nums(p.pitchSpan, 2, -ST, ST),
     phraseCount: num(p.phraseCount, 1, 1000) ?? 1, firstPhraseVoicedSec: num(p.firstPhraseVoicedSec, 0, T) ?? 0,
     gapsSec: nums(p.gapsSec, 12, 0, T).filter((x) => x != null),
     passages,
-    episodes: (Array.isArray(p.episodes) ? p.episodes : []).slice(0, 12).map((e) => ({ t0: num(e?.t0, 0, T) ?? 0, sec: num(e?.sec, 0, T) ?? 0 })),
+    episodes: (Array.isArray(p.episodes) ? p.episodes : []).slice(0, 12).map((e) => ({ t0: num(e?.t0, 0, T) ?? 0, sec: num(e?.sec, 0, T) ?? 0, kind: e?.kind === 'run' ? 'run' : 'unsteady', stops: num(e?.stops, 0, 100) ?? 0, passed: num(e?.passed, 0, 100) ?? 0 })),
     global: {
       pitchRangeSt: num(g.pitchRangeSt, 0, ST), levelRangeDb: num(g.levelRangeDb, 0, DB), notesPerSec: num(g.notesPerSec, 0, 50), ioiCv: num(g.ioiCv, 0, 10),
       controlledShare: num(g.controlledShare, 0, 1), ornamentCents: num(g.ornamentCents, 0, 1200), pitchBreaks: num(g.pitchBreaks, 0, 1000) ?? 0, drops: num(g.drops, 0, 1000) ?? 0,

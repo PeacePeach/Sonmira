@@ -25,10 +25,10 @@
 // pitch range, leaps and tuning of the passage around it.
 
 import { pitchTrack } from './pitchtrack.js';
-import { findNotes, singingAnalysis, SINGING_CALIBRATION } from './singing.js';
+import { findNotes, singingAnalysis, arrivalOvershoot, SINGING_CALIBRATION } from './singing.js';
 import { performanceProfile, frameLabels } from './performance.js';
 
-export const MEASURE_VERSION = 1;
+export const MEASURE_VERSION = 2;
 export const LEVEL = {
   targetRms: 0.1,   // loud voiced level (p95 frame RMS) after scaling
   gateDb: -24,      // quieter frames are silence; above the tracker's own floor at the target level
@@ -39,6 +39,14 @@ export const PASSAGE = {
   episodeMinSec: 0.25, // an unstable episode this long starts a passage
   minSec: 1,        // shorter pieces join the previous passage
   max: 12,
+};
+
+export const RUN = {
+  stopSec: 0.06,    // a stop: at least this long within stopCents
+  stopCents: 30,
+  passCents: 40,    // passed through: the line is this far below on one side and above on the other
+  minStops: 3,
+  minPassed: 2,
 };
 
 const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
@@ -58,6 +66,28 @@ function circularSpread(offsets) {
   const c = mean(o.map((x) => Math.cos((2 * Math.PI * x) / 100))), s = mean(o.map((x) => Math.sin((2 * Math.PI * x) / 100)));
   const R = Math.min(1, Math.hypot(c, s));
   return R <= 1e-6 ? 50 : (100 / (2 * Math.PI)) * Math.sqrt(-2 * Math.log(R));
+}
+// Where the pitch line stops inside frames [i0, i1): stretches of at least
+// RUN.stopSec within RUN.stopCents on a 3-frame median line. A stop is
+// passed through when the line, RUN.stopSec before and after it, sits
+// RUN.passCents or more below on one side and above on the other.
+export function pitchStops(fr, i0, i1, hop) {
+  const c = []; for (let i = i0; i < i1; i++) { const w = [fr[i - 1], fr[i], fr[i + 1]].filter((f) => f?.cents != null).map((f) => f.cents); c.push(fr[i].cents == null ? null : med(w)); }
+  const W = Math.max(2, Math.round(RUN.stopSec / hop)), on = new Array(c.length).fill(false);
+  for (let k = 0; k + W <= c.length; k++) {
+    const seg = c.slice(k, k + W);
+    if (seg.every((x) => x != null) && Math.max(...seg) - Math.min(...seg) <= RUN.stopCents) for (let j = k; j < k + W; j++) on[j] = true;
+  }
+  const near = (i) => mean([fr[i - 1], fr[i], fr[i + 1]].filter((f) => f?.cents != null).map((f) => f.cents));
+  const stops = [];
+  for (let k = 0; k < c.length; k++) {
+    if (!on[k]) continue;
+    let j = k; while (j + 1 < c.length && on[j + 1]) j++;
+    const at = mean(c.slice(k, j + 1)), before = near(i0 + k - W), after = near(i0 + j + W);
+    stops.push({ t: fr[i0 + k].t, sec: (j - k + 1) * hop, cents: at, passed: before != null && after != null && Math.abs(before - at) >= RUN.passCents && Math.abs(after - at) >= RUN.passCents && Math.sign(at - before) === Math.sign(after - at) });
+    k = j;
+  }
+  return stops;
 }
 const unvoice = (f) => ({ ...f, hz: null, cents: null });
 const loudOf = (frames) => q(frames.filter((f) => f.cents != null).map((f) => f.rms), 0.95);
@@ -183,16 +213,13 @@ function measureFrom(samples, sampleRate, cal) {
   const offset = quality.components?.intonation?.tuningOffsetCents ?? 0;
   const offGrid = (c) => { const d = (((c - offset) % 100) + 100) % 100; return Math.min(d, 100 - d); };
 
-  // Sung notes (drops left out): leap from the previous sung note and landing overshoot, as singing.js measures it.
+  // Sung notes (drops left out): leap from the previous sung note and landing overshoot (singing.js arrivalOvershoot).
   const N = sung.map((n, k) => {
     const a = sung[k - 1], j = notes.indexOf(n);
     let overshoot = null;
     // A landing straight out of a voice drop is not an arrival from the melody.
     if (a && !(j > 0 && drop[j - 1]) && a.run === n.run && Math.abs(n.center - a.center) >= 60) {
-      const dir = Math.sign(n.center - a.center), path = [...n.approach, ...n.raw.slice(0, Math.round(0.08 / hop))];
-      const settled = n.raw.slice(Math.round(0.08 / hop));
-      const swing = settled.length ? Math.max(0, ...settled.map((c) => dir * (c - n.center))) : 0;
-      overshoot = Math.max(0, Math.max(...path.map((c) => dir * (c - n.center))) - swing);
+      overshoot = arrivalOvershoot(track, a, n, hop);
     }
     return { start: n.start, offGridCents: offGrid(n.center), leapSt: a ? (n.center - a.center) / 100 : null, overshootCents: overshoot };
   });
@@ -208,20 +235,39 @@ function measureFrom(samples, sampleRate, cal) {
   }
   if (!phrases.length) return null;
 
-  // Unstable episodes: runs of unstable frames ≥ 150 ms.
+  // Unstable episodes: runs of unstable frames ≥ 150 ms. Each is either
+  //   unsteady  the voice swings, hunts or never reaches a pitch
+  //   run       the voice steps through pitches too brief for the note
+  //             finder (a fast legato figure): it stops on at least
+  //             RUN.minStops pitches and passes straight through at least
+  //             RUN.minPassed of them on its way somewhere else
+  // This only says what the pitch line did; it is not a judgement of intent.
+  // A stepping line can also be a voice searching in steps, so a run is
+  // painted as moving through pitches, never as controlled (step 14
+  // benchmark, 24 seeds per kind: 1 of 18 swinging or hunting episodes read
+  // as runs, 8 of 26 that hunt in steps or slide in stages, 0 of 79 in wide
+  // vibrato, 0 of 16 tracker artefacts; 11 of 24 fast legato melismas).
+  // Run frames are labelled 'run' here; the singing analysis is unchanged.
   const episodes = []; let s0 = null;
   label.forEach((l, i) => {
     if (l === 'unstable') { if (s0 == null) s0 = i; return; }
-    if (s0 != null && (i - s0) * hop >= 0.15) episodes.push({ t0: r(fr[s0].t), sec: r((i - s0) * hop) });
+    if (s0 != null && (i - s0) * hop >= 0.15) episodes.push({ i0: s0, i1: i, t0: r(fr[s0].t), sec: r((i - s0) * hop) });
     s0 = null;
   });
+  for (const e of episodes) {
+    const stops = pitchStops(fr, e.i0, e.i1, hop);
+    e.stops = stops.length; e.passed = stops.filter((x) => x.passed).length;
+    e.kind = e.stops >= RUN.minStops && e.passed >= RUN.minPassed ? 'run' : 'unsteady';
+    if (e.kind === 'run') for (let i = e.i0; i < e.i1; i++) label[i] = 'run';
+    delete e.i0; delete e.i1;
+  }
 
   // Passages: phrases split at long unstable episodes and big leaps.
   const segs = [];
   for (const p of phrases) {
     const cuts = new Map();
     for (const n of N) if (Math.abs(n.leapSt ?? 0) >= PASSAGE.leapCutSt && n.start > p.t0 + PASSAGE.minSec && n.start < p.t1 - PASSAGE.minSec) cuts.set(r(n.start), 'leap');
-    for (const e of episodes) if (e.sec >= PASSAGE.episodeMinSec && e.t0 > p.t0 + PASSAGE.minSec && e.t0 < p.t1 - PASSAGE.minSec) cuts.set(r(e.t0), 'unstable');
+    for (const e of episodes) if (e.kind === 'unsteady' && e.sec >= PASSAGE.episodeMinSec && e.t0 > p.t0 + PASSAGE.minSec && e.t0 < p.t1 - PASSAGE.minSec) cuts.set(r(e.t0), 'unstable');
     const bounds = [p.t0, ...[...cuts.keys()].sort((a, b) => a - b), p.t1], own = [];
     for (let k = 0; k < bounds.length - 1; k++) {
       const [a, b] = [bounds[k], bounds[k + 1]];
@@ -245,7 +291,7 @@ function measureFrom(samples, sampleRate, cal) {
       t0: r(s.t0), t1: r(s.t1), phrase: s.phrase, joinedBy: s.joinedBy,
       pitch: { start: r(med(pitch.slice(0, k)), 1), end: r(med(pitch.slice(-k)), 1), median: r(med(pitch), 1), high: r(Math.max(...pitch), 1), low: r(Math.min(...pitch), 1) },
       level: { mean: r(mean(lv), 1), start: r(med(lv.slice(0, k)), 1), end: r(med(lv.slice(-k)), 1) },
-      unstable: r(share('unstable')), bend: r(share('bend')),
+      unstable: r(share('unstable')), bend: r(share('bend')), run: r(share('run')),
       articulationPerSec: r(dips / Math.max(0.1, F.length * hop)),
       offGridCents: PN.length ? r(mean(PN.map((n) => n.offGridCents)), 0) : null,
       maxLeapSt: PN.length ? r(Math.max(0, ...PN.map((n) => (n.start > s.t0 + 0.02 ? Math.abs(n.leapSt ?? 0) : 0))), 1) : 0,
