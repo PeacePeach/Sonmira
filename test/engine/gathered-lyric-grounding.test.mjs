@@ -7,11 +7,13 @@
 // synthetic voices in synth.js, run through the real understandTake().
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { singers, spokenLyrics, SR } from './synth.js';
+import { singers, spokenLyrics, sungLyrics, SR } from './synth.js';
+import { measurePerformance } from '../../src/engine/analysis/performance-measure.js';
+import { createAIEngine } from '../../src/engine/engines/ai.js';
 import { analyzeTranscript } from '../../src/engine/interpret/lyrics.js';
 import { understandTake } from '../../src/engine/understand.js';
 import { cleanReading, SYSTEM } from '../../src/engine/providers/openai-understand.js';
-import { direct, checkPrompt, GATHERED_MOTIF, GATHERED_MOTIF_FORM, RESOLVED_SCENE } from '../../src/engine/direct/index.js';
+import { direct, checkPrompt, performanceDirection, GATHERED_MOTIF, GATHERED_MOTIF_FORM, RESOLVED_SCENE } from '../../src/engine/direct/index.js';
 import { PERFORMANCE_FORM } from '../../src/engine/direct/performance.js';
 
 const confident = (text) => analyzeTranscript(text, { logprobs: text.split(/\s+/).map((token) => ({ token, logprob: Math.log(0.9) })) });
@@ -125,4 +127,67 @@ test('tier boundaries: the floor never reaches Resolved; Resolved keeps its scen
   assert.match(d.sections.scene, new RegExp(RESOLVED_SCENE.slice(0, 40).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.match(d.sections.palette, /^Palette, inherited from the reference/);
   assert.deepEqual(d.gatheredMotif, { applied: false, reason: 'tier resolved' });
+});
+
+// Han, 19 Oct (approval): typed notes and sung words are each handled as
+// themselves, and the performance never erases Gathered's motif.
+const NOTE = 'a red kite tugging above the harbour';
+const engineRun = async (samples, understood, { note = '', tier = null } = {}) => {
+  const sent = [];
+  const fetchImpl = async (url, init) => {
+    if (String(url).startsWith('data:')) return fetch(url);
+    sent.push({ url, body: JSON.parse(init.body) });
+    if (url === '/api/understand') return { ok: true, status: 200, json: async () => ({ ok: true, ...understood }) };
+    return { ok: true, status: 200, json: async () => ({ ok: true, provider: 'openai', model: 'm', family: 'G2-splash-wash', reference: 'gathered_02', referenceSent: true, image: 'data:image/png;base64,iVBORw0KGgo=' }) };
+  };
+  const engine = createAIEngine({ fetchImpl, decode: async () => ({ samples, sampleRate: SR }) });
+  await engine.generate({ analysis: { flags: { silent: false }, wash: [], features: null }, audioBlob: new Blob([new Uint8Array([1])], { type: 'audio/webm' }), note, overrides: tier ? { completeness: tier } : {} });
+  return sent.find((s) => s.url === '/api/generate').body.spec;
+};
+const fromSpec = (spec) => direct({ ...spec, family: 'G2-splash-wash', reference: 'gathered_02' });
+
+test('typed notes and sung words: reliable words lead, a note stands in only when they are not, and each is named as itself', async () => {
+  // Reliable sung words win over a typed note.
+  const sung = await engineRun(short, { transcript: confident(SEA), lyrics: reading({ phraseComplete: false, completionConfidence: 0.6 }) }, { note: NOTE });
+  assert.equal(sung.completeness, 'gathered');
+  assert.equal(sung.concept.source, 'lyrics');
+  assert.equal(sung.concept.text, 'clouds drifting low over the open sea');
+  const s = fromSpec(sung);
+  assert.match(s.sections.subject, /recognisable motif from the sung words: clouds drifting/);
+  assert.doesNotMatch(s.prompt, /red kite/);
+  // Unreliable words with a note: the note is the motif, named as the note.
+  const noted = await engineRun(long, { transcript: unsure(SEA), lyrics: reading() }, { note: NOTE, tier: 'gathered' });
+  assert.equal(noted.concept.source, 'note');
+  const n = fromSpec(noted);
+  assert.equal(n.sections.motif, GATHERED_MOTIF);
+  assert.match(n.sections.subject, /recognisable motif from the note written for this moment: a red kite/);
+  assert.doesNotMatch(n.prompt, /the sung words|clouds drifting/);
+  assert.deepEqual(n.gatheredMotif, { applied: true, motif: NOTE, source: 'note' });
+  // Unreliable words and no note: nothing is invented, the sound leads.
+  const none = await engineRun(long, { transcript: unsure(SEA), lyrics: reading() }, { tier: 'gathered' });
+  assert.equal(none.concept, null);
+  const a = fromSpec(none);
+  assert.equal(a.subjectSource, 'atmosphere');
+  assert.equal(a.sections.motif ?? null, null);
+  // A note never lifts the tier: the floor is for sung words only.
+  const hummed = await engineRun(join(singers.hum(), singers.hum()), { transcript: confident('mm mm la la'), lyrics: reading({ lexical: false, coherent: false, structure: 'vocables' }) }, { note: NOTE });
+  assert.equal(hummed.completeness, 'loose');
+});
+
+test('the performance shapes how the motif is painted but never erases it', () => {
+  const concept = { source: 'lyrics', text: 'clouds drifting low over the open sea', theme: ['longing'], imagery: ['clouds', 'sea'], figurative: [] };
+  const takes = { strong: long, weak: short, lyrics: sungLyrics(), shaky: sungLyrics({ vib: 120, gap: 0.3, glide: 0.4, seed: 5 }), spoken: spokenLyrics({ jitter: 0.5 }) };
+  const perfs = Object.entries(takes).map(([k, x]) => [k, measurePerformance(x, SR)]).filter(([, p]) => p);
+  let disordered = 0;
+  for (const [k, performance] of [...perfs, ['none', null]]) {
+    const d = direct({ completeness: 'gathered', family: 'G2-splash-wash', reference: 'gathered_02', seed: 7, motif: 'water', emotion: 'melancholic', energy: { value: 'lively' }, concept, performance });
+    if (performance && performanceDirection(performance).disorder) disordered++;
+    assert.equal(d.sections.motif, GATHERED_MOTIF, k);
+    assert.equal(d.sections.form, GATHERED_MOTIF_FORM, k);
+    assert.ok(d.prompt.includes(GATHERED_MOTIF) && d.prompt.includes(concept.text), k);
+    assert.doesNotMatch(d.prompt, /a broken passage breaks the subject too/, k);
+    if (performance) assert.match(d.sections.staging, /never erases it: a broken passage breaks its edges, not its identity/, k);
+    assert.equal(checkPrompt(d).verdict, 'ok', `${k}: ${JSON.stringify(checkPrompt(d))}`);
+  }
+  assert.ok(disordered > 0, 'at least one take is measured as disordered');
 });

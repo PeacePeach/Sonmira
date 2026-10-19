@@ -25,6 +25,10 @@
 // range and must be a scene; Gathered gained one mood-forward sentence. Their
 // Validation 4 runs are checked against those prompts (`sceneApproved`); the
 // image settings, family and reference must still match Validation 4.
+// Gathered changed again on 19 Oct (Han approved the Gathered lyric
+// grounding, PR #28): with reliable words it shows one or two recognisable
+// motifs from them. Only the Gathered prompts were refreshed; Loose and
+// Resolved are unchanged.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -111,7 +115,7 @@ function currentSnapshot() {
   }
   const c = openaiConfig({ OPENAI_API_KEY: 'x' });
   return {
-    approved: 'Han, 16 Oct 2026: Validation 4 approved as the V1 three-tier artwork quality; Han, 18 Oct 2026: Phase 2 Loose (performance-driven) approved as the Loose baseline; Han, 19 Oct 2026: Resolved palette diversity and scene rules, Gathered mood-forward (PR #27)',
+    approved: 'Han, 16 Oct 2026: Validation 4 approved as the V1 three-tier artwork quality; Han, 18 Oct 2026: Phase 2 Loose (performance-driven) approved as the Loose baseline; Han, 19 Oct 2026: Resolved palette diversity and scene rules, Gathered mood-forward (PR #27); Han, 19 Oct 2026: Gathered lyric grounding, a recognisable motif from reliable words (PR #28)',
     library: sha(JSON.stringify(REFERENCE_LIBRARY)),
     image: { model: c.model, quality: c.quality, size: c.size },
     prompts,
