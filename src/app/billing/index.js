@@ -123,6 +123,21 @@ export function createBilling({ ask, native, server }) {
     products: PRODUCTS,
     /** The account id (iOS app) shared with the generation guard and the ledger; null in a browser. */
     accountId: () => account,
+    /** On the released website, the Production ledger is authoritative too.
+     *  Refresh before the diary renders so a replenished test account can sing. */
+    async syncWeb(accountId) {
+      if (native || !isReleaseSite() || !accountId) return;
+      try {
+        const day = today();
+        const response = await fetch(`/api/billing/status?account=${encodeURIComponent(accountId)}&day=${encodeURIComponent(day)}`);
+        if (!response.ok) return;
+        const data = await response.json();
+        if (data.ok && data.status?.wallet) {
+          adopt(data.status);
+          emit({ type: 'refresh' });
+        }
+      } catch (e) { console.warn('[sonmira] web wallet sync failed', e); }
+    },
     /** Sign-in, sign-out or deletion changed the device's account: follow it. */
     useAccount(id) { account = Promise.resolve(id); return refresh(); },
     /** iOS: store this account id in the Keychain and follow it. → the id, or null in a browser. */

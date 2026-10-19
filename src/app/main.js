@@ -112,6 +112,7 @@ async function boot() {
   app.billing = createBilling({ ask: (req) => askSimulator(app, req) });
   app.account = createAccountForDevice(app, await deviceIdentity(app.billing));
   identified(app.account);
+  await app.billing.syncWeb(app.account.id);
   followAccount(app);
   // A purchase that finishes while no paywall is open (an Ask to Buy approval).
   app.billing.onChange((ev) => {
