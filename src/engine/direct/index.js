@@ -17,16 +17,18 @@
 
 import { rng, hashSeed } from '../render/rng.js';
 import { FAMILIES, familiesOfTier } from './families.js';
-import { LIBRARY, referencePalette, referenceColourLanguage, REFERENCE_AUTHORITY, REFERENCE_AUTHORITY_LOOSE, tierOf } from './library.js';
+import { LIBRARY, referencePalette, referenceColourLanguage, REFERENCE_AUTHORITY, REFERENCE_AUTHORITY_LOOSE, REFERENCE_AUTHORITY_PERFORMANCE, tierOf } from './library.js';
 import { PEOPLE } from './leakage.js';
 import { compositionPlan, compositionLine } from './composition.js';
 import { soundPlan } from './sound.js';
+import { performanceDirection, performanceSections } from './performance.js';
 
 export { FAMILIES, REFERENCES, LIBRARY_VERSION } from './families.js';
 export { LIBRARY, createLibrary, colourName, referencePalette } from './library.js';
 export { checkLeakage, checkPrompt } from './leakage.js';
 export { soundPlan } from './sound.js';
-export const DIRECTION_VERSION = 8;
+export { performanceDirection, performanceSections } from './performance.js';
+export const DIRECTION_VERSION = 9;
 
 // Global Sonmira constraints: true for every family and every tier.
 // Materiality is independent of abstraction: Loose, Gathered and Resolved all
@@ -74,6 +76,9 @@ export const REFERENCE_STYLE_LOOSE = 'A hand-made painting in the artistic langu
 // A reference with no family (uploaded straight into a tier folder): no
 // family's rules or colours describe it, so the image alone sets the style.
 export const REFERENCE_ONLY_STYLE = 'Style: entirely the attached reference\'s own; follow its technique, marks, texture and edges as they are, without adding a technique it does not show. This describes only how it is painted, never what is depicted.';
+// Every tier with a measured performance: the reference's language, the
+// performance's composition, the words' subject.
+export const REFERENCE_STYLE_PERFORMANCE = 'A hand-made painting in the artistic language of the attached reference: its medium, technique, texture, brushwork and degree of stylisation, with a new composition, movement and colour relations shaped by this performance. An original painting, not a copy of the reference or of any existing artwork.';
 export const REFERENCE_ONLY_COLOUR = 'Colour: the attached reference\'s own colour language, read from the image.';
 
 export const REFERENCE_AVOID = [
@@ -226,6 +231,37 @@ export function familiesFor(level, motif, library = LIBRARY, { concept = false }
   return (stocked.length ? stocked : all).map((id) => [id, 1]);
 }
 
+// The performance-led direction (all tiers, with a reference and a measured
+// performance): the reference gives technique only, the words the subject,
+// the singing everything about how it is painted (performance.js).
+function directFromPerformance({ tier, F, refOnly, reference, concept, subjectLine, emotion, perf, withRef }) {
+  const colourLanguage = referenceColourLanguage(refOnly ? null : reference)
+    .replace(/^Colour language(?: of the reference)?[^:]*: /, '').replace(/\.$/, '');
+  const P = performanceSections(perf, tier, colourLanguage);
+  const technique = refOnly ? REFERENCE_ONLY_STYLE
+    : `Technique — ${F.label}: ${F.technique} This describes only how it is painted, never what is depicted or where.`;
+  const avoid = [...REFERENCE_AVOID, 'the reference\'s own layout or placement of colour', ...(perf.disorder ? ['smoothing over the breaks and clashes described above'] : [])];
+  const sections = {
+    subject: subjectLine,
+    meaning: concept ? meaningLine(tier, concept) : null,
+    family: technique,
+    content: CONTENT_RULE,
+    form: P.form,
+    composition: P.structure,
+    staging: P.staging,
+    passages: P.passages,
+    marks: P.marks,
+    contrast: P.contrast,
+    palette: P.colour,
+    // Mood only from the words: without them the singing alone decides.
+    emotion: concept ? EMOTION_LOOSE[emotion] || EMOTION_LOOSE.tender : null,
+    disorder: P.disorder,
+    style: withRef ? REFERENCE_STYLE_PERFORMANCE : GLOBAL_STYLE,
+  };
+  const prompt = [sections.subject, sections.meaning, sections.family, sections.content, sections.form, sections.composition, sections.staging, sections.passages, sections.marks, sections.contrast, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.disorder, sections.style, `Avoid: ${avoid.join(', ')}.`].filter(Boolean).join('\n');
+  return { sections, prompt, avoid };
+}
+
 export function direct(spec) {
   const level = LEVELS[spec.completeness] ? spec.completeness : 'gathered';
   const motif = spec.motif || 'abstract';
@@ -275,7 +311,10 @@ export function direct(spec) {
   // Loose with its reference (Han, 18 Oct): the reference gives the
   // language; how this voice moved gives the composition, marks and colour
   // (sound.js), and the reference no longer dictates layout or exact hues.
-  const performance = tier === 'loose' && withRef ? soundPlan({ expression: spec.expression, energy }) : null;
+  // Every tier, when the take was measured (Han, 18 Oct): the singing
+  // decides how it is painted, the reference only the technique.
+  const perf = withRef && spec.performance ? performanceDirection(spec.performance) : null;
+  const performance = !perf && tier === 'loose' && withRef ? soundPlan({ expression: spec.expression, energy }) : null;
   const subjectLine = concept ? subjectFromConcept(tier, concept, withRef)
     : tier === 'loose' && spec.soundOnly ? `${article(labelOf('loose', withRef))} that expresses the sound of the voice itself, not any subject or story.`
     : `${article(labelOf(tier, withRef))}${subject ? ` of ${subject}` : ''}.`;
@@ -309,18 +348,21 @@ export function direct(spec) {
     gesture: performance ? null : expressionLine(spec.expression, withRef),
     style: performance ? REFERENCE_STYLE_LOOSE : withRef ? REFERENCE_STYLE : GLOBAL_STYLE,
   };
-  const prompt = [sections.subject, sections.meaning, sections.family, sections.content, sections.form, sections.composition, sections.marks, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.energy, sections.gesture, sections.style, `Avoid: ${avoid.join(', ')}.`].filter(Boolean).join('\n');
+  const led = perf ? directFromPerformance({ tier, F, refOnly, reference, concept, subjectLine, emotion: spec.emotion, perf, withRef }) : null;
+  const prompt = led ? led.prompt : [sections.subject, sections.meaning, sections.family, sections.content, sections.form, sections.composition, sections.marks, 'Vertical 4:5 format.', sections.palette, sections.emotion, sections.energy, sections.gesture, sections.style, `Avoid: ${avoid.join(', ')}.`].filter(Boolean).join('\n');
   return {
     version: DIRECTION_VERSION, level: tier, requestedLevel: level,
     family: refOnly ? null : familyId, familyLabel: refOnly ? 'From the reference' : F.label, refs: refOnly ? [] : library.pool(familyId).map((e) => e.path.split('/').pop()),
     // The one reference image to send with `referencePrompt + prompt`.
     reference: reference ? { id: reference.id, path: reference.path, family: reference.family ?? null } : null,
-    referencePrompt: reference ? (performance ? REFERENCE_AUTHORITY_LOOSE : REFERENCE_AUTHORITY) : null,
+    referencePrompt: reference ? (perf ? REFERENCE_AUTHORITY_PERFORMANCE : performance ? REFERENCE_AUTHORITY_LOOSE : REFERENCE_AUTHORITY) : null,
     libraryVersion: library.version, seed: spec.seed >>> 0,
     concept: concept ?? null,
-    composition: plan,
-    performance: performance?.variables ?? null,
+    composition: perf ? null : plan,
+    performance: perf ? null : performance?.variables ?? null,
+    // Every decision with the measurements behind it (performance-led only).
+    performanceTrace: perf ? { version: perf.version, indices: perf.indices, focus: perf.focus, decisions: perf.decisions } : null,
     subject: concept ? concept.text : subject, subjectSource: concept ? (concept.source === 'note' ? 'note' : 'lyrics') : tier === 'loose' && spec.soundOnly ? 'sound' : 'atmosphere',
-    pigments: swatches.map((p) => p.name), swatches, sections, prompt, avoid: avoid.slice(),
+    pigments: swatches.map((p) => p.name), swatches, sections: led ? led.sections : sections, prompt, avoid: (led ? led.avoid : avoid).slice(),
   };
 }

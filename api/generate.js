@@ -10,6 +10,7 @@
 
 import { direct, FAMILIES, checkPrompt } from '../src/engine/direct/index.js';
 import { generateFromDirection, openaiConfig } from '../src/engine/providers/openai.js';
+import { MEASURE_VERSION } from '../src/engine/analysis/performance-measure.js';
 import { referenceStoreFromEnv, libraryFor } from '../src/engine/providers/reference-store.js';
 import { REFERENCE_LIBRARY } from '../src/engine/direct/references.js';
 import { protect, timedFetch } from '../server/protect/index.js';
@@ -53,7 +54,44 @@ function cleanSpec(s) {
       line: ['smooth', 'stepped'].includes(x.line) ? x.line : null,
     };
   }
+  const p = cleanPerformance(s.performance);
+  if (p) out.performance = p;
   return out;
+}
+
+// The measured performance (analysis/performance-measure.js): numbers only,
+// bounded, so nothing from the client reaches the prompt as text.
+const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : null);
+const nums = (xs, k, lo, hi) => (Array.isArray(xs) ? xs.slice(0, k).map((x) => num(x, lo, hi)) : []);
+export function cleanPerformance(p) {
+  if (!p || typeof p !== 'object' || p.version !== MEASURE_VERSION || !Array.isArray(p.passages) || !p.passages.length) return null;
+  const T = 600, ST = 60, DB = 120;
+  const pitch = (x) => ({ start: num(x?.start, -ST, ST) ?? 0, end: num(x?.end, -ST, ST) ?? 0, median: num(x?.median, -ST, ST) ?? 0, high: num(x?.high, -ST, ST) ?? 0, low: num(x?.low, -ST, ST) ?? 0 });
+  const level = (x) => ({ mean: num(x?.mean, -DB, 0) ?? 0, start: num(x?.start, -DB, 0) ?? 0, end: num(x?.end, -DB, 0) ?? 0 });
+  const passages = p.passages.slice(0, 12).map((x) => ({
+    t0: num(x?.t0, 0, T) ?? 0, t1: num(x?.t1, 0, T) ?? 0, phrase: num(x?.phrase, 0, 1000) ?? 0,
+    joinedBy: ['leap', 'unstable', 'moving'].includes(x?.joinedBy) ? x.joinedBy : null,
+    pitch: pitch(x?.pitch), level: level(x?.level),
+    unstable: num(x?.unstable, 0, 1) ?? 0, bend: num(x?.bend, 0, 1) ?? 0, moving: num(x?.moving, 0, 1) ?? 0, articulationPerSec: num(x?.articulationPerSec, 0, 50) ?? 0,
+    offGridCents: num(x?.offGridCents, 0, 50), maxLeapSt: num(x?.maxLeapSt, 0, ST) ?? 0, overshootCents: num(x?.overshootCents, 0, 6000),
+    entryLeapSt: num(x?.entryLeapSt, -ST, ST), drops: num(x?.drops, 0, 100) ?? 0,
+  })).filter((x) => x.t1 > x.t0);
+  if (!passages.length) return null;
+  const g = p.global ?? {};
+  return {
+    version: MEASURE_VERSION, durationSec: num(p.durationSec, 0, T), voicedSec: num(p.voicedSec, 0, T), gainDb: num(p.gainDb, -100, 100),
+    span: nums(p.span, 2, 0, T), pitchSpan: nums(p.pitchSpan, 2, -ST, ST),
+    phraseCount: num(p.phraseCount, 1, 1000) ?? 1, firstPhraseVoicedSec: num(p.firstPhraseVoicedSec, 0, T) ?? 0,
+    gapsSec: nums(p.gapsSec, 12, 0, T).filter((x) => x != null),
+    passages,
+    episodes: (Array.isArray(p.episodes) ? p.episodes : []).slice(0, 12).map((e) => ({ t0: num(e?.t0, 0, T) ?? 0, sec: num(e?.sec, 0, T) ?? 0, kind: ['run', 'moving', 'slide'].includes(e?.kind) ? e.kind : 'unsteady', stops: num(e?.stops, 0, 100) ?? 0, passed: num(e?.passed, 0, 100) ?? 0, directness: num(e?.directness, 0, 1), beyondCents: num(e?.beyondCents, 0, 5000) })),
+    global: {
+      pitchRangeSt: num(g.pitchRangeSt, 0, ST), levelRangeDb: num(g.levelRangeDb, 0, DB), notesPerSec: num(g.notesPerSec, 0, 50), ioiCv: num(g.ioiCv, 0, 10),
+      controlledShare: num(g.controlledShare, 0, 1), ornamentCents: num(g.ornamentCents, 0, 1200), pitchBreaks: num(g.pitchBreaks, 0, 1000) ?? 0, drops: num(g.drops, 0, 1000) ?? 0,
+      intonationDevCents: num(g.intonationDevCents, 0, 50), meanOvershootCents: num(g.meanOvershootCents, 0, 6000), keyDriftCents: num(g.keyDriftCents, 0, 1200),
+      tuningWanderCents: num(g.tuningWanderCents, 0, 50), windowOffsets: nums(g.windowOffsets, 30, 0, 100), dipsPerSec: num(g.dipsPerSec, 0, 50),
+    },
+  };
 }
 
 // The words' concept goes into the prompt, so it is bounded and flattened.
@@ -98,7 +136,7 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
       return;
     }
     const g = await generateFromDirection(direction, { loadReference: store?.loadImage, stream: true, env, fetchImpl });
-    res.status(200).json({ ok: true, provider: g.provider, model: g.model, quality: g.quality, size: g.size, ms: g.ms, usage: g.usage, prompt: direction.prompt, family: direction.family, familyLabel: direction.familyLabel, familyRefs: direction.refs, subjectSource: direction.subjectSource, subject: direction.subject, reference: direction.reference?.id ?? null, composition: direction.composition, performance: direction.performance, settings: { tier: direction.level, emotion: spec.emotion, motif: spec.motif, energy: spec.energy.value, expression: spec.expression ?? null }, promptCheck: checkPrompt(direction, { library }), referenceSent: Boolean(g.reference), seed: direction.seed, libraryVersion: direction.libraryVersion, swatches: direction.swatches, image: `data:${g.mime};base64,${g.b64}` });
+    res.status(200).json({ ok: true, provider: g.provider, model: g.model, quality: g.quality, size: g.size, ms: g.ms, usage: g.usage, prompt: direction.prompt, family: direction.family, familyLabel: direction.familyLabel, familyRefs: direction.refs, subjectSource: direction.subjectSource, subject: direction.subject, reference: direction.reference?.id ?? null, composition: direction.composition, performance: direction.performance, performanceTrace: direction.performanceTrace, settings: { tier: direction.level, emotion: spec.emotion, motif: spec.motif, energy: spec.energy.value, expression: spec.expression ?? null }, promptCheck: checkPrompt(direction, { library }), referenceSent: Boolean(g.reference), seed: direction.seed, libraryVersion: direction.libraryVersion, swatches: direction.swatches, image: `data:${g.mime};base64,${g.b64}` });
   } catch (e) {
     // A reference image missing or unreadable in the store happens before any
     // provider call: 503 no_reference, like a missing store.

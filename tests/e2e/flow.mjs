@@ -146,6 +146,8 @@ async function run() {
     // No sung words, so the note carries the feeling (a Loose painting still depicts nothing).
     assert.deepEqual(s.concept, { text: 'Rain on the window', theme: [], imagery: [], figurative: [], source: 'note' }, 'the note is the subject');
     assert.ok(!s.soundOnly, 'not sound-only when there is a note');
+    // How it was sung, measured in the browser, for the art direction of every tier.
+    assert.ok(s.performance?.version === 2 && s.performance.passages.length > 0 && typeof s.performance.global.pitchRangeSt === 'number', 'performance measured: ' + JSON.stringify(s.performance));
   }
   await page.fill('.caption-input', 'Rain on the window, again');
 
