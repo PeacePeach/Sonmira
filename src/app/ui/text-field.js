@@ -1,6 +1,6 @@
 // The writing fields shared by Sing (after the painting) and the detail page:
 // the title, an underline-only line held to TITLE_MAX characters, and the
-// optional journal, an underline-only multi-line field that grows as it fills.
+// optional journal, a borderless multi-line field that grows as it fills.
 //
 // The title limit is enforced in script, not with maxlength: maxlength counts
 // UTF-16 units (an emoji counts twice) and Safari cuts Chinese IME text while

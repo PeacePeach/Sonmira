@@ -157,6 +157,8 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 
 /* ── sing ────────────────────────────────────────────────────────────────── */
 .sing { display: flex; flex-direction: column; padding: var(--top) 0 var(--bottom); overflow-y: auto; }
+/* every creation screen: the same hairline under the header as the diary's */
+.sing .navrow { border-bottom: 1px solid var(--hairline); }
 .sing .date { font-size: 13px; color: var(--muted); letter-spacing: .04em; }
 .sing-canvas { padding: 28px 24px 0; flex-shrink: 0; }
 .rec-track { height: 2px; background: var(--hairline); margin-top: 18px; border-radius: 1px; overflow: hidden; }
@@ -222,7 +224,7 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .sing-canvas.expanded { padding: 22px 18px 0; }
 .sing-canvas.expanded .painting { box-shadow: var(--shadow-card-lg); }
 .sing-canvas .canvas-side { display: none; }
-.sing-canvas.compact { display: flex; align-items: center; gap: 18px; padding: 18px 24px 0; }
+.sing-canvas.compact { display: flex; align-items: center; gap: 20px; padding: 20px 24px; border-bottom: 1px solid var(--hairline); }
 .sing-canvas.compact .painting { width: 112px; flex-shrink: 0; cursor: pointer; }
 .sing-canvas.compact .canvas-side { display: block; flex: 1; min-width: 0; animation: stepIn .36s ease-out .12s both; }
 .sing-canvas .painting .art { transition: opacity 1.6s ease-in-out, object-position .56s cubic-bezier(.2, .7, .2, 1); }
@@ -231,15 +233,14 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 @keyframes stepIn { from { opacity: 0; transform: translateY(8px); } }
 @media (prefers-reduced-motion: reduce) { .step-in, .sing-canvas.compact .canvas-side { animation: none; } .sing-canvas .painting .art { transition: opacity .8s ease-out; } }
 /* the journal step gives the writing the room */
-.phase.writing { padding-top: 22px; }
+.phase.writing { padding-top: 34px; }
 .writing-fields .caption-input { margin-top: 0; }
 /* title: the caption input with a quiet character count while it's edited */
 .title-field { position: relative; }
 .char-count { height: 0; overflow: visible; text-align: right; font-size: 12px; line-height: 1; padding-top: 6px; color: var(--muted); opacity: 0; transition: opacity .2s; pointer-events: none; }
 .title-field:focus-within .char-count { opacity: 1; }
 /* journal: optional, several paragraphs, the same underline as the title */
-.journal-input { display: block; width: 100%; margin-top: 26px; min-height: 120px; resize: none; overflow: hidden; border: 0; border-bottom: 1px solid var(--underline); border-radius: 0; background: transparent; font-family: var(--sans); font-size: 16px; line-height: 1.55; color: var(--ink); padding: 8px 0 12px; outline: none; -webkit-appearance: none; scroll-margin-bottom: 24px; }
-.journal-input:focus { border-bottom-color: var(--secondary); }
+.journal-input { display: block; width: 100%; margin-top: 30px; min-height: 120px; resize: none; overflow: hidden; border: 0; border-radius: 0; background: transparent; font-family: var(--sans); font-size: 16px; line-height: 1.55; color: var(--ink); padding: 8px 0 12px; outline: none; -webkit-appearance: none; scroll-margin-bottom: 24px; }
 .journal-input::placeholder { color: var(--placeholder); opacity: 1; }
 .caption-input { scroll-margin-bottom: 24px; }
 .soft-warning { font-family: var(--serif); font-weight: 600; font-style: italic; font-size: 17px; color: var(--secondary); line-height: 1.35; margin-top: 4px; }
@@ -251,7 +252,7 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .play-btn { width: 48px; height: 48px; border-radius: 24px; border: 1px solid var(--ink); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .play-btn[disabled] { border-color: var(--disabled); opacity: .6; cursor: default; }
 .play-btn [data-icon=play] { margin-left: 2px; } /* optical centre of the triangle */
-.player .track { height: 2px; background: var(--track); border-radius: 1px; overflow: hidden; }
+.player .track { height: 4px; background: var(--track); border-radius: 2px; overflow: hidden; } /* thicker than the hairlines, so it reads as a control */
 .player .fill { height: 100%; width: 0; background: var(--ink); }
 /* the time row's box hugs its digits (line-height 1, same 8px gap to the
    numerals as before), so the button centres on the track and the times
