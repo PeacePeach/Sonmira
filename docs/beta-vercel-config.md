@@ -37,6 +37,8 @@ Kill switch, no deploy needed: set `SONMIRA_DAILY_CAP_USD` to `0` (every paid re
 
 The fake provider is on only where `SONMIRA_FAKE_PROVIDER=1` is set, and never in Production. To keep a Preview usable for testing at no cost, add `SONMIRA_FAKE_PROVIDER=1` to the Preview environment (it can be limited to one branch). It then uses the invitation code `SONMIRA-PREVIEW`, a fixed token secret and an in-memory store, and paints with the offline renderer.
 
+A Preview may share Production's Redis: every Preview keeps its keys under `sonmira:preview:` (its own day's spend and cap, rate limits, invitation seats, results, billing and accounts), so it never touches Production's `sonmira:` keys. All Previews share that one Preview cap. `GET /api/session` on a Preview reports whether paid work is set up (store, namespace, token secret, number of codes, daily cap, fake provider), without any value and without a paid call.
+
 A Preview without that switch uses the real provider behind the full guard. Without its own secret, codes and shared store, it refuses paid requests (`503 not_configured`). `SONMIRA_PROTECT=off` is ignored on every Vercel deployment.
 
 ## 5. Beta setup task: transcription check (Engine)

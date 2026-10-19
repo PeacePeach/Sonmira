@@ -24,8 +24,9 @@
 // invitation codes the guard refuses paid work instead of running open.
 
 import { protectConfig, normalizeInvite, MICRO } from './config.js';
-import { kvFromEnv, saveLarge, loadLarge } from './kv.js';
+import { kvFromEnv, kvNamespace, saveLarge, loadLarge } from './kv.js';
 import { signToken, verifyToken, inviteId, INSTALL_ID } from './token.js';
+import { fakeProviderOn } from '../dev/mode.js';
 
 export { protectConfig } from './config.js';
 export { memoryKV, redisKV, upstashExec } from './kv.js';
@@ -242,6 +243,22 @@ export function protect(endpoint, handler, deps = {}) {
   };
 }
 
+// Readiness of the guard, no values: paid work needs a store, a token secret
+// and at least one invitation code.
+export function guardStatus(env, cfg = protectConfig(env), kv = kvFromEnv(env)) {
+  return {
+    guard: {
+      ready: Boolean(kv && cfg.secret && cfg.invites.length),
+      store: kv?.kind ?? 'none',
+      namespace: kv?.kind === 'redis' ? `sonmira:${kvNamespace(env)}` : null,
+      tokenSecret: Boolean(env.SONMIRA_TOKEN_SECRET),
+      inviteCodes: cfg.invites.length,
+      dailyCapUsd: cfg.capMicros / MICRO,
+      fakeProvider: fakeProviderOn(env),
+    },
+  };
+}
+
 // POST /api/session { invite, installId } → { ok, token }
 //                   { accountToken, installId } → { ok, token }
 // One invitation code admits at most INSTALLS_PER_INVITE installs; the same
@@ -260,7 +277,9 @@ export function createSessionHandler(deps = {}) {
     // Han's PR #27 preview: automatic admission, with the full spend guard.
     // The deployment environment and exact branch are server-owned.
     const autoAccess = env.VERCEL_ENV === 'preview' && env.VERCEL_GIT_COMMIT_REF === 'claude/resolved-scene-palette-rules-i2ko7r';
-    if (req.method === 'GET') return res.status(200).json({ ok: true, autoAccess });
+    // Outside Production, GET also says whether paid work is set up: no
+    // values, no paid call. The free check for a Preview.
+    if (req.method === 'GET') return res.status(200).json({ ok: true, autoAccess, ...(env.VERCEL_ENV === 'production' ? {} : guardStatus(env, cfg, kv)) });
     if (req.method !== 'POST') return deny(405, 'method', 'POST only');
     if (!kv || !cfg.secret || !cfg.invites.length) return deny(503, 'not_configured', 'Invitations aren’t set up on this server yet.');
     if (Number(header(req, 'content-length') || 0) > cfg.maxBody.session) return deny(413, 'too_large', 'Request too large.');

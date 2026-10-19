@@ -107,6 +107,12 @@ export function memoryKV({ now = Date.now } = {}) {
   };
 }
 
+// Preview deployments keep their own keys in the shared store: their own
+// day's spend and cap, rate limits, invitation seats and results, so a
+// Preview can never use up or read Production's. Production's keys are
+// unchanged.
+export const kvNamespace = (env = process.env) => (env.VERCEL_ENV === 'preview' ? 'preview:' : '');
+
 let shared = null;
 // Upstash / Vercel KV when configured. Off Vercel, one in-memory store per
 // process. On Vercel without KV: null, and the guard refuses paid work,
@@ -114,7 +120,7 @@ let shared = null;
 export function kvFromEnv(env = process.env, { fetchImpl = fetch } = {}) {
   const url = env.KV_REST_API_URL || env.UPSTASH_REDIS_REST_URL;
   const token = env.KV_REST_API_TOKEN || env.UPSTASH_REDIS_REST_TOKEN;
-  if (url && token) return redisKV(upstashExec({ url, token, fetchImpl }));
+  if (url && token) return redisKV(upstashExec({ url, token, fetchImpl }), { prefix: `sonmira:${kvNamespace(env)}` });
   if (env.VERCEL && !fakeProviderOn(env)) return null;
   shared ??= memoryKV();
   return shared;

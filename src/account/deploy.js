@@ -22,6 +22,7 @@ import { createAccounts, AccountError } from './accounts.js';
 import { createAppleKeys, verifyIdentityToken, verifyAppleNotification, createRevoker } from './apple.js';
 import { createMemoryStore, createUpstashStore } from './stores.js';
 import { createAccountHandlers } from './http.js';
+import { kvNamespace } from '../../server/protect/kv.js';
 
 // Requests per address per minute. apple and delete each call Apple, so they
 // stay tight; Apple's notifications get room for bursts (Apple retries a 429).
@@ -48,7 +49,7 @@ export function buildFromEnv(env = process.env, { fetchImpl = fetch, ledger, sea
   if (env.VERCEL_ENV === 'production' && !revokerConfigured) return null;
 
   const getKey = createAppleKeys({ fetchImpl });
-  const store = kv ? createUpstashStore({ url: env.KV_REST_API_URL, token: env.KV_REST_API_TOKEN, fetchImpl }) : createMemoryStore();
+  const store = kv ? createUpstashStore({ url: env.KV_REST_API_URL, token: env.KV_REST_API_TOKEN, fetchImpl, prefix: kvNamespace(env) }) : createMemoryStore();
   const accounts = createAccounts({
     store,
     secret,

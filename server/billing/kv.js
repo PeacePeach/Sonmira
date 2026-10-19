@@ -6,6 +6,8 @@
 //   get(key) / set(key, value, ttlSec) / claim(key, value, ttlSec) / del(...keys)
 //   hit(key, ttlSec) → the count in this window
 
+import { kvNamespace } from '../protect/kv.js';
+
 export function memoryKV({ now = Date.now } = {}) {
   const m = new Map();
   const live = (k) => { const e = m.get(k); if (e && e.exp && e.exp <= now()) { m.delete(k); return null; } return e ?? null; };
@@ -50,7 +52,7 @@ let shared = null;
 export function kvFromEnv(env = process.env, { fetchImpl = fetch } = {}) {
   const url = env.KV_REST_API_URL || env.UPSTASH_REDIS_REST_URL;
   const token = env.KV_REST_API_TOKEN || env.UPSTASH_REDIS_REST_TOKEN;
-  if (url && token) return upstashKV({ url, token, fetchImpl });
+  if (url && token) return upstashKV({ url, token, fetchImpl, prefix: `sonmira:${kvNamespace(env)}` });
   if (env.VERCEL) return null;
   shared ??= memoryKV();
   return shared;
