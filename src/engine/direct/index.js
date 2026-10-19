@@ -255,16 +255,18 @@ export const FIGURE_RULE = 'Small, distant and faceless, painted in a few stroke
 // The content rule when the scene names a figure (Resolved only).
 export const CONTENT_RULE_FIGURE = 'Content: paint only what the subject above names, in its own setting, and add no objects, scenery or story that it does not ask for. People only as the scene above names them: small, distant and faceless, a few painterly strokes in the reference\'s own marks; never a portrait, a visible face, a large or foreground figure, or any people the scene does not name. Carry the rest of the story through place, light, weather and the traces left behind.';
 export const AVOID_PEOPLE_FIGURE = 'portraits, visible faces, close-up, large or foreground figures, and any people the scene does not name';
-// An intimate near view (Han, 19 Oct, direction B): part of a person, seen
-// near, turned away or cropped; still never a portrait or a shown face.
-export const FIGURE_RULE_NEAR = 'Seen near and only in part (hands, shoulders, a back, an arm, an upper body or a silhouette), turned away or cropped so that no features show, painted in the reference\'s own marks; never a portrait.';
-export const CONTENT_RULE_FIGURE_NEAR = 'Content: paint only what the subject above names, in its own setting, and add no objects, scenery or story that it does not ask for. People only as the scene above names them: seen near and only in part, turned away or cropped so that no features show; never a portrait, a visible face, a face looking out, or any people the scene does not name. Carry the rest of the story through gesture, the things held or touched, place and light.';
-export const AVOID_PEOPLE_FIGURE_NEAR = 'portraits, visible faces, eyes or facial features, and any people the scene does not name';
-// A figure that would be a portrait or a main character is not painted.
-export const PROMINENT = /\b(?:portraits?|faces?|close-?ups?|foreground|large|giant|huge|eyes|expressions?|crowds?)\b/i;
+// A near view (Han's review of PR #29, 19 Oct): a Resolved direction seen
+// close, or a person-led one at middle distance, may be an expressive
+// portrait: face, eyes and tears, when the words warrant it. Never the
+// default, never people the words do not justify; other tiers unchanged.
+export const FIGURE_RULE_NEAR = 'Seen near, as the scene gives it: the face, eyes, tears and expression may show when the scene names them, the emotion legible, painted in the reference\'s own marks and finish; a painted portrait, never a photographic or glamour one.';
+export const CONTENT_RULE_FIGURE_NEAR = 'Content: paint only what the subject above names, in its own setting, and add no objects, scenery or story that it does not ask for. People only as the scene above names them, seen near: their face and its emotion may show when the scene names them; no other people, and nothing posed, photographic or glamorous. Carry the rest of the story through gesture, the things held or touched, place and light.';
+export const AVOID_PEOPLE_FIGURE_NEAR = 'a posed, photographic or glamour portrait, and any people the scene does not name';
+// Many people (Han's review): a crowd when the words call for one.
+export const FIGURE_RULE_MANY = 'Many people, painted as massed, gestural strokes in the reference\'s own marks, part of the scene rather than portraits of anyone.';
+// A distant figure that would be a portrait or a main character is not painted.
+export const PROMINENT = /\b(?:portraits?|faces?|close-?ups?|foreground|large|giant|huge|eyes|expressions?)\b/i;
 const FACE = /\b(?:portraits?|faces?|close-?ups?)\b/i;
-// A near view (direction B) is close by design; only a face or portrait is not painted.
-const NEAR_PROMINENT = /\b(?:portraits?|faces?|eyes|expressions?|crowds?)\b/i;
 const withFigure = (list, figure, near = false) => (figure ? list.map((x) => (x === AVOID_PEOPLE ? (near ? AVOID_PEOPLE_FIGURE_NEAR : AVOID_PEOPLE_FIGURE) : x)) : list);
 const contentRule = (n) => (n.figure ? (n.near ? CONTENT_RULE_FIGURE_NEAR : CONTENT_RULE_FIGURE) : CONTENT_RULE);
 const sentence = (s) => String(s).trim().replace(/[.\s]+$/, '');
@@ -275,19 +277,21 @@ export function narrativeFor(tier, c, { performance = false, look = null } = {})
   const chosen = look?.source === 'words' ? look : null;
   const scene = chosen ? { ...c?.scene, moment: chosen.image, figure: chosen.figures !== 'none' ? chosen.figure : '' } : c?.scene;
   if (!scene?.moment) return { applied: false, reason: 'no scene read from the words', line: null, figure: null };
-  const near = Boolean(chosen && chosen.distance === 'close');
+  const near = Boolean(chosen && chosen.figures !== 'none' && (chosen.distance === 'close' || (chosen.distance === 'medium' && chosen.lead === 'person')));
+  const many = Boolean(chosen && chosen.figures === 'many');
   const asked = scene.figure && String(scene.figure).trim();
-  const figure = asked && !(near ? NEAR_PROMINENT : PROMINENT).test(asked) ? sentence(asked) : null;
-  if (PEOPLE.test(scene.moment) && (!figure || FACE.test(scene.moment))) return { applied: false, reason: figure ? 'the scene shows a face or portrait' : asked ? 'the scene\'s figure is too prominent' : 'the scene names people', line: null, figure: null };
+  const figure = asked && (near || !PROMINENT.test(asked)) ? sentence(asked) : null;
+  const faceless = (v) => near || !FACE.test(v);
+  if (PEOPLE.test(scene.moment) && (!figure || !faceless(scene.moment))) return { applied: false, reason: figure ? 'the scene shows a face or portrait' : asked ? 'the scene\'s figure is too prominent' : 'the scene names people', line: null, figure: null };
   const parts = { situation: scene.situation, relationship: scene.relationship, tension: scene.tension };
-  const ok = (v) => v && !FACE.test(v) && (figure || !PEOPLE.test(v));
+  const ok = (v) => v && faceless(v) && (figure || !PEOPLE.test(v));
   const kept = Object.fromEntries(Object.entries(parts).filter(([, v]) => ok(v)));
   const line = [
     kept.situation ? `The moment from ${wordsOf(c)}: ${sentence(kept.situation)}.` : `The moment from ${wordsOf(c)}.`,
     kept.relationship ? `Relationship: ${sentence(kept.relationship)}.` : null,
     kept.tension ? `Tension: ${sentence(kept.tension)}.` : null,
     `Paint this scene: ${sentence(scene.moment)}.`,
-    figure ? `Figure: ${figure}. ${near ? FIGURE_RULE_NEAR : FIGURE_RULE}` : null,
+    figure ? `Figure: ${figure}. ${near ? FIGURE_RULE_NEAR : many ? FIGURE_RULE_MANY : FIGURE_RULE}` : null,
     NARRATIVE_RULE,
     performance ? NARRATIVE_STAGING : null,
   ].filter(Boolean).join(' ');
@@ -513,7 +517,7 @@ export function direct(spec) {
     resolvedLook: !look ? { applied: false, reason: `tier ${tier}` }
       : { applied: true, source: look.source, signature: signatureOf(look), rank: look.rank, reason: look.reason, recent: recentLooks.length, ...(look.considered ? { considered: look.considered } : {}), ...(unusable?.length ? { unusable } : {}) },
     // Whether the Resolved painting was given a story moment from the words.
-    narrative: { applied: narrative.applied, reason: narrative.reason, figure: narrative.figure, ...(narrative.applied ? { scene: narrative.scene, dropped: narrative.dropped } : {}) },
+    narrative: { applied: narrative.applied, reason: narrative.reason, figure: narrative.figure, ...(narrative.near ? { near: true } : {}), ...(narrative.applied ? { scene: narrative.scene, dropped: narrative.dropped } : {}) },
     libraryVersion: library.version, seed: spec.seed >>> 0,
     concept: concept ?? null,
     composition: perf ? null : plan,

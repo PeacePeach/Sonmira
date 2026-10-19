@@ -91,8 +91,8 @@ Meaning (only from the words; never invent meaning that is not there; if not lex
   - event: the emotional event in these words, in one short sentence: what happens to the feeling (a bond breaking, waiting that never ends, a choice not made), not a scene.
   - core: the symbolic core: the one image, object, gesture or relation that most concentrates that event.
   - options: ${MAX_OPTIONS - 1} or ${MAX_OPTIONS} different ways to paint this song as a Resolved picture, strongest first. Before writing them ask: what is the emotional event here, what is the strongest image for it, and if I do not draw the most literal scene, what image would best embody the feeling? The most literal scene is allowed but must compete with the others. Draw on these directions, which are options, never templates; use at least three different directions, never several of the same kind, and invent another (F) when it is stronger:
-    - A, expansive scenic narrative: a person, several people or no people in a broader environment (a road, sea, field, city edge, mountain, shore, or an interior opening into distance), wide, medium or panoramic. A lone figure standing in a vast landscape, one small figure in the middle distance, a horizon-led view or a figure facing away into scenery is one case of A, never the default: offer it only when it is truly the strongest image for these words, and never first just because it is easy.
-    - B, intimate near view: a person's upper body, gesture, silhouette or posture, hands, shoulders, a back turned, an object held close, or a close detail with strong emotional charge; more specific and more intimate than a distant scene. The face is always turned away or out of the picture.
+    - A, expansive scenic narrative: no people, one person, several or many people in a broader environment (a road, sea, field, city edge, mountain, shore, or an interior opening into distance), wide, medium or panoramic. A lone figure standing in a vast landscape, one small figure in the middle distance, a horizon-led view or a figure facing away into scenery is one case of A, never the default: offer it only when it is truly the strongest image for these words, and never first just because it is easy.
+    - B, intimate near view: a person's upper body, gesture, silhouette or posture, hands, shoulders, a back turned, an object held close, or a close detail with strong emotional charge; more specific and more intimate than a distant scene. In a Resolved near view the face may be shown, with its eyes, tears and expression, when the words call for an expressive close or medium portrait (someone crying, holding back tears, about to speak); a portrait is never the default, and never a person the words do not justify.
     - C, symbolic image: an image that embodies the emotional event instead of depicting the words literally (a heart-like form splitting, threads breaking, a cracked surface, a fading light, two objects drifting apart, an opening of colour or light), clearly tied to the words.
     - D, trace or aftermath: what the event leaves behind (footprints that stop or part, an empty seat, a torn letter, a cracked mirror, abandoned things, marks of rupture, distance or departure), telling the story through what remains.
     - E, interior or spatial scene: a room, corridor, window, station, doorway, street corner or crossroads whose space carries the hesitation, separation, memory, longing, rupture or uncertainty; useful for a moment of decision or standoff.
@@ -100,10 +100,11 @@ Meaning (only from the words; never invent meaning that is not there; if not lex
     These examples show kinds of image, not pictures to reuse: build every option from this song's own words and situation. For each option:
     - direction: A, B, C, D, E or F.
     - image: one concrete sentence: what is seen, where, in what light, and how it shows the emotional event. Never generic scenery or a mood wash.
-    - distance: wide, medium or close. angle: eye_level, low, high or birds_eye. figures: none, one or several. space: interior or exterior. lead: what leads the image (person, object, landscape, symbol or space). Vary these between options: do not give every option the same distance, angle or kind of subject.
-    - figure: empty unless figures is not none; then a short phrase for the person or people and what they do, seen small and far (A, E) or near and only in part (B), never a portrait, never a face shown.
+    - distance: wide, medium or close. angle: eye_level, low, high or birds_eye. figures: none, one, several or many. space: interior or exterior. lead: what leads the image (person, object, landscape, symbol or space). Vary these between options: do not give every option the same distance, angle or kind of subject.
+    - figure: empty unless figures is not none; then a short phrase for the person or people and what they do: one, several or many (a crowd only when the words call for one), seen far (A, E) or near (B), where a near view may show the face and its emotion when the words warrant it.
+    - necessary: true only when the words genuinely demand this exact image and no other would do (rare); otherwise false.
     The moment above is the first option's image.
-  - figure: usually an empty string. Only when a person's presence is what the words' story turns on, and traces alone would not tell it, one short phrase for a few small, distant, faceless figures (at most a few) and what they do in this scene. Never a portrait, a face, a close-up or a large or foreground figure; never added just to fill the scene. When set, the moment may include that figure, small and distant.
+  - figure: usually an empty string. Only when a person's presence is what the words' story turns on, and traces alone would not tell it, one short phrase for small, distant, faceless figures (one, a few or many, as the words call for) and what they do in this scene. Never a portrait, a face, a close-up or a large or foreground figure; never added just to fill the scene. When set, the moment may include that figure, small and distant.
 - concepts, in English, one sentence each, for a watercolor whose style comes from a separate reference image (so say nothing about colour palette or technique):
   - loose: no depicted objects at all; only movement, weight, rhythm, temperature and density of marks that carry the feeling.
   - gathered: the one or two strongest visual motifs from the words, named plainly so they can be painted recognisably (a kite, clouds over the sea, the moon, rain on a street), loosely and partly dissolved but identifiable; the rest left as atmosphere, mood first, no storyline. Choose from what the words name; when they name feelings rather than things, invent one emotionally grounded symbolic object or quiet moment that holds this song's feeling, specific to these words and never a stock motif reused from song to song.
@@ -118,11 +119,11 @@ export const SCENE_KEYS = ['situation', 'relationship', 'tension', 'moment', 'fi
 export const SCENE_EXTRA = ['event', 'core'];
 const OPTION = {
   type: 'object', additionalProperties: false,
-  required: ['direction', 'image', 'distance', 'angle', 'figures', 'space', 'lead', 'figure'],
+  required: ['direction', 'image', 'distance', 'angle', 'figures', 'space', 'lead', 'figure', 'necessary'],
   properties: {
     direction: { type: 'string', enum: DIRECTION_KEYS }, image: { type: 'string' },
     distance: { type: 'string', enum: DISTANCES }, angle: { type: 'string', enum: ANGLES }, figures: { type: 'string', enum: FIGURES },
-    space: { type: 'string', enum: SPACES }, lead: { type: 'string', enum: LEADS }, figure: { type: 'string' },
+    space: { type: 'string', enum: SPACES }, lead: { type: 'string', enum: LEADS }, figure: { type: 'string' }, necessary: { type: 'boolean' },
   },
 };
 

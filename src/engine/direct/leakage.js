@@ -106,7 +106,8 @@ export function checkPrompt(direction, { library = LIBRARY } = {}) {
   // Resolved with a figure the scene names (direct: narrativeFor): small,
   // distant, faceless figures are allowed; a face or portrait never is.
   if (direction.narrative?.figure) {
-    const faces = [...affirmed(told).matchAll(/\b(?:portraits?|faces?|close-?ups?)\b/gi)].map((m) => m[0]);
+    // A Resolved near view may show a face (Han's review of PR #29).
+    const faces = direction.narrative.near ? [] : [...affirmed(told).matchAll(/\b(?:portraits?|faces?|close-?ups?)\b/gi)].map((m) => m[0]);
     return { ...r, people: faces, figures: [...new Set([...r.people, ...words.people])], verdict: faces.length || r.leaks.length ? 'leak' : r.unrequested.length ? 'review' : 'ok' };
   }
   return { ...r, people: [...r.people, ...words.people], verdict: r.verdict === 'ok' && words.people.length ? 'leak' : r.verdict };

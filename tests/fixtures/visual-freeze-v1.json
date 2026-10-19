@@ -1,5 +1,5 @@
 {
- "approved": "Han, 16 Oct 2026: Validation 4 approved as the V1 three-tier artwork quality; Han, 18 Oct 2026: Phase 2 Loose (performance-driven) approved as the Loose baseline; Han, 19 Oct 2026: Resolved palette diversity and scene rules, Gathered mood-forward (PR #27); Han, 19 Oct 2026: Gathered lyric grounding, a recognisable motif from reliable words (PR #28)",
+ "approved": "Han, 16 Oct 2026: Validation 4 approved as the V1 three-tier artwork quality; Han, 18 Oct 2026: Phase 2 Loose (performance-driven) approved as the Loose baseline; Han, 19 Oct 2026: Resolved palette diversity and scene rules, Gathered mood-forward (PR #27); Han, 19 Oct 2026: Gathered lyric grounding, a recognisable motif from reliable words (PR #28); 19 Oct 2026: Resolved visual directions (PR #29), refreshed at review request",
  "library": "159be0e27f364493",
  "image": {
   "model": "gpt-image-2",
@@ -15,20 +15,20 @@
   "gathered/G2-splash-wash/gathered_02": "22d5e01538eebefc",
   "gathered/G3-luminous-contrast/gathered_03": "52fa9d2c5b8ee24e",
   "gathered/G3-luminous-contrast/gathered_04": "067aa350c19cd5df",
-  "resolved/R1-graphic-snow/resolved_01": "9ace4ea18a9fdfcf",
-  "resolved/R1-graphic-snow/resolved_14": "ab189f145f891bb5",
-  "resolved/R2-aerial-shallows/resolved_08": "9518c36efa96aff9",
-  "resolved/R2-aerial-shallows/resolved_12": "dc17be434541cff1",
-  "resolved/R3-vivid-wash-focal/resolved_02": "3c5f3bf6b693533b",
-  "resolved/R3-vivid-wash-focal/resolved_03": "48230a2c422f4a55",
-  "resolved/R4-lyrical-everyday/resolved_05": "537e64df511a03e8",
-  "resolved/R4-lyrical-everyday/resolved_06": "684cec94c56d2998",
-  "resolved/R4-lyrical-everyday/resolved_07": "1fe32d66c8c005d9",
-  "resolved/R4-lyrical-everyday/resolved_13": "691bf6df11d98c81",
-  "resolved/R5-light-as-subject/resolved_04": "0c388747d40cf875",
-  "resolved/R5-light-as-subject/resolved_09": "42a113bcf910def9",
-  "resolved/R5-light-as-subject/resolved_10": "3e67bd0a124f4ba8",
-  "resolved/R6-misty-monochrome/resolved_11": "9bb470d2d56990df"
+  "resolved/R1-graphic-snow/resolved_01": "24a2a472ef9a2eee",
+  "resolved/R1-graphic-snow/resolved_14": "71c2b270814f8eb6",
+  "resolved/R2-aerial-shallows/resolved_08": "11e618dba45d2f18",
+  "resolved/R2-aerial-shallows/resolved_12": "17dd070b93d13701",
+  "resolved/R3-vivid-wash-focal/resolved_02": "69580c04927769e5",
+  "resolved/R3-vivid-wash-focal/resolved_03": "2b5572278dff2b7f",
+  "resolved/R4-lyrical-everyday/resolved_05": "fab2bcb104b8c8df",
+  "resolved/R4-lyrical-everyday/resolved_06": "5d41aa0d1c7ca756",
+  "resolved/R4-lyrical-everyday/resolved_07": "4fb67759b7a62285",
+  "resolved/R4-lyrical-everyday/resolved_13": "f1cfb62920d61991",
+  "resolved/R5-light-as-subject/resolved_04": "7ede8989f85d7b50",
+  "resolved/R5-light-as-subject/resolved_09": "3d68a4eb2ea6d892",
+  "resolved/R5-light-as-subject/resolved_10": "ec3e654fb0805219",
+  "resolved/R6-misty-monochrome/resolved_11": "e865362a47a9c731"
  },
  "looseApproved": {
   "validation-4-S1-loose": "b311f78d7895a044",
@@ -37,11 +37,11 @@
  },
  "sceneApproved": {
   "validation-4-S1-gathered": "d2a67410afcda102",
-  "validation-4-S1-resolved": "5f5794db9a8d7b68",
+  "validation-4-S1-resolved": "6cef6706155728d2",
   "validation-4-S3-gathered": "f6f84e2ffc132021",
-  "validation-4-S3-resolved": "06b8b676468ca666",
-  "validation-4-S2-resolved": "bb0fe67d0a60a059",
-  "validation-4-S4-resolved": "a2ae850c27b5908b",
+  "validation-4-S3-resolved": "896ea228f394311b",
+  "validation-4-S2-resolved": "b515e449c2e37027",
+  "validation-4-S4-resolved": "eae30d21d9892372",
   "validation-4-S5-gathered": "bcd8a4fa4ef038a4"
  }
 }

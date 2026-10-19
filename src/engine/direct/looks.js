@@ -29,7 +29,7 @@ export const DIRECTIONS = {
 export const DIRECTION_KEYS = Object.keys(DIRECTIONS);
 export const DISTANCES = ['wide', 'medium', 'close'];
 export const ANGLES = ['eye_level', 'low', 'high', 'birds_eye'];
-export const FIGURES = ['none', 'one', 'several'];
+export const FIGURES = ['none', 'one', 'several', 'many'];
 export const SPACES = ['interior', 'exterior'];
 export const LEADS = ['person', 'object', 'landscape', 'symbol', 'space'];
 export const LOOK_KEYS = ['direction', 'distance', 'angle', 'figures', 'space', 'lead'];
@@ -37,7 +37,7 @@ export const RECENT_LOOKS = 5;
 export const MAX_OPTIONS = 4;
 
 const ANGLE_TEXT = { eye_level: 'at eye level', low: 'from a low angle', high: 'from a high angle', birds_eye: 'from directly above' };
-const FIGURE_TEXT = { none: 'no figure', one: 'one figure', several: 'a few figures' };
+const FIGURE_TEXT = { none: 'no figure', one: 'one figure', several: 'several figures', many: 'many people' };
 const LEAD_TEXT = { person: 'person-led', object: 'object-led', landscape: 'landscape-led', symbol: 'symbol-led', space: 'led by the space itself' };
 
 const short = (s, n) => String(s ?? '').replace(/[\u0000-\u001f"`]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
@@ -57,6 +57,8 @@ export function cleanOption(o) {
     distance: pick(o.distance, DISTANCES, 'medium'), angle: pick(o.angle, ANGLES, 'eye_level'),
     figures: pick(o.figures, FIGURES, 'none'), space: pick(o.space, SPACES, 'exterior'), lead: pick(o.lead, LEADS, 'object'),
     figure: o.figures && o.figures !== 'none' ? nearView(short(o.figure, 120)) : '',
+    // The words genuinely demand this image, even if a recent painting was like it.
+    necessary: o.necessary === true,
   };
 }
 export const cleanOptions = (xs) => (Array.isArray(xs) ? xs : []).map(cleanOption).filter(Boolean).slice(0, MAX_OPTIONS);
@@ -74,7 +76,7 @@ export const isLoneFigureLandscape = (l) => l?.figures === 'one' && l?.space ===
 // How much of a look the recent paintings already used: 0 (nothing in
 // common) up to about 3.5 (the same look five times running). The latest
 // painting counts most.
-const WEIGHTS = { direction: 3, distance: 2, angle: 1, figures: 1, space: 1, lead: 2 };
+const WEIGHTS = { direction: 3, distance: 2, angle: 2, figures: 2, space: 1, lead: 2 };
 const TOTAL = Object.values(WEIGHTS).reduce((a, b) => a + b, 0);
 export function repetition(look, recent) {
   const r = recent.slice(-RECENT_LOOKS).reverse();
@@ -86,6 +88,16 @@ export function repetition(look, recent) {
   if (isLoneFigureLandscape(look) && r.some(isLoneFigureLandscape)) sum += 1.5;
   return sum;
 }
+
+// A near-duplicate of a recent painting: the same kind of image seen the
+// same way (at least 80% of the weighted look in common: the same
+// direction, with at most one other part of the look different). Han's review (19 Oct): when a
+// comparably strong option exists, a near-duplicate of any of the last five
+// is not chosen at all; a soft cost alone could still let it win.
+export const NEAR_DUPLICATE = 0.8;
+export const isNearDuplicate = (look, e) => LOOK_KEYS.reduce((s, k) => s + (look[k] && look[k] === e[k] ? WEIGHTS[k] : 0), 0) / TOTAL >= NEAR_DUPLICATE;
+// Comparably strong: within the reading's top three for this song.
+export const COMPARABLE_RANKS = 3;
 
 // Strength first: each step down the reading's ranking costs as much as
 // sharing two thirds of a look with the last painting, so the strongest
@@ -110,13 +122,25 @@ export function chooseLook({ options = [], recent = [], seed = 0, exclude = [] }
   const hist = cleanRecent(recent);
   const pool = cleanOptions(options);
   if (pool.some((_, i) => !exclude.includes(i))) {
-    const scored = pool.map((o, rank) => ({ o, rank, repeat: repetition(o, hist) })).filter((x) => !exclude.includes(x.rank))
+    const scored = pool.map((o, rank) => ({ o, rank, repeat: repetition(o, hist), duplicate: hist.some((e) => isNearDuplicate(o, e)) })).filter((x) => !exclude.includes(x.rank))
       .map((x) => ({ ...x, cost: x.rank * RANK_COST + x.repeat * REPEAT_COST }));
-    const best = scored.reduce((a, b) => (b.cost < a.cost - 1e-9 ? b : a));
+    // The rule first: no near-duplicate of the last five while a comparably
+    // strong option is new (unless the words demand that very image); then
+    // the softer cost among what is left.
+    const allowed = scored.filter((x) => !x.duplicate || (x.o.necessary && x.rank === 0));
+    const fresh = allowed.filter((x) => x.rank < COMPARABLE_RANKS);
+    const among = fresh.length ? fresh : scored;
+    const best = among.reduce((a, b) => (b.cost < a.cost - 1e-9 ? b : a));
+    const stronger = scored.filter((x) => x.rank < best.rank);
     return {
       source: 'words', ...best.o, rank: best.rank, recent: hist.length,
-      reason: best.rank === 0 ? 'the strongest option for the words' : scored.every((x) => x.rank >= best.rank) ? `option ${best.rank + 1}: the stronger ones cannot be painted` : `option ${best.rank + 1}: the stronger ones repeat recent Resolved paintings`,
-      considered: scored.map((x) => ({ direction: x.o.direction, rank: x.rank, repeat: Math.round(x.repeat * 100) / 100 })),
+      reason: !fresh.length ? 'every comparable option repeats a recent Resolved painting: the least repetitive one'
+        : best.duplicate ? 'the words demand this image, though a recent painting was like it'
+          : best.rank === 0 ? 'the strongest option for the words'
+            : stronger.length && stronger.every((x) => x.duplicate) ? `option ${best.rank + 1}: the stronger ones nearly duplicate recent Resolved paintings`
+              : !stronger.length ? `option ${best.rank + 1}: the stronger ones cannot be painted`
+                : `option ${best.rank + 1}: the stronger ones repeat recent Resolved paintings`,
+      considered: scored.map((x) => ({ direction: x.o.direction, rank: x.rank, repeat: Math.round(x.repeat * 100) / 100, duplicate: x.duplicate })),
     };
   }
   const start = (seed >>> 0) % VIEWPOINTS.length;

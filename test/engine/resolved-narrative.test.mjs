@@ -191,7 +191,7 @@ test('the crossroads: a small figure looking back at the fork, small, distant an
 });
 
 test('a prominent figure or a face is never painted', () => {
-  for (const figure of ['a large figure in the foreground', 'a portrait of her face', 'a crowd at the fork', 'close-up of his eyes']) {
+  for (const figure of ['a large figure in the foreground', 'a portrait of her face', 'close-up of his eyes']) {
     const n = narrativeFor('resolved', { ...WITH, scene: { ...FIGURE_SCENE, figure } });
     assert.equal(n.figure, null, figure);
     assert.equal(n.applied, false, figure);
@@ -202,6 +202,8 @@ test('a prominent figure or a face is never painted', () => {
     assert.equal(traces.figure, null);
     assert.deepEqual(traces.dropped, ['figure']);
   }
+  // A crowd is allowed when the words call for one (Han's review of PR #29).
+  assert.equal(narrativeFor('resolved', { ...WITH, scene: { ...FIGURE_SCENE, figure: 'a crowd at the fork, small and distant' } }).figure, 'a crowd at the fork, small and distant');
   const face = narrativeFor('resolved', { ...WITH, scene: { ...FIGURE_SCENE, moment: 'A small figure at the fork, her face turned back.' } });
   assert.equal(face.applied, false);
   // A face named in the subject is caught by the prompt check even with a figure.

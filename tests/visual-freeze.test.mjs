@@ -29,6 +29,10 @@
 // grounding, PR #28): with reliable words it shows one or two recognisable
 // motifs from them. Only the Gathered prompts were refreshed; Loose and
 // Resolved are unchanged.
+// Resolved changed on 19 Oct (PR #29, refreshed at the owner's review
+// request): a visual direction chosen from several, varied across the last
+// five Resolved paintings. Only the Resolved prompts were refreshed; Loose
+// and Gathered are unchanged.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -115,7 +119,7 @@ function currentSnapshot() {
   }
   const c = openaiConfig({ OPENAI_API_KEY: 'x' });
   return {
-    approved: 'Han, 16 Oct 2026: Validation 4 approved as the V1 three-tier artwork quality; Han, 18 Oct 2026: Phase 2 Loose (performance-driven) approved as the Loose baseline; Han, 19 Oct 2026: Resolved palette diversity and scene rules, Gathered mood-forward (PR #27); Han, 19 Oct 2026: Gathered lyric grounding, a recognisable motif from reliable words (PR #28)',
+    approved: 'Han, 16 Oct 2026: Validation 4 approved as the V1 three-tier artwork quality; Han, 18 Oct 2026: Phase 2 Loose (performance-driven) approved as the Loose baseline; Han, 19 Oct 2026: Resolved palette diversity and scene rules, Gathered mood-forward (PR #27); Han, 19 Oct 2026: Gathered lyric grounding, a recognisable motif from reliable words (PR #28); 19 Oct 2026: Resolved visual directions (PR #29), refreshed at review request',
     library: sha(JSON.stringify(REFERENCE_LIBRARY)),
     image: { model: c.model, quality: c.quality, size: c.size },
     prompts,
