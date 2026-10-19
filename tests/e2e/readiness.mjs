@@ -18,6 +18,14 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 
+// After the painting: Next on the expanded artwork, the title (optional) in the journal step, then Save.
+const keepIt = async (page, title) => {
+  await page.click('[data-step=expanded] .pill');
+  await page.waitForSelector('[data-step=journal] .caption-input');
+  if (title) await page.fill('[data-step=journal] .caption-input', title);
+  await page.click('[data-step=journal] .pill');
+};
+
 const wav = fileURLToPath(new URL('./hum.wav', import.meta.url));
 const SHOTS = process.env.SHOTS;
 const CODE = 'BETA-TEST-01';
@@ -86,7 +94,6 @@ const A = await startServer(5191, { SONMIRA_FAKE_DELAY_MS: '2500', SONMIRA_LIMIT
 await step('invitation: a wrong code is refused, the right one paints; one paid image', async () => {
   const { ctx, page } = await fresh(A.base);
   await record(page);
-  await page.fill('.caption-input', 'Morning hum');
   await page.click('text=Create painting');
   await invite(page, 'WRONG-CODE-9');
   await page.waitForSelector('[data-sheet] .share-message');
@@ -100,7 +107,7 @@ await step('invitation: a wrong code is refused, the right one paints; one paid 
   assert.equal(d.length, 1);
   assert.equal(d[0].status, 'ready', 'the painting is a draft until Keep it');
   assert.equal((await entries(page)).length, 0, 'not in the diary before Keep it');
-  await page.click('text=Keep it');
+  await keepIt(page);
   await page.waitForSelector('[data-screen=diary] .entry');
   const e = await entries(page);
   assert.equal(e.length, 1);
@@ -130,7 +137,7 @@ await step('closed before Keep it: kept as a draft, reopened with no new generat
   await page.shot('draft-reopened');
   assert.equal(paidCalls(await guardLog(A.base), 'generate', await page.install()), before, 'no second generation');
   assert.equal(await page.evaluate(() => window.sonmira.billing.status().free), 2, 'counted once');
-  await page.click('text=Keep it');
+  await keepIt(page);
   await page.waitForSelector('[data-screen=diary] .entry');
   assert.equal(await page.$('.drafts-row'), null);
   await ctx.close();
@@ -163,10 +170,14 @@ await step('reload while painting: the recording is recovered and finished with 
 await step('reload after the painting arrived, before Keep it: reopened with no new generation, counted once', async () => {
   const { ctx, page } = await fresh(A.base);
   await record(page);
-  await page.fill('.caption-input', 'Kitchen song');
   await page.click('text=Create painting');
   await invite(page);
   await page.waitForSelector('[data-phase=result]', { timeout: 30000 });
+  // written after the painting, kept with the draft as it is typed
+  await page.click('[data-step=expanded] .pill');
+  await page.fill('[data-step=journal] .caption-input', 'Kitchen song');
+  await page.fill('[data-step=journal] .journal-input', 'Steam on the glass.');
+  await page.waitForTimeout(900);
   const free = await page.evaluate(() => window.sonmira.billing.status().free);
   await page.reload();
   await page.waitForSelector('.drafts-row');
@@ -175,12 +186,13 @@ await step('reload after the painting arrived, before Keep it: reopened with no 
   assert.equal(d[0].status, 'ready');
   assert.ok(d[0].hasAudio && d[0].hasPainting, 'recording and painting both survived');
   assert.equal((await entries(page)).length, 0);
-  assert.equal(await page.evaluate(async () => (await window.sonmira.drafts.list())[0].note), 'Kitchen song', 'the note too');
+  assert.equal(await page.evaluate(async () => (await window.sonmira.drafts.list())[0].note), 'Kitchen song', 'the title too');
+  assert.equal(await page.evaluate(async () => (await window.sonmira.drafts.list())[0].journal), 'Steam on the glass.', 'and the journal');
   await page.click('.drafts-row');
   await page.click('[data-draft] .draft-open');
   await page.waitForSelector('[data-phase=result]');
   assert.equal(await page.evaluate(() => window.sonmira.billing.status().free), free, 'not counted a second time');
-  await page.click('text=Keep it');
+  await keepIt(page);
   await page.waitForSelector('[data-screen=diary] .entry');
   assert.equal(paidCalls(await guardLog(A.base), 'generate', await page.install()), 1);
   assert.deepEqual(page.errors, []);
@@ -316,7 +328,7 @@ await step('rate limit: the third painting in an hour is refused calmly and the 
     await page.click('text=Create painting');
     if (i === 0) await invite(page);
     await page.waitForSelector('[data-phase=result]', { timeout: 30000 });
-    await page.click('text=Keep it');
+    await keepIt(page);
     await page.waitForSelector('[data-screen=diary] .entry');
   }
   await record(page);
@@ -401,7 +413,7 @@ await step('quota: three free paintings are counted by the server; a reset walle
     await page.click('text=Create painting');
     if (i === 0) await invite(page);
     await page.waitForSelector('[data-phase=result]', { timeout: 30000 });
-    await page.click('text=Keep it');
+    await keepIt(page);
     await page.waitForSelector('[data-screen=diary] .entry');
   }
   const me = await page.install();

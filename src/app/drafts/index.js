@@ -59,14 +59,15 @@ export function createDrafts({ store = null, now = Date.now } = {}) {
         await s.put({
           key: take.key, createdAt: prev?.createdAt ?? now(), updatedAt: now(), date: prev?.date ?? date,
           status: 'painting', error: null, note, durationSec: take.durationSec, audio: take.audio, analysis: take.analysis,
-          painting: prev?.painting ?? null,
+          painting: prev?.painting ?? null, ...(prev?.journal ? { journal: prev.journal } : {}),
         });
         changed();
       });
     },
     ready(key, painting, note) { return safe(() => patch(key, { status: 'ready', painting, error: null, ...(note != null ? { note } : {}) })); },
     failed(key, code) { return safe(() => patch(key, { status: 'failed', error: code || 'error' })); },
-    setNote(key, note) { return safe(() => patch(key, { note })); },
+    /** The title, and the optional journal when given (older callers pass only the title). */
+    setNote(key, note, journal) { return safe(() => patch(key, { note, ...(journal != null ? { journal } : {}) })); },
 
     /** Writes the diary entry (addEntry throws on failure: the draft stays), then removes the draft. */
     async keep(key, entry, addEntry) {

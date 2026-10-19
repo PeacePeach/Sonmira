@@ -1,5 +1,11 @@
 // Sing (create): ready → singing → preview → generating → result → save.
 // Talks to the engine only through the contract: createLiveSession / generate.
+//
+// After the painting arrives the result is two steps on one screen, one
+// continuous motion: the small preview grows into the detail page's artwork
+// (expanded: listen, then Next), then shrinks to a thumbnail beside the
+// player while the title and the optional journal take the space (journal:
+// Save). The same painting, player and audio carry through both steps.
 
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
@@ -14,6 +20,7 @@ import { usesLabel } from '../paywall/copy.js';
 import { takeOf } from '../drafts/index.js';
 import { withGenerationKey, guardMessage } from '../protect/client.js';
 import { MAX_SECONDS } from '../settings.js';
+import { titleField, journalField } from '../ui/text-field.js';
 
 const SINGING_LINES = ['Keep going…', 'Let it out.', 'Softly, softly.', 'That’s it.'];
 const FINDING = 'Finding the shape of your song…';
@@ -49,16 +56,19 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
   } }, icon('share'));
   const navRight = h('div', { class: 'spacer44' }, shareBtn);
   const phaseHost = h('div', { style: 'flex:1;display:flex;flex-direction:column;min-height:0' });
+  // Beside the thumbnail in the journal step: the result's player.
+  const canvasSide = h('div', { class: 'canvas-side' });
+  const canvas = h('div', { class: 'sing-canvas' }, painting.el, progress, canvasSide);
   const el = h('div', { class: 'sing', 'data-screen': 'sing' },
     h('div', { class: 'navrow' },
       h('button', { class: 'icon-btn', 'aria-label': 'Close', onClick: close }, icon('close')),
       h('span', { class: 'date' }, longDate(dayKey())),
       navRight),
-    h('div', { class: 'sing-canvas' }, painting.el, progress),
+    canvas,
     phaseHost);
 
   // take state
-  let phase = 'ready', sheet = null, recorder = null, session = null, take = null, result = null, player = null, timers = [], noteDraft = '';
+  let phase = 'ready', sheet = null, recorder = null, session = null, take = null, result = null, player = null, timers = [], noteDraft = '', journalDraft = '';
   let hint = '';
   let usesEl = null;
   // When the take was sung (a draft opened later keeps its own day).
@@ -67,7 +77,7 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
   const offBilling = app.billing.onChange(() => { if (usesEl) usesEl.textContent = usesLabel(app.billing.status()); });
 
   const later = (fn, ms) => timers.push(setTimeout(fn, ms));
-  const show = (node) => { player?.destroy(); player = null; shareBtn.hidden = true; phaseHost.replaceChildren(node); };
+  const show = (node) => { player?.destroy(); player = null; shareBtn.hidden = true; smallCanvas(); phaseHost.replaceChildren(node); };
   const setProgress = (t) => { fill.style.width = `${Math.min(100, (t / maxSeconds) * 100)}%`; tLabel.textContent = clock(t); };
 
   // ── ready ────────────────────────────────────────────────────────────────
@@ -156,40 +166,18 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
   function preview() {
     phase = 'preview';
     progress.style.display = 'none';
-    const input = noteInput();
     const p = createPlayer({ blob: take.audio, durationSec: take.durationSec });
     show(h('div', { class: 'phase form', 'data-phase': 'preview' },
       h('div', {},
         take.analysis.flags.silent
           ? h('div', { class: 'soft-warning' }, 'We could barely hear you. Sing again a little closer, or keep going as it is.')
           : h('div', { class: 'caps' }, `${clock(take.durationSec)} · Listen back`),
-        h('div', { class: 'take-player' }, p.el),
-        input),
+        h('div', { class: 'take-player' }, p.el)),
       h('div', { class: 'actions' },
         usesEl = h('div', { class: 'uses', 'data-uses': '' }, usesLabel(app.billing.status())),
         h('button', { class: 'pill', onClick: generate }, 'Create painting'),
         h('button', { class: 'quiet-btn', onClick: singAgain }, 'Sing again'))));
     player = p;
-  }
-
-  // Preview and result share one note field in the same place, under the
-  // listen-back label and its player, so what was typed before painting is
-  // still there after. It wraps onto more lines as
-  // it grows (one paragraph: Enter finishes, pasted line breaks become spaces).
-  function noteInput() {
-    const fit = () => { el.style.height = 'auto'; el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`; };
-    const el = h('textarea', {
-      class: 'caption-input', placeholder: 'What was this moment?', maxlength: '140', rows: '1',
-      'aria-label': 'A note about this moment (optional)', enterkeyhint: 'done',
-      onInput: () => {
-        if (/[\r\n]/.test(el.value)) el.value = el.value.replace(/\s*[\r\n]+\s*/g, ' ');
-        noteDraft = el.value; fit();
-      },
-      onKeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } },
-    });
-    el.value = noteDraft;
-    requestAnimationFrame(fit);
-    return el;
   }
 
   // ── generating ───────────────────────────────────────────────────────────
@@ -303,6 +291,52 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
   }
 
   // ── result ───────────────────────────────────────────────────────────────
+  const reduceMotion = () => !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+  // Moves the painting card to its new layout (apply) and animates its size
+  // and place from the old one, so the change reads as the same artwork
+  // growing or shrinking. Width and height are animated rather than scaled,
+  // so the artwork is never stretched: object-fit keeps its own proportions.
+  function morph(apply) {
+    const node = painting.el;
+    const a = node.getBoundingClientRect(), aw = node.offsetWidth, ah = node.offsetHeight;
+    apply();
+    if (reduceMotion() || !node.animate || !aw) return;
+    const b = node.getBoundingClientRect(), bw = node.offsetWidth, bh = node.offsetHeight;
+    const k = bw ? b.width / bw : 1; // the desktop frame may be scaled (fitStage)
+    node.getAnimations?.().forEach((x) => x.cancel());
+    node.animate([
+      { width: `${aw}px`, height: `${ah}px`, transform: `translate(${(a.left - b.left) / k}px, ${(a.top - b.top) / k}px)` },
+      { width: `${bw}px`, height: `${bh}px`, transform: 'translate(0, 0)' },
+    ], { duration: 560, easing: 'cubic-bezier(.2, .7, .2, 1)' });
+  }
+
+  // The card's three sizes: the recording/preview card (3:2), the detail
+  // page's artwork (expanded, 4:5 at the detail page's margins), and the
+  // journal thumbnail (3:2). The artwork follows the detail page in the
+  // expanded size (centred) and the original preview elsewhere (its focus).
+  function layout(mode) {
+    canvas.classList.toggle('expanded', mode === 'expanded');
+    canvas.classList.toggle('compact', mode === 'compact');
+    painting.el.classList.toggle('r45', mode === 'expanded');
+    painting.el.classList.toggle('r32', mode !== 'expanded');
+    const art = painting.el.querySelector('.art');
+    if (art) art.style.objectPosition = mode === 'expanded' ? '' : (result?.artwork?.focus || '');
+    // The thumbnail opens the expanded artwork again (what was written stays).
+    if (mode === 'compact') { painting.el.setAttribute('role', 'button'); painting.el.tabIndex = 0; painting.el.setAttribute('aria-label', 'View the painting'); }
+    else { painting.el.removeAttribute('role'); painting.el.removeAttribute('tabindex'); painting.el.removeAttribute('aria-label'); }
+  }
+  function smallCanvas() { if (canvas.classList.contains('expanded') || canvas.classList.contains('compact')) { layout('small'); canvasSide.replaceChildren(); } }
+  const thumbOpen = (ev) => {
+    if (phase !== 'result' || !canvas.classList.contains('compact')) return;
+    if (ev.type === 'keydown' && ev.key !== 'Enter' && ev.key !== ' ') return;
+    ev.preventDefault();
+    expanded();
+  };
+  painting.el.addEventListener('click', thumbOpen);
+  painting.el.addEventListener('keydown', thumbOpen);
+
+  let resultPlayer = null, resultCaps = '';
   function showResult() {
     if (phase !== 'generating') return;
     phase = 'result';
@@ -311,45 +345,75 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
     else app.billing.commit(take.key);
     const it = result.interpretation;
     const right = it.voiceLabel ? `${clock(take.durationSec)} · ${it.voiceLabel}` : clock(take.durationSec);
-    const p = createPlayer({ blob: take.audio, durationSec: take.durationSec, right });
-    const keep = h('button', { class: 'pill', onClick: save }, 'Keep it');
-    show(h('div', { class: 'phase form', 'data-phase': 'result' },
-      h('div', {},
-        h('div', { class: 'caps' }, `${clock(take.durationSec)} · ${it.summary}`),
-        h('div', { class: 'take-player' }, p.el),
-        noteInput()),
-      h('div', { class: 'actions' }, keep, h('button', { class: 'quiet-btn', onClick: singAgain }, 'Sing again'))));
-    player = p;
+    resultCaps = `${clock(take.durationSec)} · ${it.summary}`;
+    show(h('div'));
+    // One player for both steps: moving its element between them keeps the
+    // recording playing.
+    player = resultPlayer = createPlayer({ blob: take.audio, durationSec: take.durationSec, right });
     shareBtn.hidden = false;
+    expanded();
+  }
 
-    async function save() {
-      if (phase !== 'result') return;
-      phase = 'saving';
-      keep.disabled = true;
-      player?.stop();
-      // The entry's id comes from the take key, so keeping twice can't make two.
-      const entry = {
-        createdAt: takeCreatedAt ?? Date.now(),
-        date: takeDate ?? dayKey(),
-        note: noteDraft.trim(),
-        durationSec: take.durationSec,
-        audio: take.audio,
-        analysis: take.analysis,
-        painting: result,
-      };
-      try {
-        await app.drafts.keep(take.key, entry, (e) => app.addEntry(e));
-      } catch (e) {
-        console.warn('[sonmira] save failed', e);
-        phase = 'result';
-        keep.disabled = false;
-        app.toast('This painting couldn’t be saved on this device. Storage may be full or blocked. Please try again.');
-        return;
-      }
-      app.ui.view = 'list'; app.ui.selDay = null;
-      phase = 'gone';
-      app.navigate('diary');
+  // Step 2: the artwork at the detail page's size, the recording, Next.
+  function expanded() {
+    if (phase !== 'result') return;
+    morph(() => { layout('expanded'); canvasSide.replaceChildren(); });
+    phaseHost.replaceChildren(h('div', { class: 'phase form step-in', 'data-phase': 'result', 'data-step': 'expanded' },
+      h('div', {},
+        h('div', { class: 'caps' }, resultCaps),
+        h('div', { class: 'take-player' }, resultPlayer.el)),
+      h('div', { class: 'actions' },
+        h('button', { class: 'pill', onClick: journal }, 'Next'),
+        h('button', { class: 'quiet-btn', onClick: singAgain }, 'Sing again'))));
+  }
+
+  // Step 3: a thumbnail beside the player; the title and journal below.
+  function journal() {
+    if (phase !== 'result') return;
+    const journalF = journalField({ value: journalDraft, onInput: (v) => { journalDraft = v; keepWriting(); } });
+    const titleF = titleField({ value: noteDraft, enterkeyhint: 'next', onInput: (v) => { noteDraft = v; keepWriting(); }, onEnter: () => journalF.input.focus() });
+    const keep = h('button', { class: 'pill', onClick: () => save(keep) }, 'Save');
+    morph(() => { layout('compact'); canvasSide.replaceChildren(resultPlayer.el); });
+    phaseHost.replaceChildren(h('div', { class: 'phase form writing step-in', 'data-phase': 'result', 'data-step': 'journal' },
+      h('div', { class: 'writing-fields' }, titleF.el, journalF.el),
+      h('div', { class: 'actions' }, keep, h('button', { class: 'quiet-btn', onClick: singAgain }, 'Sing again'))));
+    el.scrollTop = 0;
+  }
+
+  // What is written is kept with the draft as it is typed, so a reload or a
+  // closed app before Save doesn't lose it.
+  let writeT = null;
+  const writeDraft = () => { clearTimeout(writeT); writeT = null; if (phase === 'result' && take) app.drafts.setNote(take.key, noteDraft.trim(), journalDraft); };
+  const keepWriting = () => { clearTimeout(writeT); writeT = setTimeout(writeDraft, 500); };
+
+  async function save(keep) {
+    if (phase !== 'result') return;
+    phase = 'saving';
+    keep.disabled = true;
+    player?.stop();
+    // The entry's id comes from the take key, so keeping twice can't make two.
+    const entry = {
+      createdAt: takeCreatedAt ?? Date.now(),
+      date: takeDate ?? dayKey(),
+      note: noteDraft.trim(),
+      journal: journalDraft.trim(),
+      durationSec: take.durationSec,
+      audio: take.audio,
+      analysis: take.analysis,
+      painting: result,
+    };
+    try {
+      await app.drafts.keep(take.key, entry, (e) => app.addEntry(e));
+    } catch (e) {
+      console.warn('[sonmira] save failed', e);
+      phase = 'result';
+      keep.disabled = false;
+      app.toast('This painting couldn’t be saved on this device. Storage may be full or blocked. Please try again.');
+      return;
     }
+    app.ui.view = 'list'; app.ui.selDay = null;
+    phase = 'gone';
+    app.navigate('diary');
   }
 
   // ── errors / reset ───────────────────────────────────────────────────────
@@ -377,9 +441,10 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
   function singAgain() {
     timers.forEach(clearTimeout); timers = [];
     // A take that never got its painting is let go; a painted one stays a
-    // draft until it is kept or discarded.
+    // draft until it is kept or discarded, with what was written for it.
     if (take && !result) app.drafts.discard(take.key).catch(() => {});
-    take = null; result = null; hint = ''; takeDate = null; takeCreatedAt = null;
+    if (take && result && phase === 'result') writeDraft();
+    take = null; result = null; hint = ''; takeDate = null; takeCreatedAt = null; noteDraft = ''; journalDraft = '';
     painting.setStrokes([]); painting.setArtwork(null); developing(false); painting.el.classList.remove('alive');
     ready();
   }
@@ -387,7 +452,7 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
   function close() { app.navigate('diary'); }
 
   // A take in progress ends cleanly if the app is backgrounded (call, lock).
-  const onHide = () => { if (document.hidden && phase === 'singing') stopSinging(); };
+  const onHide = () => { if (document.hidden && phase === 'singing') stopSinging(); if (document.hidden && writeT) writeDraft(); };
   document.addEventListener('visibilitychange', onHide);
 
   // ── a draft, opened from the diary ──────────────────────────────────────
@@ -396,7 +461,7 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
     const d = await app.drafts.get(key).catch(() => null);
     if (phase !== 'resuming') return;
     if (!d) return ready();
-    take = takeOf(d); noteDraft = d.note || ''; takeDate = d.date ?? null; takeCreatedAt = d.createdAt ?? null;
+    take = takeOf(d); noteDraft = d.note || ''; journalDraft = d.journal || ''; takeDate = d.date ?? null; takeCreatedAt = d.createdAt ?? null;
     progress.style.display = 'none';
     painting.setStrokes(d.painting?.wash ?? d.analysis?.wash ?? []);
     if (d.status === 'ready' && d.painting) {
@@ -424,7 +489,7 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
     el,
     destroy() {
       if (phase === 'generating' && take) app.billing.release(take.key);
-      if (phase === 'result' && take) app.drafts.setNote(take.key, noteDraft.trim());
+      writeDraft();
       phase = 'gone';
       offBilling();
       sheet?.close();

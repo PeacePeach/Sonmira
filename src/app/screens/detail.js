@@ -1,4 +1,5 @@
-// Painting (detail): the saved watercolor, its note and the original audio.
+// Painting (detail): the saved watercolor, its title, its optional journal
+// and the original audio. The title and the journal are each edited in place.
 
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
@@ -6,6 +7,7 @@ import { createPainting } from '../ui/painting.js';
 import { createPlayer } from '../ui/player.js';
 import { clock, longDate } from '../format.js';
 import { openShareSheet } from '../share/sheet.js';
+import { titleField, journalField, JOURNAL_PLACEHOLDER } from '../ui/text-field.js';
 
 export function mountDetail(app, { id }) {
   let e = app.entries.find((x) => x.id === id);
@@ -38,24 +40,33 @@ export function mountDetail(app, { id }) {
       h('span', { class: 'caption serif' + (e.note ? '' : ' untitled') }, shown),
       icon('rename', { size: 'sm', tone: 'muted' })));
   }
+  // Saves one field of the entry; false (and a toast) if it couldn't be written.
+  async function saveField(patch, failMsg) {
+    try {
+      const next = { ...e, ...patch };
+      await app.updateEntry(next);
+      e = next;
+      return true;
+    } catch {
+      app.toast(failMsg);
+      return false;
+    }
+  }
+
+  // Cancel / Save under a field being edited, with the saving state.
+  function editActions(field, { cancel, save }) {
+    const cancelBtn = h('button', { class: 'text-btn', onClick: () => { if (!field.readOnly) cancel(); } }, 'Cancel');
+    const saveBtn = h('button', { class: 'text-btn save', onClick: save }, 'Save');
+    const busy = (on) => { field.readOnly = on; cancelBtn.disabled = saveBtn.disabled = on; saveBtn.textContent = on ? 'Saving…' : 'Save'; };
+    return { el: h('div', { class: 'title-actions' }, cancelBtn, saveBtn), busy };
+  }
+
   function editTitle() {
     let saving = false;
-    const fit = () => { input.style.height = 'auto'; input.style.height = `${input.scrollHeight + input.offsetHeight - input.clientHeight}px`; };
-    const input = h('textarea', {
-      class: 'caption-input', placeholder: 'What was this moment?', maxlength: '140', rows: '1',
-      'aria-label': 'Title of this painting', enterkeyhint: 'done',
-      onInput: () => { if (/[\r\n]/.test(input.value)) input.value = input.value.replace(/\s*[\r\n]+\s*/g, ' '); fit(); },
-      onKeydown: (ev) => {
-        if (ev.key === 'Enter') { ev.preventDefault(); save(); }
-        else if (ev.key === 'Escape' && !saving) { ev.preventDefault(); showTitle(); }
-      },
-    });
-    input.value = e.note || '';
-    const cancelBtn = h('button', { class: 'text-btn', onClick: () => { if (!saving) showTitle(); } }, 'Cancel');
-    const saveBtn = h('button', { class: 'text-btn save', onClick: save }, 'Save');
-    const busy = (on) => { saving = on; input.readOnly = on; cancelBtn.disabled = saveBtn.disabled = on; saveBtn.textContent = on ? 'Saving…' : 'Save'; };
-    title.replaceChildren(input, h('div', { class: 'title-actions' }, cancelBtn, saveBtn));
-    requestAnimationFrame(fit);
+    const f = titleField({ value: e.note || '', onEnter: () => save(), onEscape: () => { if (!saving) showTitle(); } });
+    const input = f.input;
+    const acts = editActions(input, { cancel: showTitle, save: () => save() });
+    title.replaceChildren(f.el, acts.el);
     input.focus();
     input.setSelectionRange(input.value.length, input.value.length);
 
@@ -63,20 +74,44 @@ export function mountDetail(app, { id }) {
       if (saving) return;
       const note = input.value.trim();
       if (note === (e.note || '')) { showTitle(); return; }
-      busy(true);
-      try {
-        const next = { ...e, note };
-        await app.updateEntry(next);
-        e = next;
-        showTitle();
-      } catch {
-        busy(false);
-        app.toast('Couldn’t save the title just now. Please try again.');
-        input.focus();
-      }
+      saving = true; acts.busy(true);
+      if (await saveField({ note }, 'Couldn’t save the title just now. Please try again.')) { showTitle(); return; }
+      saving = false; acts.busy(false);
+      input.focus();
     }
   }
+
   showTitle();
+
+  // The journal: its paragraphs as written, or a quiet invitation to write
+  // one (entries kept before the journal existed have none). Tapping edits it.
+  const journal = h('div', { class: 'detail-journal' });
+  function showJournal() {
+    const text = e.journal || '';
+    journal.replaceChildren(text
+      ? h('button', { class: 'journal-btn', 'aria-label': 'Edit journal', onClick: editJournal }, h('p', { class: 'journal-text' }, text))
+      : h('button', { class: 'journal-btn journal-empty', onClick: editJournal }, JOURNAL_PLACEHOLDER));
+  }
+  function editJournal() {
+    let saving = false;
+    const f = journalField({ value: e.journal || '', onEscape: () => { if (!saving) showJournal(); } });
+    const input = f.input;
+    const acts = editActions(input, { cancel: showJournal, save });
+    journal.replaceChildren(input, acts.el);
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+
+    async function save() {
+      if (saving) return;
+      const text = input.value.trim();
+      if (text === (e.journal || '')) { showJournal(); return; }
+      saving = true; acts.busy(true);
+      if (await saveField({ journal: text }, 'Couldn’t save the journal just now. Please try again.')) { showJournal(); return; }
+      saving = false; acts.busy(false);
+      input.focus();
+    }
+  }
+  showJournal();
 
   const el = h('div', { class: 'detail', 'data-screen': 'detail' },
     h('div', { class: 'navrow' },
@@ -88,6 +123,7 @@ export function mountDetail(app, { id }) {
     h('div', { class: 'body' },
       h('div', { class: 'caps' }, longDate(e.date)),
       title,
+      journal,
       player.el));
 
   app.dev.onArtworkOpen?.(e); // ?dev panel only

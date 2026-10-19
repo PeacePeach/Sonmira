@@ -8,6 +8,14 @@ import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 
+// After the painting: Next on the expanded artwork, the title (optional) in the journal step, then Save.
+const keepIt = async (page, title) => {
+  await page.click('[data-step=expanded] .pill');
+  await page.waitForSelector('[data-step=journal] .caption-input');
+  if (title) await page.fill('[data-step=journal] .caption-input', title);
+  await page.click('[data-step=journal] .pill');
+};
+
 const BASE = process.env.BASE || 'http://localhost:5173/';
 const SHOTS = process.env.SHOTS;
 const wav = fileURLToPath(new URL('./hum.wav', import.meta.url));
@@ -26,10 +34,9 @@ async function record(page, seconds = 2.6) {
 }
 async function paintAndKeep(page, note) {
   await record(page);
-  if (note) await page.fill('.caption-input', note);
   await page.click('text=Create painting');
   await page.waitForSelector('[data-phase=result]', { timeout: 8000 });
-  await page.click('text=Keep it');
+  await keepIt(page, note);
   await page.waitForSelector('[data-screen=diary] .entry');
 }
 async function simulate(page, outcome) {
@@ -64,10 +71,9 @@ async function run() {
     await record(page);
     uses.push(await page.textContent('[data-uses]'));
     if (note === 'Morning hum') { await settle(page); await shot(page, 'p01-sing-uses-free'); }
-    await page.fill('.caption-input', note);
     await page.click('text=Create painting');
     await page.waitForSelector('[data-phase=result]', { timeout: 8000 });
-    await page.click('text=Keep it');
+    await keepIt(page, note);
     await page.waitForSelector(`.entry .cap:text("${note}")`);
   }
   assert.deepEqual(uses, ['Uses 1 of your 3 free paintings', 'Uses 1 of your 2 free paintings', 'Uses your last free painting']);
@@ -170,7 +176,7 @@ async function run() {
   await page.click('text=Create painting');
   await page.waitForSelector('[data-phase=result]', { timeout: 8000 });
   assert.equal((await status(page)).credits, 9, 'a made painting uses one');
-  await page.click('text=Keep it');
+  await keepIt(page);
   await page.waitForSelector('[data-screen=diary]');
 
   // restart while painting: the held painting comes back
@@ -206,7 +212,7 @@ async function run() {
   assert.equal(await page.textContent('[data-uses]'), 'Uses today’s painting from Daily Ritual');
   await page.click('text=Create painting');
   await page.waitForSelector('[data-phase=result]', { timeout: 8000 });
-  await page.click('text=Keep it');
+  await keepIt(page);
   await page.waitForSelector('[data-screen=diary]');
   let s = await status(page);
   assert.deepEqual([s.dailyUsedToday, s.credits, s.source], [true, 9, 'credits']);
@@ -263,7 +269,6 @@ async function run() {
   await p2.waitForSelector('[data-screen=diary]');
   await p2.evaluate(() => { window.sonmira.billing.dev.useUpFree(); window.sonmira.navigate('sing'); });
   await record(p2);
-  await p2.fill('.caption-input', 'Kept while choosing');
   await p2.click('text=Create painting');
   await p2.waitForSelector(paywall);
   await p2.click(`${paywall} .pill`);
@@ -272,7 +277,7 @@ async function run() {
   assert.equal(await p2.textContent('[data-paywall-done] .pill'), 'Create painting');
   await p2.click('[data-paywall-done] .pill');
   await p2.waitForSelector('[data-phase=result]', { timeout: 8000 });
-  assert.equal(await p2.inputValue('.caption-input'), 'Kept while choosing');
+  assert.ok(await p2.$('[data-step=expanded] .painting img.art, .painting img.art'), 'the take was painted after buying');
   assert.equal((await status(p2)).credits, 9);
   await c2.close();
 

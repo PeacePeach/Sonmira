@@ -216,6 +216,32 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .take-player { margin-top: 16px; }
 .take-player + .caption-input { margin-top: 28px; }
 .actions { display: flex; flex-direction: column; gap: 6px; padding-top: 22px; }
+/* After the painting: one card that grows into the detail page's artwork
+   (same 18 pt margins, 4:5) and then shrinks to a 3:2 thumbnail beside the
+   player; sing.js animates its size between them (morph). */
+.sing-canvas.expanded { padding: 22px 18px 0; }
+.sing-canvas.expanded .painting { box-shadow: var(--shadow-card-lg); }
+.sing-canvas .canvas-side { display: none; }
+.sing-canvas.compact { display: flex; align-items: center; gap: 18px; padding: 18px 24px 0; }
+.sing-canvas.compact .painting { width: 112px; flex-shrink: 0; cursor: pointer; }
+.sing-canvas.compact .canvas-side { display: block; flex: 1; min-width: 0; animation: stepIn .36s ease-out .12s both; }
+.sing-canvas .painting .art { transition: opacity 1.6s ease-in-out, object-position .56s cubic-bezier(.2, .7, .2, 1); }
+.phase[data-phase=result] { flex-shrink: 0; flex-basis: auto; }
+.step-in { animation: stepIn .36s ease-out .12s both; }
+@keyframes stepIn { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .step-in, .sing-canvas.compact .canvas-side { animation: none; } .sing-canvas .painting .art { transition: opacity .8s ease-out; } }
+/* the journal step gives the writing the room */
+.phase.writing { padding-top: 22px; }
+.writing-fields .caption-input { margin-top: 0; }
+/* title: the caption input with a quiet character count while it's edited */
+.title-field { position: relative; }
+.char-count { height: 0; overflow: visible; text-align: right; font-size: 12px; line-height: 1; padding-top: 6px; color: var(--muted); opacity: 0; transition: opacity .2s; pointer-events: none; }
+.title-field:focus-within .char-count { opacity: 1; }
+/* journal: optional, several paragraphs, the same underline as the title */
+.journal-input { display: block; width: 100%; margin-top: 26px; min-height: 120px; resize: none; overflow: hidden; border: 0; border-bottom: 1px solid var(--underline); border-radius: 0; background: transparent; font-family: var(--sans); font-size: 16px; line-height: 1.55; color: var(--ink); padding: 8px 0 12px; outline: none; -webkit-appearance: none; scroll-margin-bottom: 24px; }
+.journal-input:focus { border-bottom-color: var(--secondary); }
+.journal-input::placeholder { color: var(--placeholder); opacity: 1; }
+.caption-input { scroll-margin-bottom: 24px; }
 .soft-warning { font-family: var(--serif); font-weight: 600; font-style: italic; font-size: 17px; color: var(--secondary); line-height: 1.35; margin-top: 4px; }
 .error-copy { text-align: center; }
 .error-copy .lede { max-width: 300px; margin-left: auto; margin-right: auto; }
@@ -247,6 +273,13 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .detail .title-actions .save { color: var(--ink); }
 .detail .title-actions .text-btn[disabled] { opacity: .6; }
 .detail .player { margin-top: auto; padding-top: 22px; }
+.detail .char-count { text-align: left; }
+/* the journal under the title: its paragraphs as written; tap to edit */
+.detail-journal { margin-top: 14px; }
+.detail .journal-btn { display: block; width: 100%; text-align: left; color: var(--body); font-size: 16px; line-height: 1.55; padding: 4px 0; }
+.detail .journal-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.detail .journal-btn.journal-empty { color: var(--placeholder); font-size: 15px; }
+.detail .journal-input { margin-top: 0; }
 .text-btn.confirm { color: var(--ink); }
 
 /* ── settings ────────────────────────────────────────────────────────────── */

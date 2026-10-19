@@ -8,6 +8,14 @@ import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 
+// After the painting: Next on the expanded artwork, the title (optional) in the journal step, then Save.
+const keepIt = async (page, title) => {
+  await page.click('[data-step=expanded] .pill');
+  await page.waitForSelector('[data-step=journal] .caption-input');
+  if (title) await page.fill('[data-step=journal] .caption-input', title);
+  await page.click('[data-step=journal] .pill');
+};
+
 const BASE = process.env.BASE || 'http://localhost:5173/';
 const SHOTS = process.env.SHOTS;
 const wav = fileURLToPath(new URL('./hum.wav', import.meta.url));
@@ -59,11 +67,10 @@ async function run() {
   await page.waitForTimeout(2600);
   await page.click('[aria-label="Stop recording"]');
   await page.waitForSelector('[data-phase=preview]');
-  await page.fill('.caption-input', 'Morning hum');
   await page.click('text=Create painting');
   await page.waitForSelector('[data-phase=result]', { timeout: 8000 });
   assert.equal(await page.$('[data-apple-sign-in]'), null);
-  await page.click('text=Keep it');
+  await keepIt(page, 'Morning hum');
   await page.waitForSelector('[data-screen=diary] .entry');
   assert.equal(await signedIn(page), false);
   const guestId = await accountId(page);
