@@ -116,3 +116,16 @@ test('each generation of the same take draws a new seed; an explicit seed is kep
   await engine.generate({ analysis: take, overrides: { seed: 1234 } });
   assert.deepEqual(sent, [1234, 1234]);
 });
+
+test('recent-reference exclusion avoids three sessions, relaxes when tier pool is exhausted', async () => {
+  const { eligibleRecentReferences } = await import('../../api/generate.js');
+  const pool = LIBRARY.tierPool('gathered');
+  const history = pool.slice(0, 3).map((e, i) => ({ id: e.id, key: String(i) }));
+  const eligible = eligibleRecentReferences(pool, history);
+  assert.deepEqual(eligible.map((e) => e.id), pool.slice(3).map((e) => e.id));
+  const loose = LIBRARY.tierPool('loose');
+  const full = loose.map((e, i) => ({ id: e.id, key: String(i) }));
+  assert.deepEqual(eligibleRecentReferences(loose, full).map((e) => e.id), [loose[0].id],
+    'when all three were recently used, only the oldest becomes available');
+  assert.deepEqual(eligibleRecentReferences(pool, []), pool);
+});

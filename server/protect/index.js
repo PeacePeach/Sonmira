@@ -204,6 +204,8 @@ export function protect(endpoint, handler, deps = {}) {
       return deny(503, 'protection_unavailable');
     }
 
+    // Authenticated account identity for per-account reference history.
+    if (endpoint === 'generate') req.sonmiraInstallId = who.installId;
     const { proxy, out } = capture(res);
     let threw = null;
     try { await handler(req, proxy); } catch (e) { threw = e; }

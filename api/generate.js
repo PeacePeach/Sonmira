@@ -16,6 +16,7 @@ import { REFERENCE_LIBRARY } from '../src/engine/direct/references.js';
 import { protect, timedFetch } from '../server/protect/index.js';
 import { wiring } from '../server/wire.js';
 import { fakeProviderOn, fakeOpenAIFetch, fakeReferenceStore } from '../server/dev/fake-openai.js';
+import { rng, hashSeed } from '../src/engine/render/rng.js';
 
 // References come from private Vercel Blob in production (registry and
 // images), or SONMIRA_REFS_DIR locally. The selected primary reference's
@@ -107,7 +108,60 @@ export function cleanConcept(c) {
   };
 }
 
-export const createHandler = ({ store = referenceStoreFromEnv(), env = process.env, fetchImpl = fetch } = {}) => async function handler(req, res) {
+
+const RECENT_COUNT = 3;
+const RECENT_TTL = 365 * 86400;
+const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// The lock covers only selection/history mutations, not the paid image call.
+// Record a pending selection immediately so simultaneous sessions do not
+// choose the same image. Failed generations remove their own entry.
+async function mutateRecent(kv, account, edit) {
+  const key = `refs:recent:${account}`, lock = `refs:recent-lock:${account}`;
+  const token = String(Math.random()) + Date.now();
+  let acquired = false;
+  for (let i = 0; i < 30; i++) {
+    if (await kv.claim(lock, token, 10)) { acquired = true; break; }
+    await delay(25 + i * 15);
+  }
+  if (!acquired) throw Object.assign(new Error('reference selection busy'), { code: 'reference_busy' });
+  try {
+    const history = JSON.parse((await kv.get(key)) || '[]');
+    const result = edit(history);
+    await kv.set(key, JSON.stringify(history.slice(-12)), RECENT_TTL);
+    return result;
+  } finally {
+    if ((await kv.get(lock)) === token) await kv.del(lock);
+  }
+}
+
+export function eligibleRecentReferences(pool, history, count = RECENT_COUNT) {
+  let blocked = history.slice(-count).map((e) => e.id);
+  // When a tier has too few references, allow the oldest reference back
+  // first rather than preventing the person from painting altogether.
+  let eligible = pool.filter((e) => !blocked.includes(e.id));
+  while (!eligible.length && blocked.length) {
+    blocked = blocked.slice(1);
+    eligible = pool.filter((e) => !blocked.includes(e.id));
+  }
+  return eligible.length ? eligible : pool;
+}
+
+async function reserveRecentReference(kv, account, library, spec, key) {
+  if (!kv || !account || spec.reference || spec.family) return null; // explicit Playground pins are intentional
+  return mutateRecent(kv, account, (history) => {
+    const existing = history.find((e) => e.key === key);
+    if (existing) return library.get(existing.id);
+    const pool = eligibleRecentReferences(library.tierPool(spec.completeness), history);
+    if (!pool.length) return null;
+    const i = Math.floor(rng(hashSeed(spec.seed >>> 0, 'primary-ref'))() * pool.length);
+    const chosen = pool[i];
+    history.push({ id: chosen.id, key });
+    return chosen;
+  });
+}
+
+export const createHandler = ({ store = referenceStoreFromEnv(), env = process.env, fetchImpl = fetch, kv = wiring().kv } = {}) => async function handler(req, res) {
   res.setHeader('cache-control', 'no-store');
   if (req.method === 'GET') {
     const o = openaiConfig(env);
@@ -119,13 +173,18 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
   const spec = cleanSpec(body.spec);
   if (!spec) { res.status(400).json({ ok: false, error: 'invalid spec' }); return; }
   if ((body.provider || 'openai') !== 'openai') { res.status(400).json({ ok: false, error: 'unknown provider' }); return; }
+  let reservedReference = null;
   try {
     // References are selected from the bundled, version-controlled registry
     // (direct/references.js: tested, shipped and rolled back with the deploy)
     // plus any new image uploaded to a family in the store (libraryFor). The
     // store's own registry.json is never read here.
     const library = await libraryFor(store);
-    const direction = direct({ ...spec, library });
+    const account = req.sonmiraInstallId;
+    const key = String(req.headers?.['idempotency-key'] || '');
+    const selected = await reserveRecentReference(kv, account, library, spec, key);
+    if (selected) reservedReference = { account, key };
+    const direction = direct({ ...spec, ...(selected ? { reference: selected.id } : {}), library });
     // The decided tier is authoritative: never paint a family of another tier.
     // (A reference with no family has direction.family null; its tier is the level.)
     if (direction.level !== spec.completeness) {
@@ -139,6 +198,12 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
     const g = await generateFromDirection(direction, { loadReference: store?.loadImage, stream: true, env, fetchImpl });
     res.status(200).json({ ok: true, provider: g.provider, model: g.model, quality: g.quality, size: g.size, ms: g.ms, usage: g.usage, prompt: direction.prompt, family: direction.family, familyLabel: direction.familyLabel, familyRefs: direction.refs, subjectSource: direction.subjectSource, subject: direction.subject, reference: direction.reference?.id ?? null, composition: direction.composition, performance: direction.performance, performanceTrace: direction.performanceTrace, resolvedFinish: direction.resolvedFinish ?? null, narrative: direction.narrative ?? null, settings: { tier: direction.level, emotion: spec.emotion, motif: spec.motif, energy: spec.energy.value, expression: spec.expression ?? null }, promptCheck: checkPrompt(direction, { library }), referenceSent: Boolean(g.reference), seed: direction.seed, libraryVersion: direction.libraryVersion, swatches: direction.swatches, image: `data:${g.mime};base64,${g.b64}` });
   } catch (e) {
+    if (reservedReference) {
+      try { await mutateRecent(kv, reservedReference.account, (history) => {
+        const index = history.findIndex((e) => e.key === reservedReference.key);
+        if (index >= 0) history.splice(index, 1);
+      }); } catch { /* the history expires; never mask the generation error */ }
+    }
     // A reference image missing or unreadable in the store happens before any
     // provider call: 503 no_reference, like a missing store.
     if (e.code === 'reference_missing' || e.code === 'reference_store') { res.status(503).json({ ok: false, error: 'reference image unavailable', code: e.code === 'reference_store' ? 'reference_store' : 'no_reference' }); return; }
