@@ -105,7 +105,9 @@ export function mountDevPanel(app) {
       if (g.error) out.push(...rows([['error', g.error], ['status', g.status], ['detail', g.detail]]));
       if (u) {
         const q = u.singing?.quality, v = u.singing?.vocal, t = u.transcript, l = u.lyrics, s = u.semantics;
-        out.push(section(`decision: ${u.tier}${u.tierSource === 'override' ? ' (forced)' : ''}`, [['tier', u.tier], ['stage', u.decision?.stage], ['reason', u.decision?.reason], ['decided tier', u.decision?.tier]], true));
+        out.push(section(`decision: ${u.tier}${u.tierSource === 'override' ? ' (forced)' : ''}`, [['tier', u.tier], ['stage', u.decision?.stage], ['reason', u.decision?.reason], ['decided tier', u.decision?.tier],
+          ['lyrical floor', u.lyricalFloor ? `${u.lyricalFloor.applied ? 'APPLIED' : 'not applied'}: ${u.lyricalFloor.reason}` : undefined],
+          ...(u.lyricalFloor?.evidence?.checks ?? []).map((c) => [`  ${c.ok ? '✓' : '✗'} ${c.id}`, `${c.value} (need ${c.need})`])], true));
         out.push(section('audio', [['duration', u.audio?.durationSec], ['sounding s', u.audio?.soundingSec], ['voiced s', u.audio?.voicedSec], ['voiced ratio', u.audio?.voicedRatio], ['pauses', u.audio?.pauses], ['pitch continuity', u.audio?.pitchContinuity], ['median Hz', u.audio?.medianHz], ['dynamic dB', u.audio?.dynamicRangeDb],
           ['sung', v?.sung], ...(v?.sungChecks ?? []).map((c) => [`  ${c.ok ? '✓' : '✗'} ${c.id}`, `${c.value} (need ${c.need})`]),
           ['notes', v?.noteCount], ['note s', v?.noteSec], ['sustained ratio', v?.sustainedRatio], ['ending', v?.ending]]));
@@ -122,7 +124,7 @@ export function mountDevPanel(app) {
           ['windows', p.windows.map((w) => `${w.t0}–${w.t1}s ${w.controlled}`).join(' · ')], ['key drift cents', p.tuning?.driftCents], ['grid per window', p.tuning?.localOffsets?.join(' ')]]));
         out.push(section('semantics', [['source', s?.source], ['why', s?.reason], ['concept', s?.concept?.text], ['theme', s?.concept?.theme?.join(', ')], ['imagery', s?.concept?.imagery?.join(', ')], ['figurative', s?.concept?.figurative], ['mood', u.emotion?.value + ' · ' + u.emotion?.source], ['motif', u.motif?.value + ' · ' + u.motif?.source]]));
       }
-      if (!g.error) out.push(section('generation', [['engine', engineId], ['provider', g.provider], ['model', g.model], ['quality', g.quality], ['tier', g.tier], ['family', g.family], ['subject from', g.subjectSource],
+      if (!g.error) out.push(section('generation', [['engine', engineId], ['provider', g.provider], ['model', g.model], ['quality', g.quality], ['tier', g.tier], ['family', g.family], ['subject from', g.subjectSource], ['resolved finish', g.resolvedFinish ? `${g.resolvedFinish.applied ? 'applied' : 'not applied'} (${g.resolvedFinish.reason})` : undefined],
         ['reference', g.reference], ['ref sent', g.referenceSent], ['library', g.libraryVersion], ['seed', g.seed], ['time', g.ms ? `${(g.ms / 1000).toFixed(1)} s` : null]], true));
       else out.push(...rows([['engine', engineId]]));
     }

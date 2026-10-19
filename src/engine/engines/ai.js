@@ -199,6 +199,7 @@ export function createAIEngine({ fetchImpl = (...a) => globalThis.fetch(...a), d
           family: json.family, familyLabel: json.familyLabel, reference: json.reference, referenceSent: json.referenceSent,
           libraryVersion: json.libraryVersion, seed: json.seed, tier: it.completeness, emotion: it.emotion, motif: it.motif,
           subjectSource: json.subjectSource ?? null,
+          resolvedFinish: json.resolvedFinish ?? null,
           understanding,
         },
       };

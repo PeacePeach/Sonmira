@@ -15,7 +15,7 @@ import { pitchTrack } from './analysis/pitchtrack.js';
 import { singingAnalysis } from './analysis/singing.js';
 import { analyzeSamples } from './analysis/features.js';
 import { measurePerformance } from './analysis/performance-measure.js';
-import { completionGate, decideTier, GATE_CALIBRATION } from './interpret/lyrics.js';
+import { completionGate, decideTier, lyricalFloor, GATE_CALIBRATION } from './interpret/lyrics.js';
 
 export const UNDERSTAND_VERSION = 2;
 // Below this much sound there is nothing to transcribe: skip the paid call.
@@ -90,7 +90,8 @@ export async function understandTake({ samples = null, sampleRate = 0, features 
   const w = pending ? await pending : null;
   const transcript = w?.transcript ?? null, lyrics = w?.lyrics ?? null;
   const gate = completionGate({ transcript, lyrics, singing, features: feats });
-  const decision = decideTier({ gate, quality: singing?.quality });
+  const floor = lyricalFloor({ gate, transcript, lyrics, singing, features: feats });
+  const decision = decideTier({ gate, quality: singing?.quality, floor });
   const tier = forcedTier ?? decision.tier;
   const semantics = semanticsFor(tier, transcript, lyrics);
   return {
@@ -105,6 +106,8 @@ export async function understandTake({ samples = null, sampleRate = 0, features 
     wordsSkipped: words && !ask ? `less than ${MIN_SOUND_FOR_WORDS_SEC}s of sound` : null,
     transcript, lyrics,
     gate, decision,
+    // Whether the sustained-lyrical-singing floor lifted a failed gate to Gathered, and why.
+    lyricalFloor: floor,
     tier, tierSource: forcedTier ? 'override' : 'decision',
     semantics,
     expression: expressionFor(feats, singing),

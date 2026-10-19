@@ -90,6 +90,17 @@ The text model sees only the transcript. It does not know how long the words las
 
 **Stage 2** (`decideTier`, `lyrics.js:146`): gate passed and `quality.strong` gives **Resolved**; gate passed otherwise gives **Gathered**.
 
+**Sustained lyrical singing floor** (`lyricalFloor`, Han, 19 Oct): when the gate fails **only** on `phrase_complete`, a take that is sung throughout with recognisable words is lifted to **Gathered** (never Resolved). A song excerpt is often cut mid-line or holds several lines, so the text model calls it unfinished; before this rule such a 19 s sung take ("你能体谅我的雨天吗…") was Loose. All of these must hold, from measurements already taken; if any input is missing the old decision stands:
+
+| Check | Needs (provisional) |
+|---|---|
+| only_phrase_complete_failed | every other gate check passed (transcribed, real words, ASR confidence, sung, word rate, coherent reading) |
+| sounding_sec | ≥ 8 s of sound |
+| sung_throughout | sung, and pitched voice (YIN) ≥ 0.6 of the sounding time |
+| lyric_words | lexical reading, ≥ 8 real words and ≥ 0.8 words per sounding second |
+
+The result is `understanding.lyricalFloor` (`applied`, `reason`, `evidence.checks`), also on `decision.lyricalFloor`; the decision stage reads `lyrical_floor` when it applied. The dev panel shows it under the decision. No singing score or threshold changed.
+
 Consequences that follow directly from the code:
 - **A take without words is always Loose**, however well it is sung. `engine-v1.md` already lists this as a product decision.
 - **Words decide the floor; singing decides only Gathered versus Resolved.** A complete phrase sung badly is Gathered, never Loose.
@@ -165,6 +176,12 @@ What the song can change: only the mood line, a lean "toward the softer / warmer
 `[REFERENCE_AUTHORITY] + subject, meaning, family style, content rule, form, composition, "Vertical 4:5 format.", palette, mood, pace, gesture, REFERENCE_STYLE, avoid`, joined by newlines (`direct/index.js:269`).
 
 `REFERENCE_AUTHORITY` (`library.js:84`) opens the prompt and states that the attached image "overrides every written description below, including colour, light and composition notes", controls medium, palette, colour distribution, composition language, negative space and detail distribution, and leaves "free" only the subject and exact arrangement.
+
+**Resolved finish inheritance** (Han, 19 Oct; performance-led prompts, i.e. every measured take): a Resolved painting must reach the selected reference's level of artistic finish. The reference decides how finished and how it is painted, the words what is painted, the performance how the composition and gestures unfold. Two additions, Resolved only:
+- `REFERENCE_AUTHORITY_PERFORMANCE_RESOLVED` (`library.js`): the performance authority plus one sentence saying the reference also sets the level of finish, while the subject comes only from the text.
+- `RESOLVED_FINISH` (`direct/index.js`), placed right after the form line: a finished work by an accomplished watercolour artist, not a beautiful sketch; match the reference's finish through deliberate focal detail, sophisticated brushwork, layered pigment, controlled edges and visual hierarchy; not photorealism, excessive detail or a filled sheet; never its content or composition.
+
+Before this, the performance-led authority limited the reference to "the artistic language only" and the Resolved form line said nothing about finish, so the reference's level of finish (item 7 of the older `REFERENCE_AUTHORITY`) no longer reached Resolved prompts. The direction records `resolvedFinish` (`applied`, `reference`, `reason`), returned by `/api/generate` and shown in the dev panel. Loose and Gathered prompts are byte-identical to before; the non-performance path (unmeasured takes, the frozen V1 prompts) is unchanged and already carries the reference's level of finish. Not yet checked with a real image.
 
 `tools/prompt-audit.mjs` builds the exact request without sending it.
 

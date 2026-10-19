@@ -4,7 +4,10 @@
 //   analyzeTranscript(text, { logprobs }) → lexical vs non-lexical words, ASR confidence
 //   completionGate({ transcript, lyrics, singing, features }) → stage 1: is this a
 //        sung, lexically meaningful, complete lyrical phrase? (strict)
-//   decideTier({ gate, quality }) → stage 2: Loose | Gathered | Resolved
+//   lyricalFloor({ gate, transcript, lyrics, singing, features }) → minimum
+//        Gathered for sustained lyrical singing whose only failed check is
+//        phrase_complete (never a route to Resolved)
+//   decideTier({ gate, quality, floor }) → stage 2: Loose | Gathered | Resolved
 //
 // Stage 1 never looks at singing quality and stage 2 never looks at the
 // words: a beautiful hum cannot pass the gate, and a complete phrase sung
@@ -13,7 +16,7 @@
 // sung correctly or completely (nothing here recognises songs).
 // Every threshold is provisional and needs calibration on real recordings.
 
-export const LYRICS_VERSION = 3;
+export const LYRICS_VERSION = 4;
 
 export const GATE_CALIBRATION = {
   minLexicalWords: 3,
@@ -140,11 +143,56 @@ export function completionGate({ transcript = null, lyrics = null, singing = nul
   };
 }
 
+// Sustained lyrical singing floor (Han, 19 Oct): a take that is clearly sung
+// throughout, with recognisable words, is never Loose just because the
+// language model judged the phrase unfinished. A song excerpt sung for 19 s
+// ("你能体谅我的雨天吗…") is usually cut mid-line or holds several lines, so
+// phrase_complete fails on it while every other check passes. The floor
+// lifts such a take to Gathered only; Resolved still needs the full gate.
+// Every piece of evidence must be present and measured: when anything is
+// missing the existing decision stands. Provisional, like the gate.
+export const FLOOR_CALIBRATION = {
+  // The only gate check allowed to fail: every other one (a real transcript,
+  // real words, sung, a singing word rate, a coherent reading) must pass.
+  waivable: ['phrase_complete'],
+  minSoundingSec: 8,       // a short fragment is not sustained singing
+  minPitchedShare: 0.6,    // pitched voice (YIN) over sounding time: most of the take is sung
+  minLexicalWords: 8,      // lines of lyrics, not a word or two
+  minWordsPerSec: 0.8,     // words across the singing (a sung line runs ≥ 1 word/s), not one short fragment in a long take
+};
+
+export function lyricalFloor({ gate = null, transcript = null, lyrics = null, singing = null, features = null } = {}, cal = FLOOR_CALIBRATION) {
+  const no = (reason, evidence = null) => ({ applied: false, tier: null, reason, evidence });
+  if (!gate) return no('no lyrics gate result');
+  if (gate.pass) return no('not needed: the lyrics gate passed');
+  const vocal = singing?.vocal;
+  const sounding = features?.activity?.soundingSec;
+  if (!transcript || !lyrics || lyrics.error || !vocal || !(sounding > 0) || vocal.voicedSec == null) {
+    return no('insufficient evidence: needs a transcript, a reading of the words, the singing analysis and the sounding time');
+  }
+  const pitchedShare = r3(Math.min(1, vocal.voicedSec / sounding));
+  const rate = r3(transcript.lexicalWords / sounding);
+  const checks = [
+    { id: 'only_phrase_complete_failed', ok: gate.failed.length > 0 && gate.failed.every((id) => cal.waivable.includes(id)), value: gate.failed.join(', '), need: `only ${cal.waivable.join(', ')} failed` },
+    { id: 'sounding_sec', ok: sounding >= cal.minSoundingSec, value: sounding, need: `≥ ${cal.minSoundingSec} s of sound` },
+    { id: 'sung_throughout', ok: vocal.sung === true && pitchedShare >= cal.minPitchedShare, value: `sung ${vocal.sung}, pitched ${vocal.voicedSec} s of ${sounding} s (${pitchedShare})`, need: `sung, pitched voice ≥ ${cal.minPitchedShare} of the sounding time` },
+    { id: 'lyric_words', ok: lyrics.lexical === true && transcript.lexicalWords >= cal.minLexicalWords && rate >= cal.minWordsPerSec, value: `${transcript.lexicalWords} words, ${rate} per sounding s, lexical ${Boolean(lyrics.lexical)}`, need: `≥ ${cal.minLexicalWords} real words, ≥ ${cal.minWordsPerSec} per sounding second` },
+  ];
+  const evidence = { checks, transcript: transcript.text, soundingSec: sounding, pitchedSec: vocal.voicedSec, pitchedShare, sustainedRatio: vocal.sustainedRatio, lexicalWords: transcript.lexicalWords, wordsPerSec: rate };
+  if (!checks.every((c) => c.ok)) return no(`not sustained lyrical singing: ${checks.filter((c) => !c.ok).map((c) => c.id).join(', ')}`, evidence);
+  return { applied: true, tier: 'gathered', reason: 'sustained lyrical singing: sung throughout with recognisable words; only phrase_complete failed', evidence };
+}
+
 // Stage 2 (only after the gate): how well it was sung decides Gathered or
 // Resolved. Resolved needs confidently strong singing; anything uncertain
 // stays Gathered.
-export function decideTier({ gate, quality }) {
-  if (!gate?.pass) return { tier: 'loose', stage: 1, reason: gate?.reason ?? 'no lyrics gate result' };
+// A failed gate is Loose unless the sustained-lyrical-singing floor applies,
+// which gives Gathered and nothing more.
+export function decideTier({ gate, quality, floor = null }) {
+  if (!gate?.pass) {
+    if (floor?.applied) return { tier: 'gathered', stage: 'lyrical_floor', reason: `${floor.reason} (minimum Gathered; ${gate.reason})`, lyricalFloor: floor };
+    return { tier: 'loose', stage: 1, reason: gate?.reason ?? 'no lyrics gate result', lyricalFloor: floor };
+  }
   if (quality?.strong) return { tier: 'resolved', stage: 2, reason: `complete phrase, confidently strong singing (score ${quality.score}, confidence ${quality.confidence})` };
   const why = quality?.score == null ? 'singing quality could not be measured'
     : `singing not confidently strong (score ${quality.score}, confidence ${quality.confidence}${quality.strongChecks ? `; not met: ${quality.strongChecks.filter((c) => !c.ok).map((c) => c.id).join(', ')}` : ''})`;
