@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { singers, sungLyrics, SR } from './synth.js';
 import { analyzeTranscript } from '../../src/engine/interpret/lyrics.js';
 import { understandTake } from '../../src/engine/understand.js';
-import { cleanReading, SCENE_KEYS } from '../../src/engine/providers/openai-understand.js';
+import { cleanReading, SCENE_KEYS, SYSTEM } from '../../src/engine/providers/openai-understand.js';
 import { measurePerformance } from '../../src/engine/analysis/performance-measure.js';
 import { direct, RESOLVED_FINISH, NARRATIVE_RULE, NARRATIVE_STAGING, narrativeFor, checkPrompt, CONTENT_RULE, CONTENT_RULE_FIGURE, FIGURE_RULE, AVOID_PEOPLE, AVOID_PEOPLE_FIGURE } from '../../src/engine/direct/index.js';
 import { REFERENCE_AUTHORITY_PERFORMANCE_RESOLVED } from '../../src/engine/direct/library.js';
@@ -200,4 +200,13 @@ test('a prominent figure or a face is never painted', () => {
   // A face named in the subject is caught by the prompt check even with a figure.
   const d = paint(...R, { ...WITH, text: 'a small figure at the fork, her face turned back', scene: FIGURE_SCENE });
   assert.equal(checkPrompt(d).verdict, 'leak');
+});
+
+test('the scene instructions teach the reasoning, not a reusable scene template', () => {
+  const plan = SYSTEM.slice(SYSTEM.indexOf('- scene:'), SYSTEM.indexOf('- concepts,'));
+  // Han, 19 Oct: no concrete stock imagery that could anchor unrelated songs.
+  for (const stock of ['lantern', 'footprint', 'rain', 'dusk', 'crossroads', 'intersection', 'fork', 'road', 'path']) assert.ok(!new RegExp(`\\b${stock}`, 'i').test(plan), stock);
+  assert.match(plan, /Reason from this song's own words: what is happening, between what, with what tension/);
+  assert.match(plan, /never from a stock or reusable scene/);
+  assert.match(plan, /Invent no story unrelated to the words/);
 });
