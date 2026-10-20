@@ -1,6 +1,6 @@
 // The paintings ledger: the server's copy of the wallet, one per account,
 // which is the truth for what someone may paint. The rules are the app's own
-// (src/app/billing/wallet.js: today's Daily Ritual painting → free → credits,
+// (src/app/billing/wallet.js: Daily Ritual credits → free → credits,
 // reserve / commit / release per take key), run here under a per-account lock.
 //
 // Keys (all under the store's prefix):
@@ -18,7 +18,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { createWallet } from '../../src/app/billing/wallet.js';
-import { productById } from '../../src/app/billing/products.js';
+import { productById, RITUAL_CAP } from '../../src/app/billing/products.js';
 
 const KEEP = 5 * 365 * 86400; // refreshed on every change
 const LOCK_TTL = 10;
@@ -100,12 +100,17 @@ export function createLedger({ kv, now = Date.now, holdTtlMs = 180_000, sleep = 
 
   // Daily Ritual as of now: the latest expiry among its unrefunded
   // transactions, extended by a billing grace period while Apple grants one.
-  function syncSubscription(a, productId) {
+  // Every unrefunded transaction is a paid period for the wallet's daily
+  // credits (one known only by its expiry, recorded before credits rolled
+  // over, is taken to start a month before it).
+  function syncSubscription(a, productId, opts) {
     const live = Object.values(a.subs.txs).filter((t) => !t.revoked);
-    if (!live.length) { a.wallet.setSubscription(null); return; }
+    const periods = live.map((t) => [Number(t.from) || t.exp - 31 * 86400_000, t.exp]);
+    if (!live.length) { a.wallet.setSubscription(null, opts); return; }
     const latest = live.reduce((x, y) => (y.exp > x.exp ? y : x));
     const expiresAt = Math.max(latest.exp, a.subs.graceUntil || 0);
-    a.wallet.setSubscription({ productId: latest.productId || productId, expiresAt, willRenew: a.subs.willRenew ?? expiresAt > now() });
+    if (expiresAt > latest.exp) periods.push([latest.exp, expiresAt]);
+    a.wallet.setSubscription({ productId: latest.productId || productId, expiresAt, willRenew: a.subs.willRenew ?? expiresAt > now(), periods }, opts);
   }
 
   const view = (a) => ({ account: a.id, ...a.wallet.status(), wallet: { ...a.wallet.snapshot(), holds: {} } });
@@ -141,10 +146,17 @@ export function createLedger({ kv, now = Date.now, holdTtlMs = 180_000, sleep = 
       } else {
         const prev = a.subs.txs[txId];
         const revoked = !!tx.revocationDate || (!!prev?.revoked && source !== 'notification');
-        a.subs.txs[txId] = { exp: Number(tx.expiresDate) || 0, productId: tx.productId, revoked };
+        const exp = Number(tx.expiresDate) || 0;
+        const from = Number(tx.purchaseDate) || prev?.from || undefined;
+        // A refund takes back what's left of the credits that period earned;
+        // Apple reversing it gives them back (not as days paid again).
+        if (revoked && !prev?.revoked) a.wallet.refundRitual(txId, [from ?? exp - 31 * 86400_000, exp]);
+        const reversed = !revoked && !!prev?.revoked;
+        if (reversed) a.wallet.unrefundRitual(txId);
+        a.subs.txs[txId] = { exp, from, productId: tx.productId, revoked };
         a.subsDirty = true;
         await kv.set(`bill:otid:${tx.originalTransactionId}`, id, KEEP);
-        syncSubscription(a, tx.productId);
+        syncSubscription(a, tx.productId, { backfill: !reversed });
         effect = revoked ? 'revoked' : prev ? 'updated' : 'subscribed';
       }
       return { effect, ...view(a) };
@@ -185,6 +197,13 @@ export function createLedger({ kv, now = Date.now, holdTtlMs = 180_000, sleep = 
           free: Math.min(s.free, d.free),
           credits: d.credits + s.credits,
           dailyUsed: [s.dailyUsed, d.dailyUsed].filter(Boolean).sort().at(-1) ?? null,
+          // Daily Ritual credits from both, still capped; the periods come
+          // with the subscription below, already counted up to now.
+          ritual: Math.min(RITUAL_CAP, (s.ritual ?? 0) + (d.ritual ?? 0)),
+          periods: [...s.periods, ...d.periods],
+          ritualAt: Math.max(s.ritualAt ?? 0, d.ritualAt ?? 0) || null,
+          ritualFloor: Math.max(s.ritualFloor ?? -Infinity, d.ritualFloor ?? -Infinity),
+          ritualRevoked: { ...s.ritualRevoked, ...d.ritualRevoked },
           spent: { ...s.spent, ...d.spent },
           granted: { ...s.granted, ...d.granted },
           revoked: { ...s.revoked, ...d.revoked },
@@ -192,7 +211,7 @@ export function createLedger({ kv, now = Date.now, holdTtlMs = 180_000, sleep = 
         });
         dst.subs = { ...dst.subs, txs: { ...src.subs.txs, ...dst.subs.txs }, willRenew: dst.subs.willRenew ?? src.subs.willRenew, graceUntil: Math.max(dst.subs.graceUntil || 0, src.subs.graceUntil || 0) };
         dst.subsDirty = true;
-        if (Object.keys(dst.subs.txs).length) syncSubscription(dst);
+        if (Object.keys(dst.subs.txs).length) syncSubscription(dst, undefined, { backfill: false });
         await save(dst);
         await kv.set(`bill:alias:${from}`, to, KEEP);
         await kv.del(`bill:acct:${from}`, `bill:subs:${from}`);

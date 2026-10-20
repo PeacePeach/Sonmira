@@ -38,7 +38,8 @@ export function createSimulatedStore({ ask, now = () => Date.now() }) {
     const tx = { id: txId(st), productId: product.id, purchaseDate: now(), simulated: true };
     if (product.kind === 'subscription') {
       tx.expiresAt = addMonths(now(), 1);
-      st.sub = { productId: product.id, expiresAt: tx.expiresAt, willRenew: true };
+      tx.from = now(); // the start of this run of paid days (Daily Ritual credits count from it)
+      st.sub = { productId: product.id, from: tx.from, expiresAt: tx.expiresAt, willRenew: true };
     }
     return tx;
   }

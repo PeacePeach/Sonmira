@@ -87,7 +87,7 @@ async function run() {
   const text = await page.textContent(paywall);
   assert.match(text, /More moments to keep\./);
   assert.match(text, /Your first three paintings are on us/);
-  assert.match(text, /Daily Ritual.*\$4\.99.*month/s);
+  assert.match(text, /Daily Ritual.*\$5\.99.*month/s);
   assert.match(text, /Little Moments.*\$2\.99/s);
   assert.match(text, /Restore purchases.*More information/s);
   assert.doesNotMatch(text, /Why we charge|Terms|Privacy/, 'the footer stays short; the rest is in More information');
@@ -105,8 +105,9 @@ async function run() {
   await page.click('.fab');
   await page.waitForSelector(paywall);
   await page.click('[data-plan="app.sonmira.daily_ritual.monthly"]');
-  assert.match(await page.textContent(`${paywall} .pill`), /Start Daily Ritual · \$4\.99 \/ month/);
-  assert.match(await page.textContent(`${paywall} .pw-fine`), /renewing automatically until you cancel/);
+  assert.match(await page.textContent(`${paywall} .pill`), /Start Daily Ritual · \$5\.99 \/ month/);
+  assert.match(await page.textContent(`${paywall} .pw-fine`), /renewing automatically until you cancel.*Unused credits roll over, up to 30\. Remaining credits expire 30 days after your subscription ends\./s);
+  assert.match(await page.textContent(`${paywall} [data-plan="app.sonmira.daily_ritual.monthly"]`), /One painting credit every day\. Save up to 30\./);
   await settle(page);
   await shot(page, 'p03-paywall-daily-selected');
   await page.click('text=More information');
@@ -115,10 +116,13 @@ async function run() {
   await shot(page, 'p04-more-information');
   const info = await page.textContent('.pw-info');
   assert.match(info, /Why we charge.*costs something to run/s);
-  assert.match(info, /Daily Ritual: \$4\.99 a month, renewing automatically until you cancel/);
+  assert.match(info, /Daily Ritual: \$5\.99 a month, renewing automatically until you cancel/);
   assert.match(info, /Little Moments: \$2\.99, a one-time purchase/);
   await page.click('.pw-info >> text=Terms');
   await page.waitForSelector('.legal-sheet');
+  const terms = await page.textContent('.legal-sheet');
+  assert.match(terms, /auto-renewing monthly subscription.*one painting credit per day.*up to a balance of 30.*remain usable for 30 days.*never expire, are not part of the 30-credit limit/s);
+  assert.doesNotMatch(terms, /\$\d/, 'no fixed price in the Terms');
   await settle(page);
   await shot(page, 'p04b-terms-sheet');
   await page.click('.legal-sheet [aria-label=Close]');
@@ -205,23 +209,34 @@ async function run() {
   await page.click('[data-paywall-done] .quiet-btn');
   await settle(page);
   await shot(page, 'p11-settings-paintings');
-  assert.match(await page.textContent('[data-paintings]'), /Today’s painting \+ 9.*Daily Ritual.*Renews/s);
+  assert.match(await page.textContent('[data-paintings]'), /1 Daily Ritual credit \+ 9.*Daily Ritual.*Renews.*Daily Ritual credits1 of 30 · next tomorrow.*Little Moments9 · never expire/s);
   await page.click('[aria-label="Back to diary"]');
   await page.click('.fab');
   await record(page);
-  assert.equal(await page.textContent('[data-uses]'), 'Uses today’s painting from Daily Ritual');
+  assert.equal(await page.textContent('[data-uses]'), 'Uses your last Daily Ritual credit');
   await page.click('text=Create painting');
   await page.waitForSelector('[data-phase=result]', { timeout: 8000 });
   await keepIt(page);
   await page.waitForSelector('[data-screen=diary]');
   let s = await status(page);
-  assert.deepEqual([s.dailyUsedToday, s.credits, s.source], [true, 9, 'credits']);
+  assert.deepEqual([s.ritual, s.credits, s.source], [0, 9, 'credits'], 'tomorrow’s credit is not lent today');
 
-  // E. the subscription ends: diary and pack credits stay
+  // Two days later: two credits saved up, both usable the same day
+  await page.click('[aria-label="Settings"]');
+  await page.click('text=Start a new day');
+  await page.click('text=Start a new day');
+  assert.equal((await status(page)).ritual, 2);
+  assert.match(await page.textContent('[data-ritual-credits]'), /2 of 30/);
+  await page.click('[aria-label="Back to diary"]');
+
+  // E. the subscription ends: diary and pack credits stay, Daily Ritual credits for 30 days
   await page.click('[aria-label="Settings"]');
   await page.click('text=End Daily Ritual now');
   s = await status(page);
-  assert.deepEqual([s.subscribed, s.credits], [false, 9]);
+  assert.deepEqual([s.subscribed, s.credits, s.ritual], [false, 9, 2]);
+  assert.match(await page.textContent('[data-ritual-credits]'), /2 · kept until/);
+  for (let i = 0; i < 30; i++) await page.evaluate(() => window.sonmira.billing.dev.nextDay());
+  assert.equal((await status(page)).ritual, 0, 'gone 30 days after the end');
   // reinstall: credits come back from the account ledger
   await page.click('text=Delete and reinstall the app');
   await page.waitForSelector('[data-screen=diary]');
@@ -247,7 +262,7 @@ async function run() {
   await page.waitForSelector(paywall);
   await settle(page, 600);
   await shot(page, 'p12-paywall-extra-today');
-  assert.match(await page.textContent(paywall), /Today’s painting is made\./);
+  assert.match(await page.textContent(paywall), /Your credits are used for now\..*next credit tomorrow/s);
   assert.equal(await page.locator('[data-plan]').count(), 1, 'only the pack today');
   await page.click(`${paywall} [aria-label=Close]`);
 

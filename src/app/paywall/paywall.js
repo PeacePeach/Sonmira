@@ -7,7 +7,10 @@ import { illustration } from '../ui/illustration.js';
 import { DEFAULT_PRODUCT } from '../billing/products.js';
 import { openLayer } from './layer.js';
 import { openLegalSheet } from './legal-sheet.js';
-import { balanceLabel, renewalLabel } from './copy.js';
+import { balanceLabel, renewalLabel, whenLabel } from './copy.js';
+
+// The Daily Ritual rules, beside its price wherever it is offered.
+const RITUAL_RULES = 'Unused credits roll over, up to 30. Remaining credits expire 30 days after your subscription ends.';
 
 const WHY = [
   'Each painting is made just for you, using AI that costs something to run. Your support helps us cover creation costs, care for Sonmira, and keep making it better.',
@@ -30,8 +33,9 @@ const ERRORS = {
 export function openPaywall(app, { from = 'diary', onContinue } = {}) {
   const b = app.billing;
   const start = b.status();
-  // A subscriber who has used today's painting can only add a pack today.
-  const extraToday = start.subscribed && start.dailyUsedToday;
+  // A subscriber who has used every credit so far can only add a pack today.
+  const extraToday = start.subscribed && !start.ritual;
+  const next = start.ritualNextAt ? whenLabel(start.ritualNextAt, start.now) : null;
   const plans = b.products.filter((p) => !extraToday || p.kind === 'consumable');
   let selected = plans.some((p) => p.id === DEFAULT_PRODUCT) ? DEFAULT_PRODUCT : plans[0].id;
   let busy = false, done = false, waiting = false;
@@ -57,16 +61,16 @@ export function openPaywall(app, { from = 'diary', onContinue } = {}) {
   });
 
   const lede = extraToday
-    ? 'Daily Ritual brings a new one tomorrow. If today asks for more, you can add a few paintings.'
+    ? `${next ? `Daily Ritual brings your next credit ${next}.` : 'Your Daily Ritual credits are used.'} If today asks for more, you can add a few paintings.`
     : start.purchased
       ? 'Your diary is just as you left it. Choose how you’d like to keep creating.'
       : 'Your first three paintings are on us. Choose how you’d like to keep creating.';
 
   const choose = h('div', { class: 'pw-choose' },
-    h('h2', { class: 'serif pw-title' }, extraToday ? 'Today’s painting is made.' : 'More moments to keep.'),
+    h('h2', { class: 'serif pw-title' }, extraToday ? 'Your credits are used for now.' : 'More moments to keep.'),
     h('p', { class: 'pw-lede' }, lede),
     h('div', { class: 'pw-plans', role: 'radiogroup', 'aria-label': 'Ways to keep creating' }, planEls.map((x) => x.el)),
-    extraToday ? h('p', { class: 'pw-plan-note' }, `Your Daily Ritual · ${renewalLabel(start.sub)}`) : null,
+    extraToday ? h('p', { class: 'pw-plan-note' }, `Your Daily Ritual · ${renewalLabel(start.sub, start.now)}`) : null,
     h('div', { class: 'pw-cta' }, cta, message),
     fine,
     h('div', { class: 'pw-links' },
@@ -88,7 +92,7 @@ export function openPaywall(app, { from = 'diary', onContinue } = {}) {
     if (!busy && !waiting) cta.textContent = p.kind === 'subscription' ? `Start Daily Ritual · ${price} / month` : `Add 10 paintings · ${price}`;
     // The recurring-charge terms stay here, next to the button; the rest is in More information.
     fine.textContent = p.kind === 'subscription'
-      ? `${price} a month, renewing automatically until you cancel. Cancel anytime in your Apple ID settings, at least 24 hours before it renews.`
+      ? `${price} a month, renewing automatically until you cancel. Cancel anytime in your Apple ID settings, at least 24 hours before it renews. ${RITUAL_RULES}`
       : `A one-time purchase. Your ${p.credits} paintings never expire.`;
   }
   const say = (t, tone = '') => { message.textContent = t || ''; message.dataset.tone = tone; };
@@ -129,7 +133,8 @@ export function openPaywall(app, { from = 'diary', onContinue } = {}) {
           simulated: b.simulated,
         });
       }
-      say(r.subscription ? 'Daily Ritual is restored. Today’s painting is already made; a new one comes tomorrow.' : 'There’s nothing to restore for this Apple ID.');
+      const soon = s.ritualNextAt ? ` Your next credit comes ${whenLabel(s.ritualNextAt, s.now)}.` : '';
+      say(r.subscription ? `Daily Ritual is restored.${soon}` : 'There’s nothing to restore for this Apple ID.');
     } catch (e) {
       if (layer.closed) return;
       idle();
@@ -158,7 +163,7 @@ export function openPaywall(app, { from = 'diary', onContinue } = {}) {
     showDone({
       title: sub ? 'Your Daily Ritual begins.' : 'Ten more moments.',
       lede: sub
-        ? 'One painting each day, starting today. It renews monthly until you cancel.'
+        ? 'One painting credit today, and one every day after. Unused credits roll over, up to 30. It renews monthly until you cancel.'
         : `${product.credits} paintings added. They’re yours whenever you like.`,
       simulated,
     });
@@ -188,7 +193,7 @@ function openMoreInfo(app, b) {
   layer.body.append(
     section('Why we charge', ...WHY),
     section('About purchases',
-      sub ? `${sub.name}: ${b.price(sub.id)} a month, renewing automatically until you cancel. Payment is charged to your Apple ID when you confirm. Cancel anytime in your Apple ID settings, at least 24 hours before it renews. One painting a day; unused days don’t carry over. Cancelling never touches your diary.` : null,
+      sub ? `${sub.name}: ${b.price(sub.id)} a month, renewing automatically until you cancel. Payment is charged to your Apple ID when you confirm. Cancel anytime in your Apple ID settings, at least 24 hours before it renews. One painting credit every day while the subscription is paid for. ${RITUAL_RULES} If you cancel, it stays active, and credits keep coming, until the end of the period you paid for. Cancelling never touches your diary.` : null,
       pack ? `${pack.name}: ${b.price(pack.id)}, a one-time purchase. Your ${pack.credits} paintings never expire, and one is used only when a painting is made.` : null,
       'Restore purchases brings back what you’ve bought with this Apple ID.'),
     h('div', { class: 'pw-links pw-info-links' },

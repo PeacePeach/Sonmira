@@ -149,35 +149,90 @@ test('every install is counted alike when billing is on; nobody when it is off',
   assert.equal(understand.counted, false, 'only paintings are counted');
 });
 
-test('Daily Ritual: one painting per local day, renewals extend, expiry ends it', async () => {
+test('Daily Ritual: a credit per paid day, saved up, renewals extend, expiry keeps them 30 days', async () => {
   const s = setup();
+  for (const k of ['f1', 'f2', 'f3']) await s.paint(A, `${k}.generate`);
   const first = s.tx({ productId: SUB });
   await s.post({ account: A, transactions: [chain.sign(first)] });
+  assert.equal((await s.status(A)).ritual, 1, 'the first day at once');
   assert.equal((await s.paint(A, 'd1.generate')).source, 'daily');
-  assert.equal((await s.paint(A, 'd2.generate')).source, 'free', 'second painting today comes from elsewhere');
-  s.clock.now += DAY;
-  assert.equal((await s.paint(A, 'd3.generate', dayAt(1))).source, 'daily', 'a new day, a new painting');
-  // A day no time zone is in right now isn't believed, and a used day never reopens.
-  assert.equal((await s.paint(A, 'd4.generate', dayAt(70))).source, 'free');
-  assert.notEqual(await s.ledger.reserve(A, 'd5.generate', dayAt(0)), 'daily', 'yesterday is not reopened');
-  await s.ledger.release('d5.generate', A);
+  // Tomorrow's credit is not lent today, whatever day the phone claims.
+  for (const day of [dayAt(0), dayAt(1), dayAt(70)]) assert.equal((await s.paint(A, `x-${day}.generate`, day)).code, 'no_paintings');
+  s.clock.now += 3 * DAY;
+  assert.equal((await s.status(A)).ritual, 3, 'unused days add up');
+  for (const k of ['d2', 'd3', 'd4']) assert.equal((await s.paint(A, `${k}.generate`, dayAt(3))).source, 'daily', 'several on one day');
+  assert.equal((await s.paint(A, 'd5.generate', dayAt(3))).code, 'no_paintings');
 
-  // Renewal (Apple notification) with a later expiry; an older transaction arriving late doesn't shorten it.
-  s.clock.now += 29 * DAY;
-  const renewal = s.tx({ productId: SUB, originalTransactionId: first.originalTransactionId, appAccountToken: undefined, expiresDate: s.clock.now + 30 * DAY });
+  // Renewal (Apple notification) with a later expiry; the same renewal from the app, and an older transaction arriving late, add nothing.
+  s.clock.now = first.expiresDate + 60_000;
+  const renewal = s.tx({ productId: SUB, originalTransactionId: first.originalTransactionId, appAccountToken: undefined, purchaseDate: first.expiresDate + 5000, expiresDate: first.expiresDate + 30 * DAY });
   assert.equal((await s.notify(s.note('DID_RENEW', { transaction: renewal }))).code, 200);
-  await s.post({ account: A, transactions: [chain.sign(first)] });
-  const st = await s.status(A, dayAt(30));
+  const before = (await s.status(A)).ritual;
+  await s.post({ account: A, transactions: [chain.sign(first), chain.sign(renewal)] });
+  await s.notify(s.note('DID_RENEW', { transaction: renewal }));
+  const st = await s.status(A);
+  assert.equal(st.ritual, before, 'repeats grant nothing');
   assert.equal(st.subscribed, true);
   assert.equal(st.sub.expiresAt, renewal.expiresDate);
 
-  // Turned off: active to the end of the period, then over.
+  // Turned off: credits keep coming to the end of the period, then stay 30 days.
   await s.notify(s.note('DID_CHANGE_RENEWAL_STATUS', { subtype: 'AUTO_RENEW_DISABLED', renewal: { originalTransactionId: first.originalTransactionId, autoRenewProductId: SUB, productId: SUB, autoRenewStatus: 0, signedDate: s.clock.now, environment: 'Sandbox' } }));
-  assert.equal((await s.status(A, dayAt(30))).sub.willRenew, false);
-  s.clock.now += 31 * DAY;
-  const ended = await s.status(A, dayAt(61));
+  const off = await s.status(A);
+  assert.equal(off.sub.willRenew, false);
+  assert.equal(off.ritualExpiresAt, renewal.expiresDate + 30 * DAY);
+  s.clock.now = renewal.expiresDate + DAY;
+  const ended = await s.status(A);
   assert.equal(ended.subscribed, false);
-  assert.equal(ended.source, 'free', 'back to what is left: one free painting');
+  assert.equal(ended.ritual, 30, 'saved up to 30');
+  assert.equal((await s.paint(A, 'e1.generate')).source, 'daily', 'still usable after the end');
+  s.clock.now = renewal.expiresDate + 30 * DAY;
+  const gone = await s.status(A);
+  assert.equal(gone.ritual, 0, '30 days after the end, gone');
+  assert.equal((await s.paint(A, 'e2.generate')).code, 'no_paintings');
+});
+
+test('Daily Ritual credits: a failed painting uses none, a repeated take pays once, packs are separate', async () => {
+  const s = setup();
+  for (const k of ['f1', 'f2', 'f3']) await s.paint(A, `${k}.generate`);
+  await s.post({ account: A, transactions: [chain.sign(s.tx({ productId: SUB }))] });
+  s.clock.now += DAY;
+  const r = await s.charge.reserve({ installId: A, key: 'k1.generate', endpoint: 'generate', req: { headers: {} } });
+  assert.equal(r.source, 'daily');
+  await s.charge.settle({ installId: A, key: 'k1.generate', outcome: 'release' });
+  assert.equal((await s.status(A)).ritual, 2, 'the failure handed it back');
+  await s.paint(A, 'k2.generate');
+  await s.paint(A, 'k2.generate');
+  assert.equal((await s.status(A)).ritual, 1, 'the same take once');
+  await s.paint(A, 'k3.generate');
+  assert.equal((await s.paint(A, 'k4.generate')).code, 'no_paintings');
+  await s.post({ account: A, transactions: [chain.sign(s.tx())] });
+  assert.equal((await s.paint(A, 'k4.generate')).source, 'credits', 'a pack works the same day');
+  assert.equal((await s.status(A)).credits, 9);
+});
+
+test('a ledger from before credits rolled over: today’s painting becomes a credit, packs and free stay', async () => {
+  const s = setup();
+  const sub = s.tx({ productId: SUB });
+  await s.post({ account: A, transactions: [chain.sign(sub)] });
+  // Rewrite the record as the previous version saved it.
+  const legacy = (dailyUsed) => JSON.stringify({ v: 1, free: 1, credits: 7, sub: { productId: SUB, expiresAt: sub.expiresDate, willRenew: true }, dailyUsed, holds: {}, spent: {}, granted: { p1: 10 }, revoked: {}, purchased: true });
+  await s.kv.set(`bill:acct:${A}`, legacy(dayAt(-1)), 3600);
+  await s.kv.set(`bill:subs:${A}`, JSON.stringify({ txs: { [sub.transactionId]: { exp: sub.expiresDate, productId: SUB, revoked: false } }, willRenew: true, graceUntil: 0 }), 3600);
+  let st = await s.status(A);
+  assert.deepEqual([st.ritual, st.free, st.credits], [1, 1, 7]);
+  // Apple's notification and the app's refresh after the upgrade pay nothing for the past.
+  await s.post({ account: A, transactions: [chain.sign(sub)] });
+  await s.notify(s.note('DID_RENEW', { transaction: sub }));
+  st = await s.status(A);
+  assert.equal(st.ritual, 1);
+  s.clock.now += DAY + 1;
+  assert.equal((await s.status(A)).ritual, 2);
+  // Today's painting already made under the old rules: none today.
+  const t = setup();
+  const sub2 = t.tx({ productId: SUB });
+  await t.post({ account: A, transactions: [chain.sign(sub2)] });
+  await t.kv.set(`bill:acct:${A}`, legacy(dayAt(0)), 3600);
+  assert.equal((await t.status(A)).ritual, 0);
 });
 
 test('a billing grace period keeps Daily Ritual going while Apple retries', async () => {

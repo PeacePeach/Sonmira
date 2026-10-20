@@ -20,7 +20,7 @@ listening to or sharing the ones someone already has.
 | | |
 | --- | --- |
 | Free | 3 successful paintings per person. No card, no account. |
-| Daily Ritual | Auto-renewable monthly subscription, `$4.99` fallback price. One painting per calendar day; unused days don't carry over. |
+| Daily Ritual | Auto-renewable monthly subscription, `$5.99` fallback price. One painting credit per paid day, saved up to 30; what's left stays 30 days after the subscription ends. Rules in `docs/billing-iap.md` → *Daily Ritual credits*. |
 | Little Moments | Consumable, `$2.99` fallback price, adds 10 paintings that never expire. Can be bought any number of times, including by subscribers. |
 
 Prices and product ids live in `src/app/billing/products.js`. The UI shows the
@@ -28,8 +28,9 @@ store's localized `displayPrice` and only falls back to the configured price
 before the store answers. The paywall opens with Little Moments selected
 (`DEFAULT_PRODUCT`) so it doesn't lean on the subscription.
 
-A painting is taken from the first source that has one: **today's Daily
-Ritual painting → free paintings → Little Moments credits.**
+A painting is taken from the first source that has one: **Daily Ritual
+credits → free paintings → Little Moments credits** (the ones that can expire
+go first).
 
 ## Where the paywall appears
 
@@ -41,10 +42,15 @@ Ritual painting → free paintings → Little Moments credits.**
 - **Settings → Paintings → More paintings**, for buying ahead.
 
 Before *Create painting*, a quiet line says what the painting will use
-("Uses 1 of your 3 free paintings", "Uses today's painting from Daily Ritual").
+("Uses 1 of your 3 free paintings", "Uses 1 of your 4 Daily Ritual credits").
 
-A subscriber who has used today's painting sees *Today's painting is made.*
-with only Little Moments offered.
+A subscriber who has used every credit so far sees *Your credits are used for
+now.*, when the next credit comes, and only Little Moments.
+
+Settings → Paintings shows the total, Daily Ritual's renewal date, the Daily
+Ritual credits (*12 of 30 · next tomorrow at 9:00 AM*, or *4 · kept until
+November 16* once auto-renew is off or the subscription has ended) and the
+Little Moments paintings (*never expire*).
 
 ## Counting only successful paintings
 
@@ -139,8 +145,8 @@ back on launch.
 
 **Limits to accept:** someone with iCloud Keychain off who also has no
 purchase history keeps their credits only on the device; a family member
-sharing an Apple ID shares the ledger; and the daily boundary follows the
-device's local date until the service checks it.
+sharing an Apple ID shares the ledger; and in a web preview the simulated
+subscription's days follow the browser's clock (Start a new day moves it).
 
 ## Edge cases
 
@@ -152,7 +158,7 @@ device's local date until the service checks it.
 | App restarts while painting | Hold released on launch. |
 | Same take generated again | Counted at most once (per-take key). |
 | Painting made, then *Sing again* or close without *Keep it* | Counted: the painting was made. |
-| Subscriber used today's painting | Paywall offers Little Moments only; tomorrow's painting comes on its own. |
+| Subscriber used every credit so far | Paywall offers Little Moments only and says when the next credit comes. |
 | Subscription cancelled | Stays active to the end of the period, then ends. |
 | Subscription ended | Diary untouched; Little Moments credits stay; new paintings need a credit or a new subscription. |
 | Pending purchase approved later | Credits or subscription added via `Transaction.updates`; toast if the sheet is closed. |
@@ -168,6 +174,6 @@ device's local date until the service checks it.
 | `drops` | Empty diary, paintings added, purchases restored, Daily Ritual begins |
 | `mic-off` | Microphone off, missing or busy |
 
-The today's-painting-made state has no illustration.
+The credits-used-for-now state has no illustration.
 Both were generated with OpenAI's image model and flattened so the paper is
 white and multiplies cleanly onto any surface.

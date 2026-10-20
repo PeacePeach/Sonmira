@@ -43,13 +43,16 @@ export function createBilling({ ask, native, server }) {
     const base = server;
     server = { ...base, send: async (req) => base.send({ ...req, device: await native.deviceId().catch(() => null) }) };
   }
-  const store = native ?? (isReleaseSite() ? createAppOnlyStore() : createSimulatedStore({ ask }));
+  // The simulation's clock can be moved on a day at a time (Development → Start a new day).
+  const now = () => Date.now() + (native ? 0 : (Number(readJSON(DAY_SHIFT)) || 0) * 864e5);
+  const store = native ?? (isReleaseSite() ? createAppOnlyStore() : createSimulatedStore({ ask, now }));
   let account = native ? native.accountId().catch((e) => { console.warn('[sonmira] no account id', e); return null; }) : Promise.resolve(null);
-  const today = () => { const d = new Date(); if (!native) d.setDate(d.getDate() + (Number(readJSON(DAY_SHIFT)) || 0)); return dayKey(d); };
+  const today = () => dayKey(new Date(now()));
   const wallet = createWallet({
     load: () => readJSON(LOCAL) ?? readJSON(ACCOUNT),
     save: (s) => { writeJSON(LOCAL, s); if (!native) writeJSON(ACCOUNT, { ...s, holds: {} }); },
     today,
+    now,
   });
   // Generation runs inside the app, so after a restart nothing is in flight:
   // anything set aside goes back. (With a generation service, ask it first.)
@@ -80,7 +83,7 @@ export function createBilling({ ask, native, server }) {
       if (product.kind === 'consumable') fresh = wallet.grant(tx.id, product.credits);
       else {
         fresh = !wallet.status().subscribed && (!tx.originalId || tx.originalId === tx.id);
-        wallet.setSubscription({ productId: tx.productId, expiresAt: tx.expiresAt, willRenew: true });
+        wallet.setSubscription({ productId: tx.productId, expiresAt: tx.expiresAt, from: tx.from, willRenew: true });
       }
     }
     if (server) {
