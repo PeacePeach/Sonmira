@@ -21,7 +21,8 @@ const VIDEO_ERRORS = {
 
 // WeChat's share extension offers only Chat and Favorites; Moments posts
 // come from the photo library, so the app saves there and says so.
-export const SAVED_TO_PHOTOS = 'Saved to Photos. Open WeChat → Moments to post.';
+export const SAVED_TO_PHOTOS = 'Saved to Photos';
+export const TOAST_MS = 2000;
 const PHOTOS_ERRORS = {
   denied: 'Sonmira can’t add to Photos. Turn it on in Settings → Sonmira → Photos, then try again.',
   unavailable: 'Save to Photos needs the latest Sonmira from TestFlight. Update the app, then try again.',
@@ -88,7 +89,15 @@ export function openShareSheet(app, item) {
     formats, previewBox, progress, message,
     h('div', { class: 'actions' }, h('div', { class: 'share-main' }, primary, saveBtn), secondary));
   const scrim = h('div', { class: 'share-scrim', onClick: close });
-  const el = h('div', { class: 'share-layer', 'data-share': '' }, scrim, panel);
+  // Saved to Photos: a small toast with a check that fades after ~2 s.
+  const toast = h('div', { class: 'share-toast', role: 'status', hidden: true }, icon('check', { size: 'sm' }), h('span', {}, SAVED_TO_PHOTOS));
+  let toastTimer;
+  const savedToast = () => {
+    clearTimeout(toastTimer);
+    toast.hidden = true; void toast.offsetWidth; toast.hidden = false; // restart the fade on a second save
+    toastTimer = setTimeout(() => { toast.hidden = true; }, TOAST_MS);
+  };
+  const el = h('div', { class: 'share-layer', 'data-share': '' }, scrim, panel, toast);
   app.root.append(el);
 
   function render() {
@@ -184,7 +193,7 @@ export function openShareSheet(app, item) {
       return;
     }
     saving = true; render();
-    try { await saveToPhotos(file); say(SAVED_TO_PHOTOS); }
+    try { await saveToPhotos(file); savedToast(); }
     catch (e) {
       console.warn('[sonmira] save to Photos failed', e);
       say((PHOTOS_ERRORS[e?.kind] || PHOTOS_ERRORS.failed) + (e?.kind === 'denied' ? '' : reason(e)));
@@ -241,6 +250,7 @@ export function openShareSheet(app, item) {
   function close() {
     if (closed) return;
     closed = true;
+    clearTimeout(toastTimer);
     abort?.abort();
     videoEl.pause();
     el.classList.add('leaving');

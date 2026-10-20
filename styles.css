@@ -384,8 +384,11 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .share-progress .rec-track { margin-top: 10px; }
 .share-message { font-family: var(--serif); font-weight: 600; font-style: italic; font-size: 16px; color: var(--secondary); line-height: 1.35; text-align: center; min-height: 0; }
 .share-message:empty { display: none; }
+.share-toast { position: absolute; left: 50%; top: calc(var(--top) + 12px); transform: translateX(-50%); z-index: 2; display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; font-size: 13px; color: var(--body); background: var(--tile); border: 1px solid var(--tile-line); box-shadow: 0 4px 16px rgba(0,0,0,.08); pointer-events: none; white-space: nowrap; animation: shareToast 2s ease-in-out both; }
+.share-toast[hidden] { display: none; }
+@keyframes shareToast { 0% { opacity: 0; transform: translate(-50%, -4px); } 10%, 82% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
 .nav-actions { display: flex; align-items: center; }
-@media (prefers-reduced-motion: reduce) { .share-panel, .share-scrim { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .share-panel, .share-scrim { animation: none !important; } .share-toast { animation-name: fadeIn; animation-duration: .2s; } }
 
 /* ── paywall (a sheet in the Share sheet's style) ────────────────────────── */
 .paywall { padding-bottom: calc(var(--bottom) - 8px); }
