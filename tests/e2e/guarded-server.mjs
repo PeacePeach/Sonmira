@@ -24,7 +24,7 @@ console.log = (...a) => {
   log(...a);
 };
 
-const API = ['generate', 'understand', 'session', 'reference'];
+const API = ['generate', 'understand', 'session', 'reference', 'billing/status', 'billing/transactions'];
 const handlers = Object.fromEntries(await Promise.all(API.map(async (n) => [n, (await import(`../../api/${n}.js`)).default])));
 
 async function api(req, res, name) {

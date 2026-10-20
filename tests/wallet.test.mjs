@@ -37,6 +37,33 @@ test('retrying the same take counts once', () => {
   assert.equal(w.status().free, 2);
 });
 
+test('the last free painting, counted by the server, stays usable after the app adopts its ledger', () => {
+  // The server counts a take under its request key (take key + '.generate').
+  const server = setup().w;
+  for (const k of ['a.generate', 'b.generate', 'c.generate']) paint(server, k);
+  const { w } = setup();
+  w.reserve('c'); // the app was painting c when it closed
+  w.releaseAll(); // and opened again
+  w.replace(server.snapshot());
+  assert.equal(w.status().free, 0);
+  assert.equal(w.status().canCreate, false, 'nothing new can be made');
+  assert.equal(w.reserve('c'), 'free', 'the painting already made needs no credit');
+  assert.equal(w.commit('c'), 'free');
+  assert.equal(w.status().free, 0, 'and is not counted again');
+  assert.equal(w.reserve('d'), null, 'a new take still needs one');
+});
+
+test('a take the server counted while the app held it is counted once', () => {
+  const server = setup().w;
+  paint(server, 'a.generate');
+  const { w } = setup();
+  w.reserve('a');
+  w.replace(server.snapshot()); // the ledger arrives before the app's own commit
+  assert.equal(w.commit('a'), 'free');
+  assert.equal(w.status().free, 2, 'counted once');
+  assert.deepEqual(w.snapshot().holds, {});
+});
+
 test('holds left by a restart go back', () => {
   const { w, make } = setup();
   w.reserve('a');

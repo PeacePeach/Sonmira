@@ -17,6 +17,11 @@ import { FREE_PAINTINGS } from './products.js';
 
 const KEEP_SPENT = 60; // recent committed keys kept for de-duplication
 
+// The server's ledger counts a take under its guarded request's key, the
+// take key plus '.generate' (protect/client.js). The app adopts that ledger
+// (iOS), so a take counted there is the same take here.
+const SERVER_SUFFIX = '.generate';
+
 export function freshState() {
   return { v: 1, free: FREE_PAINTINGS, credits: 0, sub: null, dailyUsed: null, holds: {}, spent: {}, granted: {}, revoked: {}, purchased: false };
 }
@@ -28,6 +33,7 @@ export function createWallet({ load = () => null, save = () => {}, today, now = 
   let s = normalize(load());
 
   const persist = () => save(s);
+  const spentFor = (key) => s.spent[key] ?? s.spent[key + SERVER_SUFFIX];
   const held = (source) => Object.values(s.holds).filter((x) => x.source === source).length;
   const subscribed = () => !!(s.sub && s.sub.expiresAt > now());
   // A day already used, or one before it, never opens again (the server takes
@@ -60,7 +66,7 @@ export function createWallet({ load = () => null, save = () => {}, today, now = 
 
     /** Set a painting aside for this generation. Returns the source, or null if none is left. */
     reserve(key) {
-      if (s.spent[key]) return s.spent[key].source;
+      if (spentFor(key)) return spentFor(key).source;
       if (s.holds[key]) return s.holds[key].source;
       const source = nextSource();
       if (!source) return null;
@@ -71,7 +77,7 @@ export function createWallet({ load = () => null, save = () => {}, today, now = 
 
     /** The painting exists: count it. Safe to call more than once. */
     commit(key) {
-      if (s.spent[key]) return s.spent[key].source;
+      if (spentFor(key)) { if (s.holds[key]) { delete s.holds[key]; persist(); } return spentFor(key).source; }
       const hold = s.holds[key];
       if (!hold) return null;
       if (hold.source === 'daily') s.dailyUsed = hold.day;
