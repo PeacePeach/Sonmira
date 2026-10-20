@@ -121,35 +121,8 @@ def measure(path):
         if 0.003 * n <= len(vivid) <= 0.12 * n:
             avg = [sum(c[k] for c in vivid) / len(vivid) for k in range(3)]
             accent = {'hex': hexof(avg), 'share': round(len(vivid) / n, 3)}
-
-        # Colour families (Resolved palette richness): the clearly distinct
-        # hues the reference shows, however small, tonal steps merged. `colors`
-        # keeps only the three largest areas, often three values of one hue,
-        # so it under-counts the palette a Resolved painting must inherit.
-        # Hue bins of 30 degrees plus one neutral (chroma under 0.08); a family is kept when it covers at
-        # least 2% of the picture and sits at least 40 degrees from every
-        # larger family kept, so neighbouring hues (teal, sea green) count once.
-        hue = {}
-        for cnt, k in q.getcolors():
-            rgb = tuple(pal[k * 3:k * 3 + 3])
-            h, l, s_ = colorsys.rgb_to_hls(*(v / 255 for v in rgb))
-            key = 'grey' if s_ * (1 - abs(2 * l - 1)) < 0.08 else int(((h * 360 + 15) % 360) // 30)
-            f = hue.setdefault(key, [0, [0, 0, 0]])
-            f[0] += cnt
-            for j in range(3): f[1][j] += rgb[j] * cnt
-        groups = sorted(([cnt / n, tuple(v / cnt for v in tot)] for cnt, tot in hue.values()), key=lambda m: -m[0])
-        # The accent is a family of its own even below 2%: it was measured as distinct.
-        if accent: groups.append([max(accent['share'], 0.02), tuple(int(accent['hex'][i:i + 2], 16) for i in (1, 3, 5))])
-        kept = []
-        for share, rgb in groups:
-            if share < 0.02 or len(kept) == 6: continue
-            h, l, s_ = colorsys.rgb_to_hls(*(v / 255 for v in rgb))
-            grey = s_ * (1 - abs(2 * l - 1)) < 0.08
-            far = all((grey != g) or (not grey and min(abs(h - kh), 1 - abs(h - kh)) * 360 >= 40) for _, kh, g in kept)
-            if far: kept.append(({'hex': hexof(rgb), 'share': round(share, 3)}, h, grey))
-        families = [k[0] for k in kept]
     return {
-        'colors': colors, 'accent': accent, 'families': families if paint_idx else [],
+        'colors': colors, 'accent': accent,
         'paper': round(len(paper) / n, 3), 'dark': round(dark / n, 3),
         'lightness': round(lightness, 3), 'saturation': round(saturation, 3), 'temperature': temp,
     }

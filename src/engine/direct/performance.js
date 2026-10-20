@@ -247,32 +247,23 @@ export const visual = (t) => t
 
 export const PERFORMANCE_FORM = {
   loose: 'Abstract: nothing is depicted and there is no picture space to step into. The performance structure below is the whole painting.',
-  gathered: 'Semi-abstract: the subject only emerges, ambiguous and unfinished in places; no complete silhouettes or fully formed scenery, never a blurred illustration. Mood-forward: the feeling leads, the story stays light and the subject may remain partly implied.',
+  gathered: 'Semi-abstract: the subject only emerges, ambiguous and unfinished in places; no complete silhouettes or fully formed scenery, never a blurred illustration.',
   resolved: 'Finished and fully considered: the subject is clear and recognisable, carried through with full intent; never a realistic image.',
 };
 
-// `palette` (Resolved): the reference's inherited colour range replaces the
-// palette-family line; the singing still sets how those colours relate.
-// Gathered with words (Han, 19 Oct): the same Gathered form, but the motif
-// from the words is recognisable (direct/index.js GATHERED_MOTIF).
-export const PERFORMANCE_FORM_GATHERED_MOTIF = 'Semi-representational: the motif from the words is recognisable, loosely painted and partly dissolved, with unfinished passages; everything around it stays ambiguous and atmospheric, never a fully formed scene, a clear story or a blurred illustration. Mood-forward: the feeling leads and the story stays implied.';
-
-// `motif` (Gathered with words): the motif is recognisable and staged at the
-// focus; the performance shapes how it is painted, never whether it shows.
-export function performanceSections(d, tier, colourLanguage, { palette = null, motif = false } = {}) {
+export function performanceSections(d, tier, colourLanguage) {
   const lines = d.decisions.map((x) => ({ aspect: x.aspect, text: visual(x.decision) }));
   const by = (...as) => lines.filter((x) => as.includes(x.aspect)).map((x) => x.text).join(' ');
   return {
-    form: motif && tier === 'gathered' ? PERFORMANCE_FORM_GATHERED_MOTIF : PERFORMANCE_FORM[tier] ?? PERFORMANCE_FORM.gathered,
+    form: PERFORMANCE_FORM[tier] ?? PERFORMANCE_FORM.gathered,
     structure: `Performance structure (decides the composition of this painting): ${by('composition')}`,
     staging: tier === 'loose' ? null
-      : tier === 'gathered' ? (motif ? `Place the motif at the focal passage (${d.focus}), where it is most legible, and let it dissolve into the masses elsewhere. The performance decides how it is painted, its gesture, rhythm, softness and fragmentation, but never erases it: a broken passage breaks its edges, not its identity.`
-        : `Let the subject emerge out of this structure: its forms half-appear inside the masses, most legible at the focal passage (${d.focus}), dissolving elsewhere.`)
+      : tier === 'gathered' ? `Let the subject emerge out of this structure: its forms half-appear inside the masses, most legible at the focal passage (${d.focus}), dissolving elsewhere.`
         : `Stage the subject along this structure: its main form sits at the focal passage (${d.focus}); everything else follows the path, density and breaks of the passages below. The subject is drawn in the performance's own marks, so a broken passage breaks the subject too.`,
     passages: `Passages, left to right: ${lines.filter((x) => x.aspect.startsWith('passage')).map((x) => x.text).join(' ')}`,
     marks: `Marks: ${by('rhythm', 'edges', 'water')}`,
     contrast: `Contrast: ${by('contrast')}`,
-    colour: palette ? `${palette} Colour relations, from how it was sung: ${by('harmony', 'temperature').replace(/^Closely related hues that sit/, 'The colours sit').replace(/^Mostly related hues/, 'Mostly harmonious colour relations')}` : `Colour, inside the reference's palette family (${colourLanguage}): ${by('harmony', 'temperature')}`,
+    colour: `Colour, inside the reference's palette family (${colourLanguage}): ${by('harmony', 'temperature')}`,
     disorder: `Fragmentation and tension: ${by('fragmentation', 'tension')}`,
   };
 }

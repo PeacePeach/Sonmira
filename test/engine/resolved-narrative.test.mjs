@@ -10,9 +10,9 @@ import assert from 'node:assert/strict';
 import { singers, sungLyrics, SR } from './synth.js';
 import { analyzeTranscript } from '../../src/engine/interpret/lyrics.js';
 import { understandTake } from '../../src/engine/understand.js';
-import { cleanReading, SCENE_KEYS, SCENE_EXTRA, SYSTEM } from '../../src/engine/providers/openai-understand.js';
+import { cleanReading, SCENE_KEYS, SYSTEM } from '../../src/engine/providers/openai-understand.js';
 import { measurePerformance } from '../../src/engine/analysis/performance-measure.js';
-import { direct, RESOLVED_FINISH, NARRATIVE_RULE, NARRATIVE_STAGING, narrativeFor, checkPrompt, CONTENT_RULE, CONTENT_RULE_FIGURE, FIGURE_RULE, AVOID_PEOPLE, AVOID_PEOPLE_FIGURE, RESOLVED_SCENE, RESOLVED_IMAGINE } from '../../src/engine/direct/index.js';
+import { direct, RESOLVED_FINISH, NARRATIVE_RULE, NARRATIVE_STAGING, narrativeFor, checkPrompt, CONTENT_RULE, CONTENT_RULE_FIGURE, FIGURE_RULE, AVOID_PEOPLE, AVOID_PEOPLE_FIGURE } from '../../src/engine/direct/index.js';
 import { REFERENCE_AUTHORITY_PERFORMANCE_RESOLVED } from '../../src/engine/direct/library.js';
 import { cleanConcept } from '../../api/generate.js';
 
@@ -50,28 +50,26 @@ const { scene: _s, ...WITHOUT } = WITH; // eslint-disable-line no-unused-vars
 
 test('the reading carries a bounded scene plan', () => {
   const r = reading();
-  // Han, 19 Oct (visual directions): the emotional event, its core and the options follow.
-  assert.deepEqual(Object.keys(r.scene), [...SCENE_KEYS, ...SCENE_EXTRA, 'options']);
+  assert.deepEqual(Object.keys(r.scene), SCENE_KEYS);
   assert.equal(r.scene.moment, SCENE.moment);
   const long = reading({ scene: { ...SCENE, moment: 'x'.repeat(900), tension: 'y'.repeat(900) } });
   assert.ok(long.scene.moment.length <= 320 && long.scene.tension.length <= 160);
   // A reading without a scene (an older model reply) gives empty strings, so no narrative.
   const none = reading({ scene: undefined });
-  assert.deepEqual(none.scene, { situation: '', relationship: '', tension: '', moment: '', figure: '', event: '', core: '', options: [] });
+  assert.deepEqual(none.scene, { situation: '', relationship: '', tension: '', moment: '', figure: '' });
   assert.ok(reading({ scene: { ...SCENE, figure: 'z'.repeat(400) } }).scene.figure.length <= 120);
 });
 
 test('a Resolved take carries the scene into its concept; Gathered does not', async () => {
   const r = await understandTake({ samples: strong, sampleRate: SR, words: async () => ({ transcript: confident(LINES), lyrics: reading() }) });
   assert.equal(r.tier, 'resolved');
-  const READ = { ...SCENE, event: '', core: '', options: [] };
-  assert.deepEqual(r.semantics.concept.scene, READ);
+  assert.deepEqual(r.semantics.concept.scene, SCENE);
   const g = await understandTake({ samples: weak, sampleRate: SR, words: async () => ({ transcript: confident(LINES), lyrics: reading() }) });
   assert.equal(g.tier, 'gathered');
   assert.equal(g.semantics.concept.scene, undefined);
   // The server keeps it, bounded.
   const c = cleanConcept({ ...r.semantics.concept, source: 'lyrics' });
-  assert.deepEqual(c.scene, READ);
+  assert.deepEqual(c.scene, SCENE);
   assert.equal(cleanConcept({ ...c, scene: { moment: '' } }).scene, undefined);
 });
 
@@ -86,19 +84,14 @@ test('Resolved paints a scene brief, not a keyword: situation, relationship, ten
   assert.match(n, /Tension: Hesitation and sadness/);
   assert.match(n, /Paint this scene: Roads diverging at dusk, footprints .* one lantern set down at the fork/);
   assert.ok(n.includes(NARRATIVE_RULE));
-  assert.match(NARRATIVE_RULE, /never a decorative symbol or a keyword illustrated for its own sake, and never a generic landscape; an object or symbol may lead only when it embodies the song's emotional event/);
+  assert.match(NARRATIVE_RULE, /never a decorative symbol, a single keyword object or a generic landscape/);
   // The brief is more than the keyword: the imagery words alone are not the scene.
   assert.notEqual(after.subject, 'intersection');
   assert.ok(n.split(/\s+/).length > 60);
   // It sits right after the words' meaning and before the technique; everything else is unchanged.
   const lines = after.prompt.split('\n');
   assert.equal(lines.indexOf(n), lines.indexOf(after.sections.meaning) + 1);
-  // Without a scene read from the words, the painting is told to imagine one;
-  // with it, only the scene requirement stays (Han, 19 Oct).
-  // Both also carry the viewpoint chosen for this Resolved painting (looks.js).
-  assert.ok(before.sections.scene.startsWith(`${RESOLVED_SCENE} ${RESOLVED_IMAGINE} Viewpoint: `));
-  assert.ok(after.sections.scene.startsWith(`${RESOLVED_SCENE} Viewpoint: `));
-  assert.equal(lines.filter((l) => l !== n).join('\n'), before.prompt.replace(before.sections.scene, after.sections.scene));
+  assert.equal(lines.filter((l) => l !== n).join('\n'), before.prompt);
   assert.equal(checkPrompt(after).verdict, 'ok', JSON.stringify(checkPrompt(after)));
 });
 
@@ -191,7 +184,7 @@ test('the crossroads: a small figure looking back at the fork, small, distant an
 });
 
 test('a prominent figure or a face is never painted', () => {
-  for (const figure of ['a large figure in the foreground', 'a portrait of her face', 'close-up of his eyes']) {
+  for (const figure of ['a large figure in the foreground', 'a portrait of her face', 'a crowd at the fork', 'close-up of his eyes']) {
     const n = narrativeFor('resolved', { ...WITH, scene: { ...FIGURE_SCENE, figure } });
     assert.equal(n.figure, null, figure);
     assert.equal(n.applied, false, figure);
@@ -202,8 +195,6 @@ test('a prominent figure or a face is never painted', () => {
     assert.equal(traces.figure, null);
     assert.deepEqual(traces.dropped, ['figure']);
   }
-  // A crowd is allowed when the words call for one (Han's review of PR #29).
-  assert.equal(narrativeFor('resolved', { ...WITH, scene: { ...FIGURE_SCENE, figure: 'a crowd at the fork, small and distant' } }).figure, 'a crowd at the fork, small and distant');
   const face = narrativeFor('resolved', { ...WITH, scene: { ...FIGURE_SCENE, moment: 'A small figure at the fork, her face turned back.' } });
   assert.equal(face.applied, false);
   // A face named in the subject is caught by the prompt check even with a figure.
@@ -212,11 +203,8 @@ test('a prominent figure or a face is never painted', () => {
 });
 
 test('the scene instructions teach the reasoning, not a reusable scene template', () => {
+  const plan = SYSTEM.slice(SYSTEM.indexOf('- scene:'), SYSTEM.indexOf('- concepts,'));
   // Han, 19 Oct: no concrete stock imagery that could anchor unrelated songs.
-  // The visual directions list Han's own examples of kinds of image
-  // (footprints, an empty seat, a crossroads), marked as kinds, not pictures.
-  const plan = SYSTEM.slice(SYSTEM.indexOf('- scene:'), SYSTEM.indexOf('  - options:')) + SYSTEM.slice(SYSTEM.indexOf('    The moment above is the first option'), SYSTEM.indexOf('- concepts,'));
-  assert.match(SYSTEM, /These examples show kinds of image, not pictures to reuse: build every option from this song's own words and situation/);
   for (const stock of ['lantern', 'footprint', 'rain', 'dusk', 'crossroads', 'intersection', 'fork', 'road', 'path']) assert.ok(!new RegExp(`\\b${stock}`, 'i').test(plan), stock);
   assert.match(plan, /Reason from this song's own words: what is happening, between what, with what tension/);
   assert.match(plan, /never from a stock or reusable scene/);

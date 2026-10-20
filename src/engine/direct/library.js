@@ -100,47 +100,6 @@ export function referenceColourLanguage(ref) {
   return `Colour language of the reference, as a starting point rather than a fixed palette: mostly ${names.join(', ')}; ${value}, ${sat}, ${P.temperature} in temperature, with ${P.paper > 0.3 ? 'plenty of' : 'some'} open paper.`;
 }
 
-// Resolved palette richness (Han, 19 Oct): a Resolved painting inherits the
-// reference's variety of colour, not only its dominant hue, so it never reads
-// as a monochrome Gathered study. The distinct colour families come from the
-// indexer's `families` (hue families, tonal steps merged); an entry measured
-// before that falls back to its colours and accent, one per colour name.
-// Multicolour (three or more families): at least three distinct colours,
-// four to five when the reference shows them. Near-monochrome (Han, 19 Oct):
-// no third hue is forced; its own colour identity is kept and varied through
-// tone, saturation and temperature, as the reference itself does.
-export const RESOLVED_PALETTE_MIN = 3;
-export function referenceColourRange(ref) {
-  const P = ref?.palette;
-  const fams = P?.families?.length ? P.families : [...(P?.colors ?? []), ...(P?.accent ? [P.accent] : [])];
-  const names = [...new Set(fams.map((c) => colourName(c.hex)))];
-  const steps = [...new Set((P?.colors ?? []).map((c) => colourName(c.hex)))].filter((n) => !names.includes(n));
-  const count = P?.families?.length ? P.families.length : names.length;
-  const which = names.length ? `Its distinct colour families: ${names.join(', ')}${steps.length ? `; its tonal steps: ${steps.join(', ')}` : ''}.` : 'Read its distinct colour families from the image.';
-  const mono = names.length > 0 && count < RESOLVED_PALETTE_MIN;
-  if (mono) {
-    return {
-      count, names, mono,
-      text: [
-        'Palette, inherited from the reference: keep its own colour identity, which is restrained to few hues.',
-        which,
-        'Add no hue it does not contain. Give the painting its range through the tonal, saturation and temperature variation the reference itself shows (deep against pale, stronger against greyed, warmer against cooler), clearly enough that the scene\'s light, ground, focal element and distance read apart, never one flat tint.',
-      ].join(' '),
-    };
-  }
-  const target = count >= 4 ? `Use at least ${RESOLVED_PALETTE_MIN} clearly distinct colours from them, aiming for 4 to 5 colour families as the reference itself shows`
-    : `Use at least ${RESOLVED_PALETTE_MIN} clearly distinct colours from them`;
-  return {
-    count, names, mono,
-    text: [
-      'Palette, inherited from the reference: carry its variety of colour, not only its dominant hue.',
-      which,
-      `${target}, each clearly visible and given a role in the scene (the light, the ground, the focal element, the distance), not a token speck.`,
-      'Its dominant colour may stay dominant; keep its saturation, temperature and colour sophistication. Never reduce it to a single hue.',
-    ].join(' '),
-  };
-}
-
 // Loose (Han, 18 Oct): the reference defines the artistic language, not the
 // composition or the exact colours, which come from the performance plan.
 export const REFERENCE_AUTHORITY_LOOSE = [
@@ -159,17 +118,12 @@ export const REFERENCE_AUTHORITY_PERFORMANCE = [
   'Content never comes from the reference: its subjects, objects, figures, places and setting are not part of its style. Paint only the subject the text below asks for.',
 ].join(' ');
 
-// Resolved only (Han, 19 Oct): the reference's range of colour, not just its
-// palette family, is inherited (referenceColourRange).
-export const RESOLVED_PALETTE_AUTHORITY = 'It also sets the palette diversity: carry its full range of colour, not only its dominant hue, and add no hue it does not contain. The reference decides how the painting looks (technique, palette diversity, style and finish); the words decide what it depicts (subject, scene, emotional situation and symbolic content).';
-
 // Resolved only (Han, 19 Oct): on top of its technique, the reference sets
 // the level of artistic finish the painting must reach. Still never its
 // content or composition.
 export const REFERENCE_AUTHORITY_PERFORMANCE_RESOLVED = [
   REFERENCE_AUTHORITY_PERFORMANCE,
   'Because this painting is Resolved, the reference also sets its level of artistic finish: it must be as finished, refined and accomplished as the reference, though its subject comes only from the text below.',
-  RESOLVED_PALETTE_AUTHORITY,
 ].join(' ');
 
 // What the prompt says when the reference image is attached: the reference is
@@ -181,7 +135,3 @@ export const REFERENCE_AUTHORITY = [
   'Free: the subject and the exact arrangement. Paint a new, original painting in the same artistic language; do not copy or trace its composition, figures or motifs, and do not reproduce any text, titles or watermarks in it.',
   'Content never comes from the reference: its subjects, objects, figures, places and setting are not part of its style. Paint only the subject the text below asks for, even when it is unlike anything in the reference, and keep the reference\'s palette and light while doing so.',
 ].join(' ');
-
-// Resolved without a measured performance: the same authority, plus the
-// reference's palette richness (Han, 19 Oct).
-export const REFERENCE_AUTHORITY_RESOLVED = [REFERENCE_AUTHORITY, RESOLVED_PALETTE_AUTHORITY].join(' ');

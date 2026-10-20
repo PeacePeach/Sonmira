@@ -4,7 +4,7 @@
 // layer remains only for text-only generation.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { direct, createLibrary, GLOBAL_STYLE, GLOBAL_STYLE_RESOLVED, AVOID, REFERENCE_STYLE, REFERENCE_STYLE_LOOSE, REFERENCE_AVOID, FAMILIES } from '../../src/engine/direct/index.js';
+import { direct, createLibrary, GLOBAL_STYLE, AVOID, REFERENCE_STYLE, REFERENCE_STYLE_LOOSE, REFERENCE_AVOID, FAMILIES } from '../../src/engine/direct/index.js';
 
 const lyrics = { text: 'a paper boat drifting past a lit window', theme: ['longing'], imagery: ['paper boat', 'window'], figurative: [] };
 const spec = (family, extra = {}) => ({ completeness: FAMILIES[family].tier, emotion: 'melancholic', motif: 'water', seed: 3, family, energy: { value: 'lively' }, concept: lyrics,
@@ -33,11 +33,10 @@ test('with a reference, no universal watercolor technique, composition or avoid 
 test('the subject comes from the lyrics and the tier still sets how recognisable it is', () => {
   const R = direct(spec('R1-graphic-snow')), G = direct(spec('G2-splash-wash')), L = direct(spec('L2-bloom-field'));
   assert.match(R.sections.subject, /^A finished painting of: a paper boat/);
-  // Gathered with words shows a recognisable motif from them (Han, 19 Oct).
-  assert.match(G.sections.subject, /^A semi-abstract painting with a recognisable motif from the sung words: a paper boat/);
+  assert.match(G.sections.subject, /^A semi-abstract painting, only suggesting/);
   assert.match(L.sections.subject, /^An abstract painting\. It depicts nothing/);
   assert.match(R.sections.form, /clear, recognisable subject/);
-  assert.match(G.sections.form, /the motif from the words is recognisable/);
+  assert.match(G.sections.form, /no subject is clearly identifiable/);
   assert.match(L.sections.form, /nothing is deliberately depicted/);
   assert.equal(R.subjectSource, 'lyrics');
   // The reference supplies no content.
@@ -55,8 +54,6 @@ test('without a reference (text-only), the universal watercolor layer still defi
   const empty = createLibrary([]);
   const d = direct(spec('R1-graphic-snow', { library: empty }));
   assert.equal(d.reference, null);
-  // Resolved keeps the universal layer with a richer palette (Han, 19 Oct).
-  assert.ok(d.prompt.includes(GLOBAL_STYLE_RESOLVED));
-  assert.equal(GLOBAL_STYLE_RESOLVED.replace('a considered palette of three to five clearly distinct colour families, one of them leading', 'one clear colour idea: a dominant colour family with at most one accent'), GLOBAL_STYLE);
+  assert.ok(d.prompt.includes(GLOBAL_STYLE));
   assert.match(d.prompt, new RegExp(`Avoid: ${AVOID[0]}`));
 });

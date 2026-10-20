@@ -67,7 +67,7 @@ export const SINGING_CALIBRATION = {
     minWeakWindowsAllowed: 1, // … but always one: a short take has only 4–5 windows, and
                               // the singer heard a 4-window take with one weak
                               // stretch as Resolved (16 Oct)
-    maxTuningDriftCents: 90, // the singer's own key may not keep sliding
+    maxTuningDriftCents: 80, // the singer's own key may not keep sliding
     minRhythm: 0.25,        // only extremely weak rhythm blocks Strong (timing is expressive)
     missedLandingCents: 300, // unusually large pitch movement beyond a note, excluding an unrecognised held note
     minCoherence: 0.25,     // only extremely erratic leaps block Strong
