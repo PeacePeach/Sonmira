@@ -11,6 +11,14 @@ import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 
+// After the painting: Next on the expanded artwork, the title (optional) in the journal step, then Save.
+const keepIt = async (page, title) => {
+  await page.click('[data-step=expanded] .pill');
+  await page.waitForSelector('[data-step=journal] .caption-input');
+  if (title) await page.fill('[data-step=journal] .caption-input', title);
+  await page.click('[data-step=journal] .pill');
+};
+
 const BASE = process.env.BASE || 'http://localhost:5173/';
 const wav = fileURLToPath(new URL('./hum.wav', import.meta.url));
 const png = readFileSync(fileURLToPath(new URL('../../assets/art/impression-1.png', import.meta.url))).toString('base64');
@@ -45,9 +53,9 @@ async function make(note) {
   await page.waitForTimeout(2500);
   await page.click('[aria-label="Stop recording"]');
   await page.waitForSelector('[data-phase=preview]');
-  await page.fill('.caption-input', note);
   await page.click('text=Create painting');
-  await page.click('text=Keep it', { timeout: 20000 });
+  await page.waitForSelector('[data-step=expanded]', { timeout: 20000 });
+  await keepIt(page, note);
   await page.waitForSelector('[data-screen=diary] .entry');
 }
 await make('first');

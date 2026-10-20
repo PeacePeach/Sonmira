@@ -21,12 +21,16 @@ import { mountAccount } from './screens/account.js';
 import { mountAccountDelete } from './screens/account-delete.js';
 import { createAccountForDevice } from './account/setup.js';
 import { localStorageBox } from './account/index.js';
+import { wantsUxPreview, previewBilling, previewBadge } from './ux-preview.js';
+import { isNativeIOS } from './native/platform.js';
 
 const SCREENS = { diary: mountDiary, sing: mountSing, detail: mountDetail, settings: mountSettings, legal: mountLegal, account: mountAccount, accountDelete: mountAccountDelete };
 const ENTER = { diary: 'enter-fade', sing: 'enter-modal', detail: 'enter-push', settings: 'enter-push', legal: 'enter-push', account: 'enter-push', accountDelete: 'enter-push' };
 
 const root = document.getElementById('app');
 const now = new Date();
+// ?ux-preview on localhost or a Vercel preview only (ux-preview.js): mock engine, sample voice, nothing counted.
+const uxPreview = wantsUxPreview({ search: location.search, hostname: location.hostname, native: isNativeIOS() });
 
 export const app = {
   root,
@@ -35,7 +39,7 @@ export const app = {
   storage: { persistent: true },
   // preview: the hosted preview link, where the microphone is not available,
   // so takes use the sample voice and the diary starts with example entries.
-  dev: { enabled: new URLSearchParams(location.search).has('dev') || location.hash === '#dev', completeness: null, simulate: false, preview: !!window.SONMIRA_PREVIEW },
+  dev: { enabled: new URLSearchParams(location.search).has('dev') || location.hash === '#dev', completeness: null, simulate: uxPreview, preview: !!window.SONMIRA_PREVIEW, uxPreview },
   ui: { view: 'list', selDay: null, calY: now.getFullYear(), calM: now.getMonth() },
   entries: [],
   current: null,
@@ -97,7 +101,7 @@ export const app = {
 async function boot() {
   // API calls carry the local day, and reach the hosted API from the bundled iOS build.
   installApiFetch();
-  const [engine, storage] = await Promise.all([getEngine(), initStorage()]);
+  const [engine, storage] = await Promise.all([getEngine(uxPreview ? 'mock' : undefined), initStorage()]);
   app.engine = engine;
   app.storage = storage;
   // Paid, billing and sign-in requests carry the install token (server/protect),
@@ -110,6 +114,7 @@ async function boot() {
     accountToken: () => localStorageBox.read()?.token ?? null,
   });
   app.billing = createBilling({ ask: (req) => askSimulator(app, req) });
+  if (uxPreview) { app.billing = previewBilling(app.billing); root.append(previewBadge()); }
   app.account = createAccountForDevice(app, await deviceIdentity(app.billing));
   identified(app.account);
   await app.billing.syncWeb(app.account.id);

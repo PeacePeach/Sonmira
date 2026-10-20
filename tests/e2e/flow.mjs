@@ -113,8 +113,8 @@ async function run() {
   await page.waitForSelector('[data-phase=preview]', { timeout: 26000 });
   const recorded = await page.textContent('[data-phase=preview] .caps');
   assert.match(recorded, /0:(19|20)/, 'auto-stop at 20 s, got ' + recorded);
-  // 5. note
-  await page.fill('.caption-input', 'Rain on the window');
+  // 5. no title or journal before the painting: the singing comes first
+  assert.equal(await page.$$eval('[data-screen=sing] textarea', (x) => x.length), 0, 'no writing fields before painting');
   // 6. generate (the first attempt fails: a clear error, no substitute painting, then a retry)
   const engineQ = process.env.ENGINE_ID || 'ai';
   if (engineQ === 'ai') {
@@ -131,24 +131,26 @@ async function run() {
   await page.waitForSelector('[data-phase=generating]');
   await page.waitForTimeout(400);
   await shot(page, '05-generating');
-  await page.waitForSelector('[data-phase=result]', { timeout: 8000 });
+  await page.waitForSelector('[data-phase=result][data-step=expanded]', { timeout: 8000 });
   await page.waitForTimeout(1600);
   await shot(page, '06-result');
-  // 7. result contents
-  assert.equal(await page.inputValue('.caption-input'), 'Rain on the window');
+  // 7. result contents: the expanded artwork, its recording and Next
   assert.ok(await page.$('.painting img.art'), 'result shows artwork');
+  assert.equal(await page.$$eval('[data-screen=sing] textarea', (x) => x.length), 0, 'the expanded artwork has no writing fields yet');
   if (engineQ === 'ai') {
     assert.equal(apiCalls.length, 2, 'one failed and one successful generation request');
     const s = apiCalls[1].spec;
     assert.ok(['loose', 'gathered', 'resolved'].includes(s.completeness) && Number.isInteger(s.seed) && typeof s.motif === 'string', 'spec from the real analysis: ' + JSON.stringify(s));
     assert.ok(understandCalls.length >= 1 && understandCalls.every((c) => c.bytes > 0), 'the recording was sent for transcription');
     assert.equal(s.completeness, 'loose', 'a hum with no words is Loose');
-    // No sung words, so the note carries the feeling (a Loose painting still depicts nothing).
-    assert.deepEqual(s.concept, { text: 'Rain on the window', theme: [], imagery: [], figurative: [], source: 'note' }, 'the note is the subject');
-    assert.ok(!s.soundOnly, 'not sound-only when there is a note');
+    // No sung words and no note before painting: a Loose painting of the sound itself.
+    assert.equal(s.concept ?? null, null, 'no subject without words');
+    assert.ok(s.soundOnly, 'sound-only when nothing was written');
     // How it was sung, measured in the browser, for the art direction of every tier.
     assert.ok(s.performance?.version === 2 && s.performance.passages.length > 0 && typeof s.performance.global.pitchRangeSt === 'number', 'performance measured: ' + JSON.stringify(s.performance));
   }
+  await page.click('text=Next');
+  await page.waitForSelector('[data-step=journal] .caption-input');
   await page.fill('.caption-input', 'Rain on the window, again');
 
   // share right after generating: image, then video
@@ -195,7 +197,7 @@ async function run() {
   await page.waitForSelector('[data-share]', { state: 'detached' });
   assert.equal(await page.inputValue('.caption-input'), 'Rain on the window, again', 'sharing leaves the result as it was');
   // 8. save
-  await page.click('text=Keep it');
+  await page.click('[data-step=journal] .pill');
   await page.waitForSelector('[data-screen=diary] .entry');
   await page.waitForTimeout(600);
   await shot(page, '07-diary-one');
