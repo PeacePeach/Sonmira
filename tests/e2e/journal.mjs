@@ -141,7 +141,7 @@ const settled = (page) => page.waitForFunction((s) => !document.querySelector(s)
   await shot(page, 'j4-detail');
   await page.click('[data-screen=detail] .journal-btn');
   await page.fill('[data-screen=detail] .journal-input', 'Edited later.\nTwo lines.');
-  await page.click('[data-screen=detail] .detail-journal .save');
+  await page.click('[data-screen=detail] .edit-btn'); // Save
   await page.waitForSelector('[data-screen=detail] .journal-text');
   // the detail title holds 30 characters too
   await page.click('[data-screen=detail] .title-btn');
@@ -187,7 +187,7 @@ const settled = (page) => page.waitForFunction((s) => !document.querySelector(s)
   await page.press('.detail-title .caption-input', 'Escape');
   await page.click('[data-screen=detail] .journal-empty');
   await page.fill('[data-screen=detail] .journal-input', 'Added to an old painting.');
-  await page.click('[data-screen=detail] .detail-journal .save');
+  await page.click('[data-screen=detail] .edit-btn'); // Save
   await page.waitForSelector('[data-screen=detail] .journal-text');
   const rec = await page.evaluate(() => new Promise((res) => { const r = indexedDB.open('sonmira', 1); r.onsuccess = () => { const g = r.result.transaction('entries').objectStore('entries').get('legacy-1'); g.onsuccess = () => { res({ journal: g.result.journal, note: g.result.note, art: !!g.result.painting.artwork.bytes }); r.result.close(); }; }; }));
   assert.deepEqual(rec, { journal: 'Added to an old painting.', note: long, art: true }, 'only the journal was added');
