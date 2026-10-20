@@ -40,12 +40,13 @@ export function openShareSheet(app, item) {
   const photos = photosAvailable(); // the iOS app, from the build that has the plugin
 
   let state = 'preparing'; // preparing | image | exporting | video
-  let imageFile = null, videoFile = null, previewUrl = null, posterUrl = null, posterAsked = false, videoUrl = null, abort = null, closed = false;
+  let imageFile = null, videoFile = null, previewUrl = null, posterUrl = null, liveCanvas = null, posterAsked = false, videoUrl = null, abort = null, closed = false;
   let format = DEFAULT_FORMAT;
   const made = {}; // format -> Promise<{ file, url }>, each drawn once
 
   const preview = h('img', { class: 'share-preview card', alt: 'Share card preview' });
-  // The finished video plays in place; until then its first frame (the same drawing) stands in.
+  // While the video is made, the canvas being recorded is the preview (the
+  // painting painting itself); then the finished video plays in place.
   const videoEl = h('video', { class: 'share-preview card', playsinline: true, controls: true, preload: 'metadata', 'aria-label': 'Video preview' });
   videoEl.style.aspectRatio = '9 / 16';
   const formatBtns = Object.entries(FORMATS).map(([key, f]) => h('button', {
@@ -96,10 +97,12 @@ export function openShareSheet(app, item) {
   }
 
   function showPreview() {
-    if (showInPlace && previewBox.firstChild !== preview && previewBox.firstChild !== videoEl) return; // the file shown in place
+    if (showInPlace && ![preview, videoEl, liveCanvas].includes(previewBox.firstChild)) return; // the file shown in place
     const vid = state === 'exporting' || state === 'video';
     if (state === 'video' && videoUrl) {
       if (previewBox.firstChild !== videoEl) previewBox.replaceChildren(videoEl);
+    } else if (state === 'exporting' && liveCanvas) {
+      if (previewBox.firstChild !== liveCanvas) previewBox.replaceChildren(liveCanvas);
     } else if (previewBox.firstChild !== preview) { videoEl.pause(); previewBox.replaceChildren(preview); }
     const src = vid ? posterUrl : previewUrl;
     if (src && preview.getAttribute('src') !== src) preview.src = src;
@@ -202,15 +205,16 @@ export function openShareSheet(app, item) {
     state = 'exporting'; fill.style.width = '0%'; progressLabel.textContent = clock(0); render();
     renderShareVideo(item, {
       audioContext, signal: abort.signal,
+      onCanvas: (c) => { if (closed || state !== 'exporting') return; c.className = 'share-preview card'; c.style.aspectRatio = '9 / 16'; c.setAttribute('aria-label', 'Video preview'); liveCanvas = c; showPreview(); },
       onProgress: (t, total) => { fill.style.width = `${Math.min(100, (t / total) * 100)}%`; progressLabel.textContent = clock(t); },
     }).then((blob) => {
       if (closed) return;
       videoFile = new File([blob], fileName(item.date, 'mp4'), { type: blob.type.split(';')[0] || 'video/mp4' });
-      videoUrl = URL.createObjectURL(videoFile); videoEl.src = videoUrl;
+      videoUrl = URL.createObjectURL(videoFile); videoEl.src = videoUrl; liveCanvas = null;
       state = 'video'; render();
     }).catch((e) => {
       if (closed) return;
-      state = 'image'; render();
+      liveCanvas = null; state = 'image'; render();
       if (!(e instanceof VideoExportError) || e.kind !== 'aborted') {
         console.warn('[sonmira] video export failed', e);
         say(VIDEO_ERRORS[e?.kind] || VIDEO_ERRORS.record);
