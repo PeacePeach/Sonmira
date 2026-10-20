@@ -223,7 +223,12 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
   async function generate() {
     if (phase !== 'preview') return;
     // Set a painting aside; it's only counted once the painting exists.
-    if (!app.billing.reserve(take.key)) {
+    // A saved recording (a draft) may already have a painting counted or held
+    // for it on the server that this copy of the wallet can't see: its hold
+    // was handed back at a restart, or the answer never arrived. Where the
+    // server counts paintings it decides, and refuses (no_paintings) only a
+    // take it has neither counted, nor held, nor can pay for.
+    if (!app.billing.reserve(take.key) && !(take.draft && app.billing.serverCounts)) {
       openPaywall(app, { from: 'sing', onContinue: () => { if (phase === 'preview') generate(); } });
       return;
     }
@@ -233,6 +238,7 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
     const run = take, note = noteDraft.trim();
     // The recording is kept before any paid call (a failed write never blocks painting).
     await app.drafts.begin(run, { note, date: takeDate ?? dayKey() });
+    run.draft = true;
     if (phase !== 'generating') return;
     const line = h('div', { class: 'line serif', role: 'status', 'aria-live': 'polite' }, FINDING);
     const track = h('div', { class: 'develop-track', 'aria-hidden': 'true' }, h('div', { class: 'develop-run' }));
@@ -258,6 +264,8 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
       resting();
       if (e?.code === 'analyze_only') analyzed();
       else generationError(e);
+      // Nothing counted or held for this take, and nothing left: the usual offer.
+      if (e?.code === 'no_paintings') openPaywall(app, { from: 'sing', onContinue: () => { if (phase === 'gen-error' && take === run) { phase = 'preview'; generate(); } } });
       return;
     }
     app.dev.onGeneration?.(result.generation);
@@ -446,7 +454,7 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
     const d = await app.drafts.get(key).catch(() => null);
     if (phase !== 'resuming') return;
     if (!d) return ready();
-    take = takeOf(d); noteDraft = d.note || ''; journalDraft = d.journal || ''; takeDate = d.date ?? null; takeCreatedAt = d.createdAt ?? null;
+    take = { ...takeOf(d), draft: true }; noteDraft = d.note || ''; journalDraft = d.journal || ''; takeDate = d.date ?? null; takeCreatedAt = d.createdAt ?? null;
     progress.style.display = 'none';
     painting.setStrokes(d.painting?.wash ?? d.analysis?.wash ?? []);
     if (d.status === 'ready' && d.painting) {

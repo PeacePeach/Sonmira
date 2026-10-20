@@ -120,6 +120,8 @@ export function createBilling({ ask, native, server }) {
 
   const billing = {
     simulated: store.simulated,
+    /** The server's ledger counts paintings (the iOS app, the released site): it, not this copy, has the last word. */
+    serverCounts: !!server || isReleaseSite(),
     products: PRODUCTS,
     /** The account id (iOS app) shared with the generation guard and the ledger; null in a browser. */
     accountId: () => account,
