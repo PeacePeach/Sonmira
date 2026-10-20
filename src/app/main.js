@@ -59,8 +59,10 @@ export const app = {
     const prev = this.current;
     const screen = SCREENS[name](this, params);
     screen.name = name;
-    screen.el.classList.add('screen', ENTER[name]);
+    screen.el.classList.add('screen');
     root.append(screen.el);
+    // From a diary card, the detail page grows out of the card instead.
+    if (!(params.from && screen.enterFrom?.(params.from))) screen.el.classList.add(ENTER[name]);
     this.current = screen;
     if (prev) {
       prev.destroy?.();

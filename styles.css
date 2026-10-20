@@ -131,7 +131,7 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .painting .wash.gl { filter: none; }
 .painting .wash-gl { position: absolute; left: -24px; top: -24px; width: calc(100% + 48px); height: calc(100% + 48px); pointer-events: none; }
 /* the opaque artwork covers the wash: nothing to draw under it */
-.painting.covered .wash { display: none; }
+.painting.covered .wash:not(.gl) { display: none; } /* the SVG fallback; a GPU wash just stops drawing */
 .painting.art-pending .wash { visibility: hidden; } /* a moment, while a saved artwork decodes */
 
 /* ── diary ───────────────────────────────────────────────────────────────── */

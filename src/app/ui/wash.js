@@ -474,8 +474,8 @@ export function createWash(washEl, paintingEl) {
   let out = canvas(), live = null; // live: this wash's own renderer while it moves
   washEl.append(out);
   washEl.classList.add('gl');
-  // A moving wash draws on its own canvas; a still one (or one covered by
-  // its artwork) goes back to a copy from the shared renderer.
+  // A moving wash draws on its own canvas; a still one goes back to a copy
+  // from the shared renderer.
   function goLive(on) {
     if (!!live === on) return;
     if (on) {
@@ -532,7 +532,9 @@ export function createWash(washEl, paintingEl) {
     },
   };
   function update() {
-    if (covered() || !w || !h) { moving.delete(self); if (live && covered()) goLive(false); return; }
+    // A covered wash just stops drawing: tearing its canvas or context down
+    // under the artwork makes iOS repaint the card, which shows as a flash.
+    if (covered() || !w || !h) { moving.delete(self); return; }
     if (animating() || dirty) { moving.add(self); wake(); }
   }
 

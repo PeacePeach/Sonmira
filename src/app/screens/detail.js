@@ -17,11 +17,13 @@ import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { createPainting } from '../ui/painting.js';
 import { createPlayer } from '../ui/player.js';
-import { morph, MORPH_MS } from '../ui/morph.js';
+import { morph, MORPH_MS, MORPH_EASING, reduceMotion } from '../ui/morph.js';
 import { clock, longDate } from '../format.js';
 import { openShareSheet } from '../share/sheet.js';
 import { titleField, journalField, JOURNAL_PLACEHOLDER } from '../ui/text-field.js';
 import { scrollIntent } from './detail-scroll.js';
+
+const ENTER_MS = 620;
 
 export function mountDetail(app, { id }) {
   let e = app.entries.find((x) => x.id === id);
@@ -74,14 +76,12 @@ export function mountDetail(app, { id }) {
   const shareBtn = h('button', { class: 'icon-btn', 'aria-label': 'Share', onClick: () => { player.stop(); sheet = openShareSheet(app, { painting: e.painting, note: e.note, date: e.date, audio: e.audio, durationSec: e.durationSec }); } }, icon('share'));
   const meta = h('div', { class: 'detail-meta' }, h('div', { class: 'caps' }, longDate(e.date)), title);
   const scroll = h('div', { class: 'detail-scroll' }, journal);
-  const el = h('div', { class: 'detail', 'data-screen': 'detail', 'data-mode': mode },
-    h('div', { class: 'navrow' },
-      backBtn, cancelBtn,
-      h('div', { class: 'nav-actions' }, shareBtn, del, editBtn)),
-    h('div', { class: 'art-pad' }, painting.el),
-    meta,
-    scroll,
-    h('div', { class: 'detail-dock' }, player.el));
+  const navrow = h('div', { class: 'navrow' },
+    backBtn, cancelBtn,
+    h('div', { class: 'nav-actions' }, shareBtn, del, editBtn));
+  const artPad = h('div', { class: 'art-pad' }, painting.el);
+  const dock = h('div', { class: 'detail-dock' }, player.el);
+  const el = h('div', { class: 'detail', 'data-screen': 'detail', 'data-mode': mode }, navrow, artPad, meta, scroll, dock);
 
   // ── layout ────────────────────────────────────────────────────────────────
   let lockedUntil = 0; // no new layout change while the artwork is moving
@@ -280,8 +280,33 @@ export function mountDetail(app, { id }) {
   el.addEventListener('focusout', () => setTimeout(fitKeyboard, 0));
 
   app.dev.onArtworkOpen?.(e); // ?dev panel only
+  // Opened from a diary card: the artwork grows out of the card, from its
+  // place and size into the expanded artwork (the same width-and-height
+  // morph, so it is never stretched), while the diary fades out behind it
+  // and the rest of the page fades in. False when it can't (Reduce Motion).
+  function enterFrom(card) {
+    const a = card.getBoundingClientRect();
+    if (reduceMotion() || !painting.el.animate || !a.width) return false;
+    const b = painting.el.getBoundingClientRect(), bw = painting.el.offsetWidth, bh = painting.el.offsetHeight;
+    const k = bw ? b.width / bw : 1; // the desktop frame may be scaled (fitStage)
+    artPad.style.height = `${artPad.offsetHeight}px`; // the page below holds still while the artwork grows
+    const grow = painting.el.animate([
+      { width: `${a.width / k}px`, height: `${a.height / k}px`, transform: `translate(${(a.left - b.left) / k}px, ${(a.top - b.top) / k}px)` },
+      { width: `${bw}px`, height: `${bh}px`, transform: 'translate(0, 0)' },
+    ], { duration: ENTER_MS, easing: MORPH_EASING });
+    grow.finished.catch(() => {}).finally(() => { artPad.style.height = ''; });
+    const paper = getComputedStyle(el).backgroundColor;
+    el.animate([{ backgroundColor: 'transparent' }, { backgroundColor: paper }], { duration: 260, easing: 'ease-out' });
+    for (const n of [navrow, meta, scroll, dock]) {
+      n.animate([{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'none' }], { duration: 380, delay: 160, easing: 'cubic-bezier(.2, .7, .2, 1)', fill: 'backwards' });
+    }
+    lockedUntil = performance.now() + ENTER_MS;
+    return true;
+  }
+
   return {
     el,
+    enterFrom,
     destroy() {
       app.dev.onArtworkClose?.(e);
       document.removeEventListener('keydown', onKey);
