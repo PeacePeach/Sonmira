@@ -95,9 +95,14 @@ The text model sees only the transcript. It does not know how long the words las
 | Check | Needs (provisional) |
 |---|---|
 | only_phrase_complete_failed | every other gate check passed (transcribed, real words, ASR confidence, sung, word rate, coherent reading) |
-| sounding_sec | ≥ 8 s of sound |
+| sounding_sec | ≥ 3 s of sound |
 | sung_throughout | sung, and pitched voice (YIN) ≥ 0.6 of the sounding time |
-| lyric_words | lexical reading, ≥ 8 real words and ≥ 0.8 words per sounding second |
+| lyric_words | lexical reading, ≥ 4 real words and ≥ 1.5 words per sung phrase (a stretch of sound between pauses of ≥ 300 ms) |
+| meaningful_phrase | coherent; structure `clause`, `image_phrase`, `noun_list` or `multiple_fragments` |
+
+`lyric_words` counted words per sounding second (≥ 0.8) until 20 Oct. Sustained notes alone pushed slow songs under it: the same 20-syllable tune with multi-line lyrics was Gathered at 0.4 s a syllable and Loose at 1.2–1.6 s, in English and Chinese. Counting per sung phrase does not depend on tempo, sustained notes or melisma, and still fails a short fragment in a take of several wordless phrases.
+
+Vocables (`VOCABLE`, `lyrics.js`): an English word is a vocable only when it is a single vocable, held or repeated ("ooh", "lalala", "mmm"). Before 20 Oct syllables could be combined, so `a`, `am`, `do`, `mama`, `mom`, `made` and `dude` counted as vocables and could fail `mostly_words`. Chinese vocables are unchanged.
 
 The result is `understanding.lyricalFloor` (`applied`, `reason`, `evidence.checks`), also on `decision.lyricalFloor`; the decision stage reads `lyrical_floor` when it applied. The dev panel shows it under the decision. No singing score or threshold changed.
 

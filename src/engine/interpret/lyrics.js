@@ -16,7 +16,7 @@
 // sung correctly or completely (nothing here recognises songs).
 // Every threshold is provisional and needs calibration on real recordings.
 
-export const LYRICS_VERSION = 5;
+export const LYRICS_VERSION = 6;
 
 export const GATE_CALIBRATION = {
   minLexicalWords: 3,
@@ -50,8 +50,11 @@ export function phraseVerdict(lyrics) {
 }
 
 // Non-lexical singing syllables (vocables), in English and Chinese, and the
-// bracketed tags transcribers emit for music.
-const VOCABLE = /^(?:(?:a+h*|o+h*|u+h*|m+|h+m+|e+h|la|na|da|doo?|du|ba|bum|dum|di|de|ya|yeah|hey|whoa|wo+|woah|ooh|aah|uh|um|hmm|mmm|sh+)+|[啊哦嗯啦呀哼喔噢呜唔哈嘿咿哎嘛呐哒嘟呣]+)$/i;
+// bracketed tags transcribers emit for music. An English word is a vocable
+// only when it is one vocable, held or repeated ("ooh", "lalala", "mmm"):
+// mixing syllables used to let real words through as vocables ("a", "am",
+// "do", "mama", "mom", "made", "dude").
+const VOCABLE = /^(?:a{2,}h*|a+h+|o+h*|u+h+|e+h+|m+|h+m+|(?:la)+|(?:na)+|(?:da)+|(?:doo)+|(?:du)+|(?:ba)+|(?:bum)+|(?:dum)+|(?:di)+|(?:de)+|(?:ya){2,}|yeah|hey|whoa|wo+|woah|uh|um|hmm|mmm|sh+|[啊哦嗯啦呀哼喔噢呜唔哈嘿咿哎嘛呐哒嘟呣]+)$/i;
 const MUSIC_TAG = /[♪♫🎵🎶]|\[(?:music|singing|humming|instrumental|音乐)[^\]]*\]|\((?:music|singing|humming|instrumental|音乐)[^)]*\)/gi;
 
 // Phrases speech recognisers are known to invent on music or silence.
@@ -165,7 +168,12 @@ export const FLOOR_CALIBRATION = {
   minSoundingSec: 3,       // a sung line, not a syllable or two (was 8: sustained singing only)
   minPitchedShare: 0.6,    // pitched voice (YIN) over sounding time: most of the take is sung
   minLexicalWords: 4,      // a meaningful phrase, one more than the gate's minimum (was 8: lines of lyrics)
-  minWordsPerSec: 0.8,     // words across the singing (a sung line runs ≥ 1 word/s), not one short fragment in a long take
+  // Words across the singing, counted per sung phrase (a stretch of sound
+  // between breaths), not per second: a slow line with sustained notes or
+  // melisma is still one phrase carrying its words, while one short
+  // fragment in a take of several phrases leaves most of them wordless.
+  // Was ≥ 0.8 words per sounding second, which slow songs missed (20 Oct).
+  minWordsPerPhrase: 1.5,
   // How the reading describes the words: a single cut-off fragment or bare
   // vocables are not a meaningful phrase.
   structures: ['clause', 'image_phrase', 'noun_list', 'multiple_fragments'],
@@ -177,19 +185,21 @@ export function lyricalFloor({ gate = null, transcript = null, lyrics = null, si
   if (gate.pass) return no('not needed: the lyrics gate passed');
   const vocal = singing?.vocal;
   const sounding = features?.activity?.soundingSec;
-  if (!transcript || !lyrics || lyrics.error || !vocal || !(sounding > 0) || vocal.voicedSec == null) {
-    return no('insufficient evidence: needs a transcript, a reading of the words, the singing analysis and the sounding time');
+  const phrases = features?.phrases?.count;
+  if (!transcript || !lyrics || lyrics.error || !vocal || !(sounding > 0) || vocal.voicedSec == null || !(phrases > 0)) {
+    return no('insufficient evidence: needs a transcript, a reading of the words, the singing analysis, the sounding time and the sung phrases');
   }
   const pitchedShare = r3(Math.min(1, vocal.voicedSec / sounding));
   const rate = r3(transcript.lexicalWords / sounding);
+  const perPhrase = r3(transcript.lexicalWords / phrases);
   const checks = [
     { id: 'only_phrase_complete_failed', ok: gate.failed.length > 0 && gate.failed.every((id) => cal.waivable.includes(id)), value: gate.failed.join(', '), need: `only ${cal.waivable.join(', ')} failed` },
     { id: 'sounding_sec', ok: sounding >= cal.minSoundingSec, value: sounding, need: `≥ ${cal.minSoundingSec} s of sound` },
     { id: 'sung_throughout', ok: vocal.sung === true && pitchedShare >= cal.minPitchedShare, value: `sung ${vocal.sung}, pitched ${vocal.voicedSec} s of ${sounding} s (${pitchedShare})`, need: `sung, pitched voice ≥ ${cal.minPitchedShare} of the sounding time` },
-    { id: 'lyric_words', ok: lyrics.lexical === true && transcript.lexicalWords >= cal.minLexicalWords && rate >= cal.minWordsPerSec, value: `${transcript.lexicalWords} words, ${rate} per sounding s, lexical ${Boolean(lyrics.lexical)}`, need: `≥ ${cal.minLexicalWords} real words, ≥ ${cal.minWordsPerSec} per sounding second` },
+    { id: 'lyric_words', ok: lyrics.lexical === true && transcript.lexicalWords >= cal.minLexicalWords && perPhrase >= cal.minWordsPerPhrase, value: `${transcript.lexicalWords} words in ${phrases} sung phrase${phrases === 1 ? '' : 's'} (${perPhrase} per phrase), lexical ${Boolean(lyrics.lexical)}`, need: `≥ ${cal.minLexicalWords} real words, ≥ ${cal.minWordsPerPhrase} per sung phrase` },
     { id: 'meaningful_phrase', ok: lyrics.coherent === true && cal.structures.includes(lyrics.structure), value: `coherent ${Boolean(lyrics.coherent)}, structure ${lyrics.structure ?? '—'}`, need: `coherent; one of ${cal.structures.join(', ')}` },
   ];
-  const evidence = { checks, transcript: transcript.text, soundingSec: sounding, pitchedSec: vocal.voicedSec, pitchedShare, sustainedRatio: vocal.sustainedRatio, lexicalWords: transcript.lexicalWords, wordsPerSec: rate };
+  const evidence = { checks, transcript: transcript.text, soundingSec: sounding, pitchedSec: vocal.voicedSec, pitchedShare, sustainedRatio: vocal.sustainedRatio, lexicalWords: transcript.lexicalWords, sungPhrases: phrases, wordsPerPhrase: perPhrase, wordsPerSec: rate };
   if (!checks.every((c) => c.ok)) return no(`not a meaningful sung phrase: ${checks.filter((c) => !c.ok).map((c) => c.id).join(', ')}`, evidence);
   return { applied: true, tier: 'gathered', reason: 'meaningful sung lyrics: sung throughout with recognisable words; only phrase_complete failed', evidence };
 }
