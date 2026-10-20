@@ -104,6 +104,25 @@ test('paid while the server is unreachable: shown at once, finished only once re
   assert.equal(b2.status().credits, 10);
 });
 
+test('paid while the server is unreachable: a refresh records it without a relaunch, and never hides it meanwhile', async () => {
+  const plugin = fakePlugin(), server = fakeServer();
+  const b = make(plugin, server);
+  await b.ready;
+  server.down = true;
+  await b.purchase(PACK);
+  await b.refresh();
+  assert.equal(b.status().credits, 10, 'still shown while the server is away');
+  assert.deepEqual(plugin.finished, []);
+
+  server.down = false;
+  await b.refresh();
+  assert.deepEqual(plugin.finished, ['t1'], 'recorded, then finished');
+  assert.equal(b.status().credits, 10, 'counted once');
+  assert.equal(server.sent.filter((r) => r.transactions.includes(`jws-${PACK}-1`)).length, 3);
+  await b.refresh();
+  assert.deepEqual(plugin.finished, ['t1'], 'not sent again once recorded');
+});
+
 test('cancel, pending, and an Ask to Buy approval arriving later', async () => {
   const plugin = fakePlugin(), server = fakeServer();
   const b = make(plugin, server);
