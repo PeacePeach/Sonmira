@@ -28,6 +28,8 @@
 	<false/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Sonmira listens while you sing, to turn your song into a painting.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Sonmira saves your paintings and videos to Photos, so you can post them anywhere.</string>
 	<key>SKIncludeConsumableInAppPurchaseHistory</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
