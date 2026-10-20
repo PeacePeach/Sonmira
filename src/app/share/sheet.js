@@ -54,7 +54,7 @@ export function openShareSheet(app, item) {
   const secondary = h('button', { class: 'quiet-btn', onClick: onSecondary, hidden: !canVideo }, `Make a video · ${clock(Math.min(30, item.durationSec))}`);
 
   const panel = h('div', { class: 'share-panel', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Share' },
-    h('div', { class: 'share-head' }, h('span', { class: 'serif share-title' }, 'Share'), h('button', { class: 'icon-btn', 'aria-label': 'Close', onClick: close }, icon('close'))),
+    h('div', { class: 'share-head' }, h('span'), h('button', { class: 'icon-btn', 'aria-label': 'Close', onClick: close }, icon('close'))), // no title: the formats lead
     formats, previewBox, progress, message,
     h('div', { class: 'actions' }, primary, saveBtn, secondary));
   const scrim = h('div', { class: 'share-scrim', onClick: close });

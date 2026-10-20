@@ -94,7 +94,7 @@ const aligned = async (page, label) => {
   assert.ok(dateTop - big.bottom >= 30, 'more room between the artwork and the date');
   const dock = await box(page, `${D} .detail-dock`);
   assert.equal(dock.bottom, 852, 'the player is docked at the bottom');
-  assert.equal(await page.$eval(`${D} .detail-dock`, (d) => getComputedStyle(d, '::after').backgroundImage.startsWith('linear-gradient')), true, 'over a fade');
+  assert.equal(await page.$eval(`${D} .detail-dock`, (d) => getComputedStyle(d).backgroundColor), 'rgb(248, 245, 239)', 'on a solid paper ground: no text shows through');
   await aligned(page, 'expanded');
   await shot(page, 'd1-expanded');
 
