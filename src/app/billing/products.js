@@ -1,7 +1,8 @@
 // What Sonmira sells. Prices here are fallbacks for the prototype and for the
 // moment before the store answers; the UI always shows the store's localized
-// displayPrice when it has one. Product ids match the planned App Store
-// Connect products (not created yet).
+// displayPrice when it has one. Product ids are the App Store Connect
+// products (bundle app.sonmira); ios/App/App/Sonmira.storekit mirrors them
+// for Xcode testing, and tests/billing-products.test.mjs keeps the two equal.
 
 export const FREE_PAINTINGS = 3;
 

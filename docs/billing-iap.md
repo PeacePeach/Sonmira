@@ -30,7 +30,9 @@ diary, recordings, playback and sharing never need a purchase.
    the app call `finish`. An unfinished transaction is delivered again on the
    next launch, so a crash or lost connection never loses a purchase.
 3. **Later events.** `Transaction.updates` (Ask to Buy approvals, renewals,
-   refunds) is listened to from launch and goes the same way. Apple's App
+   refunds) is listened to from launch and goes the same way. Coming back to
+   the app (at most once a minute) asks StoreKit and the server again, and
+   first re-sends any purchase the server hasn't recorded yet. Apple's App
    Store Server Notifications V2 (`/api/billing/apple-notifications`) cover
    what happens while the app is closed: renewals, auto-renew off, billing
    grace periods, expiry, refunds and refund reversals.
@@ -105,6 +107,25 @@ to the native code.
   StoreKit testing (Edit Scheme → Run → Options → StoreKit Configuration).
 - TestFlight builds buy in Sandbox: nothing is charged, and a monthly
   subscription renews every 5 minutes.
+
+## Where it stands (2026-10-20)
+
+- Done in App Store Connect: bundle ID, app record (Apple ID 6823759268),
+  both products (above) with prices and localizations, subscription group
+  *Sonmira*, Sandbox tester, the TestFlight API key. Tax forms are Active.
+- Waiting on Apple: the bank account and the Paid Apps Agreement are
+  Processing. Until it is Active, `Product.products(for:)` returns nothing in
+  TestFlight, so the paywall shows the fallback prices and buying says the
+  item isn't available.
+- Not needed for TestFlight: *Add for Review* on the products. The first
+  products go to review with the first App Store version.
+- Still to paste once (App Store Connect → App Information → App Store Server
+  Notifications, Version 2, Production and Sandbox):
+  `https://sonmira.vercel.app/api/billing/apple-notifications`. Without it
+  renewals, expiry and refunds still arrive when the app opens; with it they
+  arrive while it is closed too.
+- The native StoreKit code has not changed since TestFlight build 1.0 (3);
+  the billing JavaScript reaches that build when Production is deployed.
 
 ## Sandbox test plan
 
