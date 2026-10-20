@@ -5,7 +5,7 @@
 // tests/e2e/save-photos.mjs checks the real MP4. Run: npm test
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { planStrokes, PAINT_UNTIL } from '../src/app/share/paint.js';
+import { planStrokes, PAINT_UNTIL, paintSeconds } from '../src/app/share/paint.js';
 
 const W = 760, H = 950, DAB = 6;
 
@@ -45,6 +45,9 @@ test('paint: wash, then body, then details, all down before the painting is fini
   }
   assert.ok(first[0] < first[1] && first[1] < first[2], 'each layer starts after the one before');
   assert.equal(PAINT_UNTIL, 0.5, 'finished at half the recording');
+  assert.equal(paintSeconds(20), 10, 'a 20 s song: painted in 10 s');
+  assert.equal(paintSeconds(7.2), 5, 'a short song: still 5 s, so the strokes can be seen');
+  assert.equal(paintSeconds(4), 3.4, 'shorter than 5 s: nearly all of it, then the finished painting');
 });
 
 test('paint: the first wash covers all of the painting’s paint, and leaves its white paper', () => {

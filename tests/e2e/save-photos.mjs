@@ -5,7 +5,7 @@
 // Photos side by side and on screen without scrolling for both (also on a
 // small iPhone), the video's preview matching the exported MP4, the painting
 // painting itself in the MP4 (blank paper, then painted, finished by half
-// time) and the live canvas shown while it is made, Photos access
+// time or after 5 s) and the live canvas shown while it is made, Photos access
 // denied, and an older app build without the plugin (falls back to the
 // system share sheet). No AI, nothing uploaded. SHOTS=dir saves screenshots.
 //
@@ -172,6 +172,8 @@ async function run() {
 
       await page.click('[data-share] .quiet-btn:has-text("Make a video")');
       await page.waitForSelector('[data-share] .share-preview-box canvas');
+      assert.equal((await page.textContent('[data-share] [data-save]')).trim(), 'Save to Photos', 'while the video is made, Save stays put (disabled)');
+      assert.ok(await page.isDisabled('[data-share] [data-save]'));
       await page.waitForTimeout(1500);
       await shot(page, 'sheet-video-exporting');
       const live = await page.evaluate(() => { const c = document.querySelector('[data-share] .share-preview-box canvas'); return [c.width, c.height, c.getBoundingClientRect().height]; });
@@ -213,6 +215,8 @@ async function run() {
       await mainButtons(page, SMALL);
       await shot(page, 'sheet-image-small');
       await page.click('[data-share] .quiet-btn:has-text("Make a video")');
+      // the label speaks of the video as soon as it is being made, never of the image
+      await page.waitForSelector('[data-share] .share-progress:not([hidden])');
       await page.waitForSelector('[data-share] .pill:has-text("Share video")', { timeout: 45000 });
       await mainButtons(page, SMALL);
       await shot(page, 'sheet-video-small');
@@ -237,6 +241,9 @@ async function run() {
       const shared = await inspect(page, '__shared');
       assert.equal(shared?.type, 'image/jpeg', 'opens the system share sheet, whose first row is Save Image');
       assert.ok(!(await message(page)).includes('Photos'));
+      await page.click('[data-share] .quiet-btn:has-text("Make a video")');
+      await page.waitForSelector('[data-share] .share-progress:not([hidden])');
+      assert.equal((await page.textContent('[data-share] [data-save]')).trim(), 'Save video', 'while the video is made, the button already speaks of the video');
       await ctx.close();
       console.log('ok - older app build keeps the share sheet');
     }

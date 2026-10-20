@@ -28,7 +28,7 @@ const PHOTOS_ERRORS = {
 
 /**
  * @param {any} app
- * @param {{painting:any, note?:string, date:string, audio:Blob|null, durationSec:number}} item
+ * @param {{painting:any, note?:string, date:string, createdAt?:number, audio:Blob|null, durationSec:number}} item
  */
 export function openShareSheet(app, item) {
   const canVideo = !!(item.audio && videoMimeType());
@@ -84,7 +84,7 @@ export function openShareSheet(app, item) {
     formats.hidden = state === 'exporting' || state === 'video';
     saveBtn.hidden = !(sharesNatively && !showInPlace);
     saveBtn.disabled = saving || !(state === 'image' || state === 'video');
-    saveBtn.textContent = saving ? 'Saving…' : photos ? 'Save to Photos' : state === 'video' ? 'Save video' : 'Save image';
+    saveBtn.textContent = saving ? 'Saving…' : photos ? 'Save to Photos' : state === 'video' || state === 'exporting' ? 'Save video' : 'Save image';
     progress.hidden = state !== 'exporting';
     primary.disabled = state === 'preparing' || state === 'exporting';
     primary.textContent = state === 'preparing' ? 'Preparing…'
@@ -186,6 +186,7 @@ export function openShareSheet(app, item) {
   }
 
   function onSecondary() {
+    secondary.blur(); // it changes meaning (Make a video → Cancel → Share image instead); no focus ring carried over
     if (state === 'exporting') { abort?.abort(); return; }
     if (state === 'video') { if (imageFile) send(imageFile); return; }
     if (state !== 'image') return;

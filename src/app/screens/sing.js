@@ -53,7 +53,7 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
   // Share appears in the top bar only once a painting exists (result state).
   const shareBtn = h('button', { class: 'icon-btn', 'aria-label': 'Share', hidden: true, onClick: () => {
     player?.stop();
-    sheet = openShareSheet(app, { painting: result, note: noteDraft.trim(), date: dayKey(), audio: take.audio, durationSec: take.durationSec });
+    sheet = openShareSheet(app, { painting: result, note: noteDraft.trim(), date: dayKey(), createdAt: takeCreatedAt ?? Date.now(), audio: take.audio, durationSec: take.durationSec });
   } }, icon('share'));
   const navRight = h('div', { class: 'spacer44' }, shareBtn);
   const phaseHost = h('div', { style: 'flex:1;display:flex;flex-direction:column;min-height:0' });

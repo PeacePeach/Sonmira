@@ -2,13 +2,13 @@
 // Story card's composition (card.js drawVideoCard: colophon, title and date
 // above the painting) plus a quiet audio-responsive waveform under it. The
 // painting paints itself onto blank paper while the recording plays and is
-// finished halfway through (paint.js). Everything runs
+// finished halfway through, or after 5 s for a short one (paint.js). Everything runs
 // on the device (canvas + Web Audio + MediaRecorder); nothing is uploaded.
 // Encoding is real-time, so a 12 s recording takes about 12 s to export.
 
 import { COLORS, ensureFonts, loadArtwork } from './compose.js';
 import { drawVideoCard, VIDEO } from './card.js';
-import { createPaintingAnimation, PAINT_UNTIL } from './paint.js';
+import { createPaintingAnimation, paintSeconds } from './paint.js';
 
 export const MAX_VIDEO_SECONDS = 30;
 const FPS = 30;
@@ -46,7 +46,7 @@ async function composition(item, { animate = false } = {}) {
   const [img] = await Promise.all([loadArtwork(item.painting?.artwork), ensureFonts()]);
   const base = document.createElement('canvas');
   base.width = VIDEO.W; base.height = VIDEO.H;
-  const { wave, art } = drawVideoCard(base.getContext('2d'), { painting: item.painting, img, note: item.note, date: item.date, durationSec: Math.min(MAX_VIDEO_SECONDS, item.durationSec) });
+  const { wave, art } = drawVideoCard(base.getContext('2d'), { painting: item.painting, img, note: item.note, date: item.date, createdAt: item.createdAt, durationSec: Math.min(MAX_VIDEO_SECONDS, item.durationSec) });
   const painting = animate ? createPaintingAnimation(base, art) : null;
   // Bars already heard are ink; the bar being heard breathes with the live level.
   const draw = (ctx, env, at, level, paint = 1) => {
@@ -122,11 +122,12 @@ export async function renderShareVideo(item, { audioContext: ac, onProgress, onC
 
   // Waveform = the recording's loudness envelope, one bar per slice.
   const env = envelope(buffer, total, BARS);
+  const paintFor = paintSeconds(total);
 
   function frame(t) {
     analyser.getFloatTimeDomainData(live);
     let sum = 0; for (let i = 0; i < live.length; i++) sum += live[i] * live[i];
-    draw(ctx, env, (t / total) * BARS, Math.min(1, Math.sqrt(sum / live.length) * 5), t / (total * PAINT_UNTIL));
+    draw(ctx, env, (t / total) * BARS, Math.min(1, Math.sqrt(sum / live.length) * 5), t / paintFor);
   }
   frame(0);
   onCanvas?.(canvas);

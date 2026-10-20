@@ -12,8 +12,11 @@
 import { grain } from './compose.js';
 import { rng } from '../../engine/render/rng.js';
 
-/** The painting is finished at this share of the recording. */
-export const PAINT_UNTIL = 0.5;
+/** The painting is finished at half the recording, but takes at least
+ *  MIN_PAINT_SECONDS so each stroke can be seen (all of a recording shorter than
+ *  that, less a moment to show the finished painting). */
+export const PAINT_UNTIL = 0.5, MIN_PAINT_SECONDS = 5;
+export const paintSeconds = (total) => Math.min(Math.max(MIN_PAINT_SECONDS, total * PAINT_UNTIL), total * 0.85);
 
 // Brush sizes as a share of the painting's size (√(w·h)); `from`/`to` are
 // when the layer paints, as a share of the painting time.
