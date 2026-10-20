@@ -1,8 +1,8 @@
 // Share as video: 1080×1920 (9:16) MP4 with the original recording and the
-// Story card's composition (card.js drawVideoCard: colophon, title and date
-// above the painting) plus a quiet audio-responsive waveform under it. The
-// painting paints itself onto blank paper while the recording plays and is
-// finished halfway through, or after 5 s for a short one (paint.js). Everything runs
+// composition of card.js drawVideoCard, plus a quiet audio-responsive
+// waveform under the painting. The painting paints itself onto blank paper
+// while the recording plays and is finished halfway through, or after 5 s
+// for a short one (paint.js). Everything runs
 // on the device (canvas + Web Audio + MediaRecorder); nothing is uploaded.
 // Encoding is real-time, so a 12 s recording takes about 12 s to export.
 
