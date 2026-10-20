@@ -118,8 +118,8 @@ const compareVideoToPreview = (page) => page.evaluate(async () => {
   const px = (src) => { const c = document.createElement('canvas'); c.width = 270; c.height = 480; const g = c.getContext('2d'); g.drawImage(src, 0, 0, 270, 480); return g.getImageData(0, 0, 270, 480).data; };
   const a = px(v), b = px(poster);
   const diff = (y0, y1) => { let s = 0, n = 0; for (let y = y0; y < y1; y++) for (let x = 0; x < 270; x++) for (let k = 0; k < 3; k++) { const i = (y * 270 + x) * 4 + k; s += Math.abs(a[i] - b[i]); n++; } return s / n; };
-  // ink in the top third: the text is drawn there, above the painting
-  let ink = 0; for (let y = 60; y < 160; y++) for (let x = 0; x < 270; x++) { const i = (y * 270 + x) * 4; if (a[i] < 150 && a[i + 1] < 150) ink++; }
+  // ink under the waveform: the title is drawn there
+  let ink = 0; for (let y = 380; y < 410; y++) for (let x = 0; x < 270; x++) { const i = (y * 270 + x) * 4; if (a[i] < 150 && a[i + 1] < 150) ink++; }
   return { all: diff(0, 480), top: diff(0, 160), ink, posterSize: [poster.naturalWidth, poster.naturalHeight] };
 });
 
@@ -178,7 +178,7 @@ async function run() {
       assert.ok(vid.audioRms > 0.01, 'the saved video keeps its audio');
       const cmp = await compareVideoToPreview(page);
       assert.deepEqual(cmp.posterSize, [1080, 1920], 'the preview is drawn at the video’s size');
-      assert.ok(cmp.ink > 200, `the exported video shows the text above the painting (${cmp.ink} ink pixels)`);
+      assert.ok(cmp.ink > 200, `the exported video shows the title under the painting (${cmp.ink} ink pixels)`);
       assert.ok(cmp.top < 6, `the exported video's text matches the preview (mean difference ${cmp.top.toFixed(2)})`);
       assert.ok(cmp.all < 12, `the exported video matches the preview (mean difference ${cmp.all.toFixed(2)})`);
       const sync = await syncCheck(page);

@@ -3,7 +3,7 @@
 // Sonmira mark). One composition laid out for three formats; nothing is
 // cropped or regenerated: the original artwork is drawn whole.
 
-import { madeLine } from '../format.js';
+import { longDate, madeLine } from '../format.js';
 import { COLORS as C, drawPainting, ensureFonts, loadArtwork, wrap } from './compose.js';
 
 // Feed: Instagram's 3:4 post. Story: Instagram/WeChat stories. Square: WeChat Moments.
@@ -112,79 +112,74 @@ function drawColophon(ctx, cx, top, k) {
   return storySize + gapColophon + markH;
 }
 
-// The video (1080×1920, 9:16), in the first share video's layout: a large
-// painting, a left-aligned serif title, quiet caps for the date and the
-// Sonmira mark, every element on the painting's edges. The words sit above
-// the painting (the detail page's order: caps, then title), so a player's
-// controls and playhead at the bottom cover only paper. Everything stays
-// inside VIDEO_SAFE, clear of the bars of Moments, Stories and Photos.
+// The video (1080×1920, 9:16), after Han's design (Frame 92): the sentence
+// and the Sonmira mark centred at the top, the painting large, the waveform
+// under it, then the title and the full date centred below. Positions are
+// the design's, in video pixels; a painting of another shape keeps its own
+// proportions and the whole group stays centred where the design puts it.
 export const VIDEO = { W: 1080, H: 1920 };
-export const VIDEO_SAFE = { top: 190, bottom: 300, side: 90 };
-const WAVE_GAP = 40, WAVE_H = 72;
+export const VIDEO_SAFE = { top: 120, bottom: 200, side: 120 };
+const V = {
+  lineY: 154, lineSize: 28,        // "I sang this moment into a painting."
+  markY: 213, markH: 22, wordSize: 30,
+  artY: 316, artW: 840, artMaxH: 1085,
+  waveGap: 74, waveH: 36,
+  titleGap: 120, titleSize: 40, titleLead: 52,
+  dateGap: 54, dateSize: 19,
+};
+
+/** "TUESDAY, OCTOBER 20, 2026" */
+const fullDate = (date) => { const [y] = date.split('-'); return `${longDate(date)}, ${y}`; };
 
 /**
  * Draws the video's still composition (no waveform) and returns where the
  * waveform goes. The share sheet's video preview is this same drawing.
  * @returns {{art:{x:number,y:number,w:number,h:number}, wave:{x:number,y:number,w:number,h:number}, text:{top:number,bottom:number}}}
  */
-export function drawVideoCard(ctx, { painting, img, note, date, createdAt, durationSec }) {
-  const { W, H } = VIDEO, S = VIDEO_SAFE;
+export function drawVideoCard(ctx, { painting, img, note, date }) {
+  const { W } = VIDEO, cx = W / 2;
   ctx.fillStyle = C.paper;
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(0, 0, W, VIDEO.H);
   ctx.textBaseline = 'alphabetic';
-
-  // type, as in the first video: serif 600 44/54 title, 20 px caps, 30 px wordmark
-  const capsH = 20, gapCaps = 30, titleSize = 44, titleLead = 54, gapArt = 40;
-  const aspect = img ? img.naturalWidth / img.naturalHeight : 4 / 5;
-  const maxW = W - 2 * S.side;
-  // head: the sentence on the left, the mark and wordmark on the right; on a
-  // narrow painting the sentence takes a line of its own below them
-  ctx.font = `italic 600 30px ${C.serif}`;
-  const word = 'Sonmira', wordW = ctx.measureText(word).width, markH = 22, markW = markH * (120 / 82);
-  ctx.font = `italic 500 28px ${C.serif}`;
-  const lineW = ctx.measureText(STORY_LINE).width;
-  const stacked = (w) => lineW > w - wordW - markW - 40;
-  const fit = (w) => {
-    const headH = stacked(w) ? 34 + 44 : 34, gapHead = 60;
-    ctx.font = `600 ${titleSize}px ${C.serif}`;
-    const title = note ? wrap(ctx, note, w, 2) : [];
-    const textH = headH + gapHead + capsH + (title.length ? gapCaps + title.length * titleLead - (titleLead - titleSize) : 0) + gapArt;
-    return { title, headH, gapHead, textH, artH: H - S.top - S.bottom - textH - WAVE_GAP - WAVE_H };
-  };
-  let artW = maxW, f = fit(artW), artH = artW / aspect;
-  if (artH > f.artH) { artH = f.artH; artW = artH * aspect; f = fit(artW); artH = Math.min(artH, f.artH); artW = artH * aspect; }
-  const x = (W - artW) / 2, right = x + artW;
-  const top = S.top + Math.max(0, (H - S.top - S.bottom - (f.textH + artH + WAVE_GAP + WAVE_H)) / 2);
-
-  const base = top + 34 * 0.8;
-  ctx.font = `italic 600 30px ${C.serif}`;
-  ctx.fillStyle = C.muted; ctx.textAlign = 'right';
-  ctx.fillText(word, right, base);
-  drawMark(ctx, right - wordW - 10 - markW, base - markH + 2, markH * 0.9, C.muted);
-  ctx.fillStyle = C.secondary; ctx.textAlign = 'left';
-  ctx.font = `italic 500 28px ${C.serif}`;
-  if (stacked(artW)) { ctx.textAlign = 'right'; ctx.fillText(STORY_LINE, right, base + 44); } // under the mark, on the right edge
-  else ctx.fillText(STORY_LINE, x, base);
-
-  // caps line, then the title
-  let y = top + f.headH + f.gapHead;
-  ctx.fillStyle = C.muted;
-  ctx.font = `450 ${capsH}px ${C.sans}`;
-  tracked(ctx, madeLine(date, createdAt, durationSec), x, y + capsH * 0.8, 1.6);
-  y += capsH;
-  if (f.title.length) {
-    y += gapCaps;
-    ctx.fillStyle = C.ink;
-    ctx.font = `600 ${titleSize}px ${C.serif}`;
-    f.title.forEach((ln, i) => ctx.fillText(ln, x, y + titleSize * 0.8 + i * titleLead));
-    y += f.title.length * titleLead - (titleLead - titleSize);
-  }
-  const textBottom = y;
   ctx.textAlign = 'center';
 
-  const art = { x, y: textBottom + gapArt, w: artW, h: artH };
+  const aspect = img ? img.naturalWidth / img.naturalHeight : 4 / 5;
+  let artW = V.artW, artH = artW / aspect;
+  if (artH > V.artMaxH) { artH = V.artMaxH; artW = artH * aspect; }
+  const shift = (V.artMaxH - artH) / 2; // a shorter painting: the group closes up around the design's centre
+
+  ctx.font = `500 ${V.titleSize}px ${C.sans}`;
+  const title = note ? wrap(ctx, note, V.artW, 2) : [];
+
+  // head: the sentence, then the mark and the wordmark
+  const top = V.lineY + shift;
+  ctx.fillStyle = C.secondary;
+  ctx.font = `italic 500 ${V.lineSize}px ${C.serif}`;
+  ctx.fillText(STORY_LINE, cx, top);
+  const markY = V.markY + shift;
+  ctx.font = `italic 600 ${V.wordSize}px ${C.serif}`;
+  const word = 'Sonmira', wordW = ctx.measureText(word).width, markW = V.markH * (120 / 82), gap = 12;
+  const startX = cx - (markW + gap + wordW) / 2;
+  drawMark(ctx, startX, markY - V.markH + 3, V.markH * 0.9, C.muted);
+  ctx.fillStyle = C.muted; ctx.textAlign = 'left';
+  ctx.fillText(word, startX + markW + gap, markY);
+  ctx.textAlign = 'center';
+
+  const art = { x: cx - artW / 2, y: V.artY + shift, w: artW, h: artH };
   drawPainting(ctx, { painting, img, ...art, scale: 1 });
-  return { art, wave: { x: art.x, y: art.y + art.h + WAVE_GAP, w: art.w, h: WAVE_H }, text: { top, bottom: textBottom } };
+  const wave = { x: cx - V.artW / 2, y: art.y + art.h + V.waveGap - V.waveH / 2, w: V.artW, h: V.waveH };
+  if (artW < V.artW) { wave.x = art.x; wave.w = art.w; }
+
+  // title and date, centred under the waveform
+  let y = wave.y + wave.h / 2 + V.titleGap;
+  ctx.fillStyle = C.ink;
+  ctx.font = `500 ${V.titleSize}px ${C.sans}`;
+  title.forEach((ln, i) => ctx.fillText(ln, cx, y + i * V.titleLead));
+  if (title.length) y += (title.length - 1) * V.titleLead + V.dateGap;
+  ctx.fillStyle = C.muted;
+  ctx.font = `450 ${V.dateSize}px ${C.sans}`;
+  tracked(ctx, fullDate(date), cx, y, 1.2);
+  return { art, wave, text: { top: top - V.lineSize, bottom: y } };
 }
 
 /** @param {{painting:any, note?:string, date:string, durationSec?:number}} item @returns {Promise<Blob>} */
