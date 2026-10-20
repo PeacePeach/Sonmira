@@ -26,6 +26,15 @@ globalThis.document = { createElement: () => ({ getContext: () => fakeCtx({ text
 globalThis.Path2D = class {};
 
 const { drawVideoCard, VIDEO, VIDEO_SAFE, STORY_LINE } = await import('../src/app/share/card.js');
+const { madeLine, timeOfDay } = await import('../src/app/format.js');
+const MADE = new Date(2026, 9, 20, 18, 22).getTime();
+
+test('the made line: day, time and length', () => {
+  assert.equal(timeOfDay(new Date(2026, 9, 20, 0, 5).getTime()), '12:05 AM');
+  assert.equal(timeOfDay(MADE), '6:22 PM');
+  assert.equal(madeLine('2026-10-20', MADE, 12), 'TUESDAY, OCTOBER 20  ·  6:22 PM  ·  0:12');
+  assert.equal(madeLine('2026-10-20', null, 12), 'TUESDAY, OCTOBER 20  ·  0:12', 'older entries without a time');
+});
 
 const NOTES = { none: '', short: 'Rain', long: 'Rain on the window again, the kettle, and the long slow afternoon after it all' };
 const ART = { portrait: [1024, 1280], square: [1024, 1024], landscape: [1536, 1024], tall: [1024, 1820] };
@@ -33,9 +42,10 @@ const ART = { portrait: [1024, 1280], square: [1024, 1024], landscape: [1536, 10
 for (const [noteKind, note] of Object.entries(NOTES)) for (const [artKind, [w, h]] of Object.entries(ART)) {
   test(`video: text above the artwork, inside the safe area (${noteKind} title, ${artKind} art)`, () => {
     const log = { texts: [], rects: [] };
-    const { art, wave, text } = drawVideoCard(fakeCtx(log), { painting: {}, img: { naturalWidth: w, naturalHeight: h }, note, date: '2026-10-20', durationSec: 12 });
+    const { art, wave, text } = drawVideoCard(fakeCtx(log), { painting: {}, img: { naturalWidth: w, naturalHeight: h }, note, date: '2026-10-20', createdAt: MADE, durationSec: 12 });
     assert.ok(log.texts.some((t) => t.t === STORY_LINE), 'the sentence is in the video');
     assert.ok(log.texts.some((t) => t.t === 'Sonmira'), 'the wordmark is in the video');
+    assert.ok(log.texts.some((t) => t.t.includes('6:22 PM')), 'when it was made is in the video');
     if (note) assert.ok(log.texts.some((t) => note.startsWith(t.t.replace(/…$/, ''))), 'the title is in the video');
     for (const t of log.texts) assert.ok(t.y < art.y, `"${t.t}" (y ${t.y}) sits above the artwork (y ${art.y})`);
     assert.ok(text.top >= VIDEO_SAFE.top, 'clear of the top bar');

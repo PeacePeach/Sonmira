@@ -13,6 +13,12 @@ export const clock = (s) => { s = Math.max(0, Math.floor(s)); return `${Math.flo
 /** "THURSDAY, OCTOBER 15" */
 export const longDate = (k) => { const d = fromKey(k); return `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}`.toUpperCase(); };
 
+/** 1760984520000 → "6:22 PM" (local time) */
+export const timeOfDay = (ms) => { const d = new Date(ms); const h = d.getHours(); return `${h % 12 || 12}:${pad(d.getMinutes())} ${h < 12 ? 'AM' : 'PM'}`; };
+
+/** "TUESDAY, OCTOBER 20  ·  6:22 PM  ·  0:12": when it was made and how long it is, for share files. */
+export const madeLine = (date, createdAt, durationSec) => [longDate(date), createdAt ? timeOfDay(createdAt) : null, durationSec ? clock(durationSec) : null].filter(Boolean).join('  ·  ');
+
 /** "October 15" (+ ", 2025" when not this year) */
 export const monthDay = (k) => {
   const d = fromKey(k);

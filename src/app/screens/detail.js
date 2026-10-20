@@ -74,7 +74,7 @@ export function mountDetail(app, { id }) {
 
   const backBtn = h('button', { class: 'icon-btn', 'aria-label': 'Back to diary', onClick: () => app.navigate('diary') }, icon('back', { size: 'lg' }));
   const cancelBtn = h('button', { class: 'text-btn cancel-btn', hidden: true, onClick: () => cancel() }, 'Cancel');
-  const shareBtn = h('button', { class: 'icon-btn', 'aria-label': 'Share', onClick: () => { player.stop(); sheet = openShareSheet(app, { painting: e.painting, note: e.note, date: e.date, audio: e.audio, durationSec: e.durationSec }); } }, icon('share'));
+  const shareBtn = h('button', { class: 'icon-btn', 'aria-label': 'Share', onClick: () => { player.stop(); sheet = openShareSheet(app, { painting: e.painting, note: e.note, date: e.date, createdAt: e.createdAt, audio: e.audio, durationSec: e.durationSec }); } }, icon('share'));
   const meta = h('div', { class: 'detail-meta' }, h('div', { class: 'caps' }, longDate(e.date)), title);
   const scroll = h('div', { class: 'detail-scroll' }, journal);
   const navrow = h('div', { class: 'navrow' },

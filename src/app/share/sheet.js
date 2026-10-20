@@ -28,7 +28,7 @@ const PHOTOS_ERRORS = {
 
 /**
  * @param {any} app
- * @param {{painting:any, note?:string, date:string, audio:Blob|null, durationSec:number}} item
+ * @param {{painting:any, note?:string, date:string, createdAt?:number, audio:Blob|null, durationSec:number}} item
  */
 export function openShareSheet(app, item) {
   const canVideo = !!(item.audio && videoMimeType());

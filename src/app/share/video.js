@@ -41,7 +41,7 @@ async function composition(item) {
   const [img] = await Promise.all([loadArtwork(item.painting?.artwork), ensureFonts()]);
   const base = document.createElement('canvas');
   base.width = VIDEO.W; base.height = VIDEO.H;
-  const { wave } = drawVideoCard(base.getContext('2d'), { painting: item.painting, img, note: item.note, date: item.date, durationSec: Math.min(MAX_VIDEO_SECONDS, item.durationSec) });
+  const { wave } = drawVideoCard(base.getContext('2d'), { painting: item.painting, img, note: item.note, date: item.date, createdAt: item.createdAt, durationSec: Math.min(MAX_VIDEO_SECONDS, item.durationSec) });
   // Bars already heard are ink; the bar being heard breathes with the live level.
   const draw = (ctx, env, at, level) => {
     ctx.drawImage(base, 0, 0);

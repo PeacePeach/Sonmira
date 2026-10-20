@@ -3,7 +3,7 @@
 // Sonmira mark). One composition laid out for three formats; nothing is
 // cropped or regenerated: the original artwork is drawn whole.
 
-import { clock, longDate } from '../format.js';
+import { madeLine } from '../format.js';
 import { COLORS as C, drawPainting, ensureFonts, loadArtwork, wrap } from './compose.js';
 
 // Feed: Instagram's 3:4 post. Story: Instagram/WeChat stories. Square: WeChat Moments.
@@ -46,9 +46,9 @@ function tracked(ctx, text, x, y, px) {
 
 /**
  * @param {CanvasRenderingContext2D} ctx
- * @param {{format: keyof typeof FORMATS, painting:any, img:HTMLImageElement|null, note?:string, date:string, durationSec?:number}} o
+ * @param {{format: keyof typeof FORMATS, painting:any, img:HTMLImageElement|null, note?:string, date:string, createdAt?:number, durationSec?:number}} o
  */
-export function drawCard(ctx, { format, painting, img, note, date, durationSec }) {
+export function drawCard(ctx, { format, painting, img, note, date, createdAt, durationSec }) {
   const { W, H } = FORMATS[format];
   const F = FRAME[format], k = F.k, cx = W / 2;
   ctx.fillStyle = C.paper;
@@ -88,8 +88,7 @@ export function drawCard(ctx, { format, painting, img, note, date, durationSec }
 
   ctx.fillStyle = C.muted;
   ctx.font = `450 ${metaSize}px ${C.sans}`;
-  const meta = durationSec ? `${longDate(date)}  ·  ${clock(durationSec)}` : longDate(date);
-  tracked(ctx, meta, cx, y + metaSize * 0.8, 1.6 * k);
+  tracked(ctx, madeLine(date, createdAt, durationSec), cx, y + metaSize * 0.8, 1.6 * k);
 
   drawColophon(ctx, cx, colophonTop, k);
 }
@@ -126,7 +125,7 @@ const WAVE_GAP = 44, WAVE_H = 72;
  * waveform goes. The share sheet's video preview is this same drawing.
  * @returns {{art:{x:number,y:number,w:number,h:number}, wave:{x:number,y:number,w:number,h:number}, text:{top:number,bottom:number}}}
  */
-export function drawVideoCard(ctx, { painting, img, note, date, durationSec }) {
+export function drawVideoCard(ctx, { painting, img, note, date, createdAt, durationSec }) {
   const { W, H } = VIDEO, S = VIDEO_SAFE, k = FRAME.story.k, cx = W / 2;
   ctx.fillStyle = C.paper;
   ctx.fillRect(0, 0, W, H);
@@ -154,8 +153,7 @@ export function drawVideoCard(ctx, { painting, img, note, date, durationSec }) {
   y += title.length * titleLead + gapMeta;
   ctx.fillStyle = C.muted;
   ctx.font = `450 ${metaSize}px ${C.sans}`;
-  const meta = durationSec ? `${longDate(date)}  ·  ${clock(durationSec)}` : longDate(date);
-  tracked(ctx, meta, cx, y + metaSize * 0.8, 1.6 * k);
+  tracked(ctx, madeLine(date, createdAt, durationSec), cx, y + metaSize * 0.8, 1.6 * k);
   const textBottom = y + metaSize;
 
   const art = { x: cx - artW / 2, y: textBottom + gapArt, w: artW, h: artH };
@@ -169,7 +167,7 @@ export async function renderShareCard(item, format = DEFAULT_FORMAT) {
   const { W, H } = FORMATS[format];
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
-  drawCard(canvas.getContext('2d'), { format, painting: item.painting, img, note: item.note, date: item.date, durationSec: item.durationSec });
+  drawCard(canvas.getContext('2d'), { format, painting: item.painting, img, note: item.note, date: item.date, createdAt: item.createdAt, durationSec: item.durationSec });
   const blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.94));
   if (!blob) throw new Error('image-encode-failed');
   return blob;
