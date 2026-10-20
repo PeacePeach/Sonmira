@@ -21,6 +21,7 @@ import { takeOf } from '../drafts/index.js';
 import { withGenerationKey, guardMessage } from '../protect/client.js';
 import { MAX_SECONDS } from '../settings.js';
 import { titleField, journalField } from '../ui/text-field.js';
+import { morph as morphCard } from '../ui/morph.js';
 
 const SINGING_LINES = ['Keep going…', 'Let it out.', 'Softly, softly.', 'That’s it.'];
 const FINDING = 'Finding the shape of your song…';
@@ -291,25 +292,9 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
   }
 
   // ── result ───────────────────────────────────────────────────────────────
-  const reduceMotion = () => !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-
-  // Moves the painting card to its new layout (apply) and animates its size
-  // and place from the old one, so the change reads as the same artwork
-  // growing or shrinking. Width and height are animated rather than scaled,
-  // so the artwork is never stretched: object-fit keeps its own proportions.
-  function morph(apply) {
-    const node = painting.el;
-    const a = node.getBoundingClientRect(), aw = node.offsetWidth, ah = node.offsetHeight;
-    apply();
-    if (reduceMotion() || !node.animate || !aw) return;
-    const b = node.getBoundingClientRect(), bw = node.offsetWidth, bh = node.offsetHeight;
-    const k = bw ? b.width / bw : 1; // the desktop frame may be scaled (fitStage)
-    node.getAnimations?.().forEach((x) => x.cancel());
-    node.animate([
-      { width: `${aw}px`, height: `${ah}px`, transform: `translate(${(a.left - b.left) / k}px, ${(a.top - b.top) / k}px)` },
-      { width: `${bw}px`, height: `${bh}px`, transform: 'translate(0, 0)' },
-    ], { duration: 560, easing: 'cubic-bezier(.2, .7, .2, 1)' });
-  }
+  // The painting card moves between its sizes with the shared artwork morph
+  // (ui/morph.js), the same one the detail page uses.
+  const morph = (apply) => morphCard(painting.el, apply);
 
   // The card's three sizes: the recording/preview card (3:2), the detail
   // page's artwork (expanded, 4:5 at the detail page's margins), and the

@@ -264,26 +264,42 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .player .times span:last-child { text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ── detail ──────────────────────────────────────────────────────────────── */
-.detail { display: flex; flex-direction: column; padding: var(--top) 0 var(--bottom); overflow-y: auto; }
+/* Three states (screens/detail.js): expanded (the artwork large, as made),
+   compact (the artwork as a landscape card; artwork, date and title stay put
+   and only the journal scrolls) and editing (compact, with the creation
+   flow's title and journal fields). The player is docked at the bottom over
+   the diary's fade, and the journal always ends clear of it. */
+.detail { display: flex; flex-direction: column; padding-top: var(--top); overflow: hidden; container-type: size; --dock: calc(var(--bottom) + 92px); }
 .detail .art-pad { padding: 22px 18px 0; flex-shrink: 0; }
-.detail .body { padding: 26px 28px 0; flex: 1; display: flex; flex-direction: column; min-height: 150px; }
+.detail-meta { padding: 30px 28px 0; flex-shrink: 0; }
+/* the journal's own scroller: its first line clears the title, and lines
+   scrolled up fade under the title rather than being cut */
+.detail-scroll { flex: 1; min-height: 0; overflow: hidden; padding: 18px 28px var(--dock); scroll-padding-bottom: var(--dock); overscroll-behavior: contain; -webkit-mask-image: linear-gradient(to bottom, transparent, #000 18px); mask-image: linear-gradient(to bottom, transparent, #000 18px); }
+.detail.compact .detail-scroll { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+/* the landscape card: 3:2 at the same margins, smaller on short screens */
+.detail.compact .painting { width: min(100%, 40cqh); margin: 0 auto; }
+.detail.compact .painting[role=button] { cursor: pointer; }
+.detail.compact .detail-meta { padding-top: 22px; }
+.detail-dock { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding: 30px 28px var(--bottom); isolation: isolate; }
+.detail-dock::before, .detail-dock::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.detail-dock::before { -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); -webkit-mask-image: linear-gradient(to bottom, transparent, #000 45%); mask-image: linear-gradient(to bottom, transparent, #000 45%); }
+.detail-dock::after { background: linear-gradient(to bottom, rgba(248,245,239,0), rgba(248,245,239,.88) 40%, var(--paper) 62%); }
+/* the keyboard is up (editing on a phone): the page fits above it and the
+   player steps aside until it closes */
+.detail.kb .detail-dock { visibility: hidden; }
+.detail.kb .detail-scroll { padding-bottom: 24px; scroll-padding-bottom: 24px; }
 .detail .caption { font-size: 26px; line-height: 1.2; text-wrap: pretty; }
 .detail .caption.untitled { color: var(--muted); }
-/* The title is tappable to rename; the pencil sits on its first line */
-.detail .title-btn { display: flex; align-items: flex-start; gap: 8px; margin-top: 6px; text-align: left; color: inherit; }
-.detail .title-btn .icon { margin-top: 8px; }
-.detail .caption-input { margin-top: 0; font-size: 26px; line-height: 1.2; padding: 6px 0 10px; }
-.detail .title-actions { display: flex; justify-content: flex-end; margin: 2px -12px 0 0; }
-.detail .title-actions .save { color: var(--ink); }
-.detail .title-actions .text-btn[disabled] { opacity: .6; }
-.detail .player { margin-top: auto; padding-top: 22px; }
+.detail .title-btn { display: block; width: 100%; margin-top: 6px; text-align: left; color: inherit; }
+.detail .caption-input { margin-top: 6px; font-size: 26px; line-height: 1.2; padding: 0 0 10px; }
 .detail .char-count { text-align: left; }
+.detail .edit-btn.save { color: var(--ink); }
+.detail .edit-btn[disabled] { opacity: .6; }
 /* the journal under the title: its paragraphs as written; tap to edit */
-.detail-journal { margin-top: 14px; }
 .detail .journal-btn { display: block; width: 100%; text-align: left; color: var(--body); font-size: 16px; line-height: 1.55; padding: 4px 0; }
 .detail .journal-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .detail .journal-btn.journal-empty { color: var(--placeholder); font-size: 15px; }
-.detail .journal-input { margin-top: 0; }
+.detail .journal-input { margin-top: 0; padding: 4px 0 12px; }
 .text-btn.confirm { color: var(--ink); }
 
 /* ── settings ────────────────────────────────────────────────────────────── */
