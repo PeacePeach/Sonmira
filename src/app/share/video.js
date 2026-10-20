@@ -1,11 +1,14 @@
 // Share as video: 1080×1920 (9:16) MP4 with the original recording and the
 // composition of card.js drawVideoCard, plus a quiet audio-responsive
-// waveform under the painting. Everything runs
+// waveform under the painting. The painting paints itself onto blank paper
+// while the recording plays and is finished halfway through, or after 5 s
+// for a short one (paint.js). Everything runs
 // on the device (canvas + Web Audio + MediaRecorder); nothing is uploaded.
 // Encoding is real-time, so a 12 s recording takes about 12 s to export.
 
 import { COLORS, ensureFonts, loadArtwork } from './compose.js';
 import { drawVideoCard, VIDEO } from './card.js';
+import { createPaintingAnimation, paintSeconds } from './paint.js';
 
 export const MAX_VIDEO_SECONDS = 30;
 const FPS = 30;
@@ -36,15 +39,19 @@ function envelope(buffer, seconds, n) {
   return out;
 }
 
-// The still layer and the waveform, drawn the same for the export and its preview.
-async function composition(item) {
+// The still layer, the painting being painted and the waveform, drawn the
+// same for the export and its preview. `paint` (0…1) is how far the painting
+// has got; the painting animation is set up only when asked for.
+async function composition(item, { animate = false } = {}) {
   const [img] = await Promise.all([loadArtwork(item.painting?.artwork), ensureFonts()]);
   const base = document.createElement('canvas');
   base.width = VIDEO.W; base.height = VIDEO.H;
-  const { wave } = drawVideoCard(base.getContext('2d'), { painting: item.painting, img, note: item.note, date: item.date, createdAt: item.createdAt, durationSec: Math.min(MAX_VIDEO_SECONDS, item.durationSec) });
+  const { wave, art } = drawVideoCard(base.getContext('2d'), { painting: item.painting, img, note: item.note, date: item.date, createdAt: item.createdAt, durationSec: Math.min(MAX_VIDEO_SECONDS, item.durationSec) });
+  const painting = animate ? createPaintingAnimation(base, art) : null;
   // Bars already heard are ink; the bar being heard breathes with the live level.
-  const draw = (ctx, env, at, level) => {
+  const draw = (ctx, env, at, level, paint = 1) => {
     ctx.drawImage(base, 0, 0);
+    painting?.draw(ctx, paint);
     const gap = wave.w / BARS, cy = wave.y + wave.h / 2;
     for (let i = 0; i < BARS; i++) {
       const current = i === Math.floor(at);
@@ -58,7 +65,7 @@ async function composition(item) {
   return { draw };
 }
 
-/** The video's first frame as a JPEG: the share sheet's preview of the video. */
+/** The video's finished frame (the painting complete) as a JPEG: the share sheet's poster for the video. */
 export async function renderVideoPoster(item) {
   const [{ draw }, buffer] = await Promise.all([composition(item), decodeQuietly(item.audio)]);
   const canvas = document.createElement('canvas');
@@ -86,10 +93,11 @@ export function createExportAudioContext() {
 
 /**
  * @param {{painting:any, note?:string, date:string, audio:Blob, durationSec:number}} item
- * @param {{audioContext: AudioContext, onProgress?:(t:number, total:number)=>void, signal?:AbortSignal}} opts
+ * @param {{audioContext: AudioContext, onProgress?:(t:number, total:number)=>void, onCanvas?:(canvas:HTMLCanvasElement)=>void, signal?:AbortSignal}} opts
+ *   onCanvas gets the canvas being recorded, so the sheet can show the video as it is made.
  * @returns {Promise<Blob>}
  */
-export async function renderShareVideo(item, { audioContext: ac, onProgress, signal }) {
+export async function renderShareVideo(item, { audioContext: ac, onProgress, onCanvas, signal }) {
   const mimeType = videoMimeType();
   if (!mimeType) throw new VideoExportError('record');
 
@@ -98,8 +106,8 @@ export async function renderShareVideo(item, { audioContext: ac, onProgress, sig
   catch (e) { ac.close().catch(() => {}); throw new VideoExportError('decode', e); }
   const total = Math.min(MAX_VIDEO_SECONDS, buffer.duration);
 
-  // Static layer drawn once; each frame adds only the waveform.
-  const { draw } = await composition(item);
+  // Static layer drawn once; each frame adds the painting so far and the waveform.
+  const { draw } = await composition(item, { animate: true });
   const canvas = document.createElement('canvas');
   canvas.width = VIDEO.W; canvas.height = VIDEO.H;
   const ctx = canvas.getContext('2d');
@@ -114,13 +122,15 @@ export async function renderShareVideo(item, { audioContext: ac, onProgress, sig
 
   // Waveform = the recording's loudness envelope, one bar per slice.
   const env = envelope(buffer, total, BARS);
+  const paintFor = paintSeconds(total);
 
   function frame(t) {
     analyser.getFloatTimeDomainData(live);
     let sum = 0; for (let i = 0; i < live.length; i++) sum += live[i] * live[i];
-    draw(ctx, env, (t / total) * BARS, Math.min(1, Math.sqrt(sum / live.length) * 5));
+    draw(ctx, env, (t / total) * BARS, Math.min(1, Math.sqrt(sum / live.length) * 5), t / paintFor);
   }
   frame(0);
+  onCanvas?.(canvas);
 
   const stream = new MediaStream([...canvas.captureStream(FPS).getVideoTracks(), ...dest.stream.getAudioTracks()]);
   let rec;

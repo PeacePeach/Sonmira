@@ -3,7 +3,9 @@
 // (ios/App/App/SonmiraPhotosPlugin.swift), which records each saved file.
 // Covers the image and the MP4 (with its audio, in sync), Share and Save to
 // Photos side by side and on screen without scrolling for both (also on a
-// small iPhone), the video's preview matching the exported MP4, Photos access
+// small iPhone), the video's preview matching the exported MP4, the painting
+// painting itself in the MP4 (blank paper, then painted, finished by half
+// time or after 5 s) and the live canvas shown while it is made, Photos access
 // denied, and an older app build without the plugin (falls back to the
 // system share sheet). No AI, nothing uploaded. SHOTS=dir saves screenshots.
 //
@@ -106,21 +108,30 @@ async function mainButtons(page, viewport) {
   return boxes;
 }
 
-// A frame of the exported MP4 next to the sheet's preview of it: the mean
-// difference per channel over the whole 1080×1920 frame, and over the top
-// (all the text) only.
+// A frame of the exported MP4 after the painting is finished (it is done by
+// half time) next to the sheet's preview of it: the mean difference per
+// channel over the whole 1080×1920 frame, and over the top (all the text)
+// only. Also the painting's area early, midway and finished, against the
+// finished painting: blank paper first, then painted, then the painting.
 const compareVideoToPreview = (page) => page.evaluate(async () => {
   const f = window.__last;
   const v = document.createElement('video'); v.muted = true; v.src = URL.createObjectURL(f);
   await new Promise((r) => { v.onloadeddata = r; });
-  v.currentTime = 0.5; await new Promise((r) => { v.onseeked = r; });
+  const seek = async (t) => { v.currentTime = t; await new Promise((r) => { v.onseeked = r; }); };
+  const area = () => { const c = document.createElement('canvas'); c.width = 54; c.height = 96; const g = c.getContext('2d'); g.drawImage(v, 0, 0, 54, 96); return g.getImageData(14, 34, 26, 30).data; };
+  const spread = (d) => { let m = [0, 0, 0]; for (let i = 0; i < d.length; i += 4) for (let k = 0; k < 3; k++) m[k] += d[i + k]; m = m.map((x) => x / (d.length / 4)); let s = 0; for (let i = 0; i < d.length; i += 4) for (let k = 0; k < 3; k++) s += Math.abs(d[i + k] - m[k]); return s / (d.length / 4 * 3); };
+  const away = (a, b) => { let s = 0; for (let i = 0; i < a.length; i += 4) for (let k = 0; k < 3; k++) s += Math.abs(a[i + k] - b[i + k]); return s / (a.length / 4 * 3); };
+  await seek(0.02); const early = area();
+  await seek(0.9); const mid = area();
+  await seek(6); const done = area();
+  const painting = { blank: spread(early), early: away(early, done), mid: away(mid, done), finished: spread(done) };
   const poster = new Image(); poster.src = document.querySelector('[data-share] video').poster; await poster.decode();
   const px = (src) => { const c = document.createElement('canvas'); c.width = 270; c.height = 480; const g = c.getContext('2d'); g.drawImage(src, 0, 0, 270, 480); return g.getImageData(0, 0, 270, 480).data; };
   const a = px(v), b = px(poster);
   const diff = (y0, y1) => { let s = 0, n = 0; for (let y = y0; y < y1; y++) for (let x = 0; x < 270; x++) for (let k = 0; k < 3; k++) { const i = (y * 270 + x) * 4 + k; s += Math.abs(a[i] - b[i]); n++; } return s / n; };
   // ink under the waveform: the title is drawn there
   let ink = 0; for (let y = 380; y < 410; y++) for (let x = 0; x < 270; x++) { const i = (y * 270 + x) * 4; if (a[i] < 150 && a[i + 1] < 150) ink++; }
-  return { all: diff(0, 480), top: diff(0, 160), ink, posterSize: [poster.naturalWidth, poster.naturalHeight] };
+  return { all: diff(0, 480), top: diff(0, 160), ink, posterSize: [poster.naturalWidth, poster.naturalHeight], painting };
 });
 
 // Audio and picture end together, and the audio is the recording's.
@@ -160,10 +171,14 @@ async function run() {
       assert.equal(await page.evaluate(() => window.__shared.length), 0, 'saving does not open the share sheet');
 
       await page.click('[data-share] .quiet-btn:has-text("Make a video")');
-      await page.waitForSelector('[data-share] .share-preview-box img[src^="blob:"]');
+      await page.waitForSelector('[data-share] .share-preview-box canvas');
       assert.equal((await page.textContent('[data-share] [data-save]')).trim(), 'Save to Photos', 'while the video is made, Save stays put (disabled)');
       assert.ok(await page.isDisabled('[data-share] [data-save]'));
+      await page.waitForTimeout(1500);
       await shot(page, 'sheet-video-exporting');
+      const live = await page.evaluate(() => { const c = document.querySelector('[data-share] .share-preview-box canvas'); return [c.width, c.height, c.getBoundingClientRect().height]; });
+      assert.deepEqual(live.slice(0, 2), [1080, 1920], 'while it is made, the preview is the video’s own canvas');
+      assert.ok(live[2] > 100, 'and it is on screen');
       await page.waitForSelector('[data-share] .pill:has-text("Share video")', { timeout: 45000 });
       assert.equal((await page.textContent('[data-share] [data-save]')).trim(), 'Save to Photos', 'Save to Photos is offered for the video too');
       const videoButtons = await mainButtons(page, LARGE);
@@ -181,6 +196,10 @@ async function run() {
       assert.ok(cmp.ink > 200, `the exported video shows the title under the painting (${cmp.ink} ink pixels)`);
       assert.ok(cmp.top < 6, `the exported video's text matches the preview (mean difference ${cmp.top.toFixed(2)})`);
       assert.ok(cmp.all < 12, `the exported video matches the preview (mean difference ${cmp.all.toFixed(2)})`);
+      const pt = cmp.painting;
+      assert.ok(pt.blank < 6, `the video starts on blank paper (spread ${pt.blank.toFixed(1)})`);
+      assert.ok(pt.finished > 20, `the finished painting has its colours (spread ${pt.finished.toFixed(1)})`);
+      assert.ok(pt.early > 20 && pt.mid < pt.early * 0.75 && pt.mid > 1, `the painting is painted in over time (from the finished painting: ${pt.early.toFixed(1)} early, ${pt.mid.toFixed(1)} midway)`);
       const sync = await syncCheck(page);
       assert.ok(Math.abs(sync.audio - sync.source) < 0.5, `all of the recording is in the video (${sync.audio.toFixed(2)} s of ${sync.source.toFixed(2)} s)`);
       assert.ok(Math.abs(sync.video - sync.audio) < 0.5, `picture and sound are the same length (${sync.video.toFixed(2)} s, ${sync.audio.toFixed(2)} s)`);
@@ -188,7 +207,7 @@ async function run() {
       assert.ok(sync.rmsRatio > 0.7 && sync.rmsRatio < 1.4, `the sound keeps its level (×${sync.rmsRatio.toFixed(2)})`);
       await ctx.close();
       console.log('ok - image and video saved to Photos; the video matches its preview');
-      console.log(`   video vs preview: mean diff ${cmp.all.toFixed(2)} (text area ${cmp.top.toFixed(2)}); sound ${sync.audio.toFixed(2)} s, picture ${sync.video.toFixed(2)} s, lag ${sync.lagMs} ms, level ×${sync.rmsRatio.toFixed(2)}`);
+      console.log(`   painting: blank ${pt.blank.toFixed(1)}, from finished ${pt.early.toFixed(1)} → ${pt.mid.toFixed(1)}; video vs preview: mean diff ${cmp.all.toFixed(2)} (text area ${cmp.top.toFixed(2)}); sound ${sync.audio.toFixed(2)} s, picture ${sync.video.toFixed(2)} s, lag ${sync.lagMs} ms, level ×${sync.rmsRatio.toFixed(2)}`);
     }
     // a small iPhone: Share and Save still on screen, image and video
     {

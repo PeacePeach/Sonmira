@@ -37,7 +37,7 @@ export function loadArtwork(artwork) {
 }
 
 let grainTile = null;
-function grain() {
+export function grain() {
   if (grainTile) return grainTile;
   const n = 256, c = document.createElement('canvas');
   c.width = c.height = n;
