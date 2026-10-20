@@ -184,7 +184,11 @@ export function mountDetail(app, { id }) {
 
   el.addEventListener('wheel', onWheel, { passive: true });
   el.addEventListener('touchstart', onTouchStart, { passive: true });
-  el.addEventListener('touchmove', onTouchMove, { passive: false });
+  // Only a drag outside the journal is ever cancelled (it scrolls the
+  // journal instead), so only there may touchmove block scrolling; inside
+  // it the journal scrolls without waiting for script.
+  scroll.addEventListener('touchmove', onTouchMove, { passive: true });
+  for (const part of el.children) if (part !== scroll) part.addEventListener('touchmove', onTouchMove, { passive: false });
   document.addEventListener('keydown', onKey);
 
   // ── editing ───────────────────────────────────────────────────────────────

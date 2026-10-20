@@ -1,7 +1,25 @@
 // Renders a Painting (contract shape) as the design's watercolor card:
 // displaced wash strokes underneath, artwork on top, paper grain over all.
+// The wash is drawn on the GPU (wash.js) where it can be, and is taken out
+// of rendering once the opaque artwork covers it.
 
 import { h, svg } from './dom.js';
+import { createWash } from './wash.js';
+
+// One object URL per artwork blob for the whole session, so the diary, the
+// detail page and the creation flow share one decoded image instead of
+// decoding the same JPEG again on every visit.
+const artURLs = new WeakMap();
+function artURL(blob) {
+  let url = artURLs.get(blob);
+  if (!url) { url = URL.createObjectURL(blob); artURLs.set(blob, url); }
+  return url;
+}
+/** Lets go of a deleted painting's artwork URL. */
+export function releaseArtwork(artwork) {
+  const url = artwork?.blob && artURLs.get(artwork.blob);
+  if (url) { URL.revokeObjectURL(url); artURLs.delete(artwork.blob); }
+}
 
 const f3 = (n) => n.toFixed(3);
 
@@ -34,18 +52,24 @@ function driftVars(d, i) {
  */
 export function createPainting({ ratio = '32', strokes = [], artwork = null, useFocus = true, lazy = false } = {}) {
   const wash = h('div', { class: 'wash' });
-  const grain = svg(`<svg class="grain" aria-hidden="true"><rect width="100%" height="100%" filter="url(#grain)"/></svg>`);
+  // The grain: a bitmap baked once (html.grain-baked, wash.js), else the SVG filter.
+  const grain = h('div', { class: 'grain', 'aria-hidden': 'true' }, svg(`<svg><rect width="100%" height="100%" filter="url(#grain)"/></svg>`));
   const el = h('div', { class: `painting r${ratio}` }, wash, grain);
-  let art = null, urls = [];
+  let art = null;
+  const gpu = createWash(wash, el);
 
   function addStroke(s, bloom = false) {
     if (!s) return;
+    if (gpu) { gpu.add(s, bloom); return; }
     const d = h('div', { class: 'stroke' + (bloom ? ' bloom' : ''), style: strokeStyle(s) });
     d.style.setProperty('--rot', (s.rot || 0) + 'deg');
     driftVars(d, wash.childElementCount);
     wash.append(d);
   }
-  function setStrokes(list) { wash.textContent = ''; (list || []).forEach((s) => addStroke(s)); }
+  function setStrokes(list) {
+    if (gpu) { gpu.set(list); return; }
+    wash.textContent = ''; (list || []).forEach((s) => addStroke(s));
+  }
 
   // Voice → the wash breathes with it (recording): level 0..1, smoothed here
   // and eased by CSS (.painting .wash transition). 0 lets it settle.
@@ -57,20 +81,43 @@ export function createPainting({ ratio = '32', strokes = [], artwork = null, use
     if (level <= 0) { wash.style.scale = ''; wash.style.opacity = ''; }
   }
 
+  // Once the artwork (always opaque) is decoded and fully faded in, the wash
+  // under it can't be seen: .covered takes it out of rendering.
+  function cover(img) {
+    const loaded = new Promise((r) => { if (img.complete && img.naturalWidth) r(); else img.addEventListener('load', r, { once: true }); });
+    loaded.then(() => img.decode?.()).then(() => { if (art === img && !img.classList.contains('hidden')) el.classList.add('covered'); }, () => {});
+  }
+  // A saved painting's artwork is usually decoded at once (artURL): the wash
+  // waits a moment for it before being drawn, and is drawn only if it's late.
+  function awaitArt(img) {
+    el.classList.add('art-pending');
+    const done = () => { if (art === img) el.classList.remove('art-pending'); };
+    if (!lazy) setTimeout(done, 400); // a lazy one waits until it is near the screen and loads
+    img.addEventListener('load', () => img.decode?.().then(done, done), { once: true });
+    img.addEventListener('error', done, { once: true });
+  }
   // Resolves once the artwork is decoded and on its way in (fade), so a
   // caller can keep its loading state until then.
   function setArtwork(a, { fade = false } = {}) {
     if (art) { art.remove(); art = null; }
+    el.classList.remove('covered', 'art-pending');
     if (!a) return Promise.resolve();
     let src = a.src;
-    if (a.kind === 'image' && a.blob) { src = URL.createObjectURL(a.blob); urls.push(src); }
+    if (a.kind === 'image' && a.blob) src = artURL(a.blob);
     if (!src) return Promise.resolve();
     art = h('img', { class: 'art' + (fade ? ' hidden' : ''), alt: '', src, decoding: 'async', loading: lazy ? 'lazy' : 'eager' });
     if (useFocus && a.focus) art.style.objectPosition = a.focus;
     el.insertBefore(art, grain);
     const img = art;
+    if (!fade) { awaitArt(img); cover(img); }
     return new Promise((resolve) => {
-      const show = () => requestAnimationFrame(() => requestAnimationFrame(() => { img.classList.remove('hidden'); resolve(); }));
+      const shown = () => { img.removeEventListener('transitionend', shown); if (art === img) cover(img); };
+      const show = () => requestAnimationFrame(() => requestAnimationFrame(() => {
+        img.classList.remove('hidden');
+        img.addEventListener('transitionend', shown);
+        setTimeout(shown, 2000); // in case the fade ends unseen
+        resolve();
+      }));
       if (!fade) { resolve(); return; }
       img.complete ? show() : img.addEventListener('load', show, { once: true });
       img.addEventListener('error', show, { once: true });
@@ -79,5 +126,5 @@ export function createPainting({ ratio = '32', strokes = [], artwork = null, use
 
   setStrokes(strokes);
   setArtwork(artwork);
-  return { el, addStroke, setStrokes, setArtwork, setVoice, destroy() { urls.forEach((u) => URL.revokeObjectURL(u)); urls = []; } };
+  return { el, addStroke, setStrokes, setArtwork, setVoice, destroy() { gpu?.destroy(); } };
 }

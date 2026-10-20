@@ -23,6 +23,8 @@ import { createAccountForDevice } from './account/setup.js';
 import { localStorageBox } from './account/index.js';
 import { wantsUxPreview, previewBilling, previewBadge } from './ux-preview.js';
 import { isNativeIOS } from './native/platform.js';
+import { releaseArtwork } from './ui/painting.js';
+import { bakeGrain } from './ui/wash.js';
 
 const SCREENS = { diary: mountDiary, sing: mountSing, detail: mountDetail, settings: mountSettings, legal: mountLegal, account: mountAccount, accountDelete: mountAccountDelete };
 const ENTER = { diary: 'enter-fade', sing: 'enter-modal', detail: 'enter-push', settings: 'enter-push', legal: 'enter-push', account: 'enter-push', accountDelete: 'enter-push' };
@@ -88,6 +90,7 @@ export const app = {
 
   async deleteEntry(id) {
     await removeEntry(id);
+    releaseArtwork(this.entries.find((e) => e.id === id)?.painting?.artwork);
     this.entries = this.entries.filter((e) => e.id !== id);
   },
 
@@ -132,6 +135,8 @@ async function boot() {
   await app.drafts.reconcile(app.entries.map((e) => e.id)).catch(() => {});
   if (app.dev.preview) await seedPreview();
   app.navigate('diary');
+  // The paper grain, baked once after the diary has come in (ui/wash.js).
+  setTimeout(() => { const w = Math.max(402, Math.ceil(root.clientWidth)); bakeGrain(w, Math.ceil(w * 1.25)); }, 700);
   // Apple or the server may have ended the session while the app was closed.
   app.account.check().then((r) => { if (r === 'signedOut') app.toast('You’re no longer signed in with Apple. Your diary is still here.'); });
   if (app.dev.enabled) (await import('./dev.js')).mountDevPanel(app);
