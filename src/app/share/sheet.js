@@ -1,7 +1,8 @@
 // The Share sheet: a quiet bottom panel with a choice of three formats
 // (Feed 3:4, Story 9:16, Square 1:1), a preview of the card, Share (the
-// system share sheet), Save image, and an optional video export. Files are
-// made on the device; nothing is uploaded or regenerated.
+// system share sheet), Save image (in the iOS app: Save to Photos, for the
+// image and the video), and an optional video export. Files are made on the
+// device; nothing is uploaded or regenerated.
 
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
@@ -9,6 +10,7 @@ import { clock } from '../format.js';
 import { renderShareCard, FORMATS, DEFAULT_FORMAT } from './card.js';
 import { createExportAudioContext, renderShareVideo, videoMimeType, VideoExportError } from './video.js';
 import { canShareFiles, deliverFile, saveFile, fileName } from './deliver.js';
+import { photosAvailable, saveToPhotos } from './photos.js';
 
 const PREVIEW_H = 320; // css px, the same for every format (.share-preview.card)
 
@@ -16,6 +18,14 @@ const VIDEO_ERRORS = {
   decode: 'This recording can’t be turned into a video on this device. You can still share the image.',
   record: 'The video couldn’t be made on this device. You can still share the image.',
   interrupted: 'The video stopped because Sonmira went to the background. Keep it open and try again.',
+};
+
+// WeChat's share extension offers only Chat and Favorites; Moments posts
+// come from the photo library, so the app saves there and says so.
+export const SAVED_TO_PHOTOS = 'Saved to Photos. Open WeChat → Moments to post.';
+const PHOTOS_ERRORS = {
+  denied: 'Sonmira can’t add to Photos. Turn it on in Settings → Sonmira → Photos, then try again.',
+  failed: 'It couldn’t be saved to Photos. Please try again, or use Share.',
 };
 
 /**
@@ -29,6 +39,7 @@ export function openShareSheet(app, item) {
   // so there the sheet shows the finished file in place instead.
   const showInPlace = !!app.dev?.preview && !sharesNatively;
   const verb = sharesNatively || showInPlace ? 'Share' : 'Save';
+  const photos = photosAvailable(); // the iOS app, from the build that has the plugin
 
   let state = 'preparing'; // preparing | image | exporting | video
   let imageFile = null, videoFile = null, previewUrl = null, abort = null, closed = false;
@@ -49,8 +60,9 @@ export function openShareSheet(app, item) {
     h('div', { class: 'rec-track' }, fill),
     h('div', { class: 'rec-times tabular' }, progressLabel, h('span', {}, clock(Math.min(30, item.durationSec)))));
   const primary = h('button', { class: 'pill', disabled: true, onClick: onPrimary }, 'Preparing…');
-  // Save image sits under Share wherever Share opens the system sheet; elsewhere the primary already saves.
-  const saveBtn = h('button', { class: 'quiet-btn', 'data-save': '', hidden: true, onClick: () => imageFile && save(imageFile) }, 'Save image');
+  // Save sits under Share wherever Share opens the system sheet; elsewhere the primary already saves.
+  const saveBtn = h('button', { class: 'quiet-btn', 'data-save': '', hidden: true, onClick: () => save(state === 'video' ? videoFile : imageFile) }, photos ? 'Save to Photos' : 'Save image');
+  let saving = false;
   const secondary = h('button', { class: 'quiet-btn', onClick: onSecondary, hidden: !canVideo }, `Make a video · ${clock(Math.min(30, item.durationSec))}`);
 
   const panel = h('div', { class: 'share-panel', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Share' },
@@ -68,7 +80,8 @@ export function openShareSheet(app, item) {
       b.disabled = state === 'exporting' || state === 'video';
     }
     formats.hidden = state === 'exporting' || state === 'video';
-    saveBtn.hidden = !(sharesNatively && !showInPlace && state === 'image');
+    saveBtn.hidden = !(sharesNatively && !showInPlace && (state === 'image' || (photos && state === 'video')));
+    saveBtn.disabled = saving;
     progress.hidden = state !== 'exporting';
     primary.disabled = state === 'preparing' || state === 'exporting';
     primary.textContent = state === 'preparing' ? 'Preparing…'
@@ -130,8 +143,22 @@ export function openShareSheet(app, item) {
   }
 
   async function save(file) {
+    if (!file || saving) return;
     say('');
-    try { await saveFile(file); say('Image saved.'); } catch (e) { console.warn('[sonmira] save failed', e); say('The image couldn’t be saved. Please try again.'); }
+    if (!photos) {
+      try { await saveFile(file); say('Image saved.'); } catch (e) { console.warn('[sonmira] save failed', e); say('The image couldn’t be saved. Please try again.'); }
+      return;
+    }
+    saving = true; saveBtn.textContent = 'Saving…'; render();
+    try { await saveToPhotos(file); say(SAVED_TO_PHOTOS); }
+    catch (e) {
+      console.warn('[sonmira] save to Photos failed', e);
+      if (e?.kind === 'unavailable') await send(file); // an older app build: its share sheet has Save Image / Save Video
+      else say(PHOTOS_ERRORS[e?.kind] || PHOTOS_ERRORS.failed);
+    } finally {
+      saving = false; saveBtn.textContent = 'Save to Photos';
+      if (!closed) render();
+    }
   }
 
   function onPrimary() {
