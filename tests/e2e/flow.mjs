@@ -106,14 +106,14 @@ async function run() {
   // 3. play back
   await page.click('[data-phase=preview] .play-btn');
   await advanced(page, '[data-phase=preview] .times span'); // preview playback advances
-  // 4. retry, then record again to the time limit (20 s, fixed)
+  // 4. retry, then record again to the time limit (30 s, fixed)
   await page.click('text=Sing again');
   await page.waitForSelector('[data-phase=ready]');
-  assert.match(await page.textContent('.mic-label'), /up to 20 seconds/);
+  assert.match(await page.textContent('.mic-label'), /up to 30 seconds/);
   await page.click('[aria-label="Start recording"]');
-  await page.waitForSelector('[data-phase=preview]', { timeout: 26000 });
+  await page.waitForSelector('[data-phase=preview]', { timeout: 36000 });
   const recorded = await page.textContent('[data-phase=preview] .caps');
-  assert.match(recorded, /0:(19|20)/, 'auto-stop at 20 s, got ' + recorded);
+  assert.match(recorded, /0:(29|30)/, 'auto-stop at 30 s, got ' + recorded);
   // 5. no title or journal before the painting: the singing comes first
   assert.equal(await page.$$eval('[data-screen=sing] textarea', (x) => x.length), 0, 'no writing fields before painting');
   // 6. generate (the first attempt fails: a clear error, no substitute painting, then a retry)
@@ -188,12 +188,12 @@ async function run() {
   await page.waitForSelector('[data-share] .share-progress:not([hidden])');
   await page.waitForTimeout(1500);
   await shot(page, '06c-share-video-progress');
-  await page.waitForSelector('[data-share] .pill:has-text("Share video")', { timeout: 30000 });
+  await page.waitForSelector('[data-share] .pill:has-text("Share video")', { timeout: 45000 });
   await page.click('[data-share] .pill');
   const vid = await lastShared(page);
   assert.match(vid.type, /^video\/mp4/);
   assert.deepEqual([vid.width, vid.height], [1080, 1920], 'video is 9:16');
-  assert.ok(vid.duration > 18 && vid.duration < 22, 'video keeps the recording length, got ' + vid.duration);
+  assert.ok(vid.duration > 28 && vid.duration < 32, 'video keeps the recording length, got ' + vid.duration);
   assert.ok(vid.audioRms > 0.01, 'video carries the original audio');
   await page.waitForSelector('[data-share]', { state: 'detached' });
   assert.equal(await page.inputValue('.caption-input'), 'Rain on the window, again', 'sharing leaves the result as it was');

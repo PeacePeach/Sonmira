@@ -5,7 +5,7 @@ const KEY = 'sonmira.settings';
 const DEFAULTS = { weekStart: 0 /* 0 = Sunday, 1 = Monday */ };
 
 /** Every recording stops by itself here (the person can finish sooner). Not a setting. */
-export const MAX_SECONDS = 20;
+export const MAX_SECONDS = 30;
 
 export function loadSettings() {
   try {

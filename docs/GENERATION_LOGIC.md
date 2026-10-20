@@ -15,7 +15,7 @@ Related docs, not repeated here:
 
 | # | Stage | Runs on | Code | Random? |
 |---|---|---|---|---|
-| 1 | Recording (max 20 s) | client | `src/app/screens/sing.js`, `src/app/settings.js` (`MAX_SECONDS`) | — |
+| 1 | Recording (max 30 s) | client | `src/app/screens/sing.js`, `src/app/settings.js` (`MAX_SECONDS`) | — |
 | 2 | Audio analysis | client | `analysis/features.js`, `analysis/pitchtrack.js` | deterministic |
 | 3 | Performance assessment | client | `analysis/singing.js`, `analysis/performance.js` | deterministic |
 | 3b | Words: transcription and reading | server | `api/understand.js`, `providers/openai-understand.js` | model output (text model at temperature 0) |
