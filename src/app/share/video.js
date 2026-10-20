@@ -2,13 +2,15 @@
 // composition of card.js drawVideoCard, plus a quiet audio-responsive
 // waveform under the painting. The painting paints itself onto blank paper
 // while the recording plays and is finished halfway through, or after 5 s
-// for a short one (paint.js). Everything runs
+// for a short one: p5.brush watercolour (watercolor.js), or paint.js's brush
+// dabs without WebGL2. Everything runs
 // on the device (canvas + Web Audio + MediaRecorder); nothing is uploaded.
 // Encoding is real-time, so a 12 s recording takes about 12 s to export.
 
 import { COLORS, ensureFonts, loadArtwork } from './compose.js';
 import { drawVideoCard, VIDEO } from './card.js';
 import { createPaintingAnimation, paintSeconds } from './paint.js';
+import { createWatercolorAnimation } from './watercolor.js';
 
 export const MAX_VIDEO_SECONDS = 30;
 const FPS = 30;
@@ -47,7 +49,8 @@ async function composition(item, { animate = false } = {}) {
   const base = document.createElement('canvas');
   base.width = VIDEO.W; base.height = VIDEO.H;
   const { wave, art } = drawVideoCard(base.getContext('2d'), { painting: item.painting, img, note: item.note, date: item.date, createdAt: item.createdAt, durationSec: Math.min(MAX_VIDEO_SECONDS, item.durationSec) });
-  const painting = animate ? createPaintingAnimation(base, art) : null;
+  // p5.brush watercolour where WebGL2 is there, else the brush-dab animation
+  const painting = animate ? (await createWatercolorAnimation(base, art)) ?? createPaintingAnimation(base, art) : null;
   // Bars already heard are ink; the bar being heard breathes with the live level.
   const draw = (ctx, env, at, level, paint = 1) => {
     ctx.drawImage(base, 0, 0);
