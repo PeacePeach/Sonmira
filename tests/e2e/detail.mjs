@@ -273,5 +273,43 @@ const aligned = async (page, label) => {
   await ctx.close();
 }
 
+// Opening from a diary card: the entrance waits on its first frame (the card,
+// in place) until the artwork has decoded, so the first open doesn't decode
+// it mid-growth, but never longer than ENTER_DECODE_MS; and a drag on a page
+// with nothing to scroll can't rubber-band the whole document.
+{
+  const { ctx, page, errors } = await open({ width: 393, height: 852 }, { isMobile: true, hasTouch: true });
+  assert.deepEqual(await page.evaluate(() => [getComputedStyle(document.documentElement).overscrollBehaviorY, getComputedStyle(document.body).overscrollBehaviorY]), ['none', 'none'], 'no whole-page rubber band');
+  await page.evaluate(() => window.sonmira.navigate('diary'));
+  await page.waitForSelector('[data-screen=diary] .entry');
+  const grow = () => page.evaluate(() => {
+    const p = document.querySelector('[data-screen=detail] .painting');
+    const a = p?.getAnimations().find((x) => x.effect?.getKeyframes?.().some((k) => k.width));
+    return a ? { state: a.playState, t: a.currentTime } : null;
+  });
+  // a decode that is slow to finish: the entrance holds, then goes ahead anyway
+  await page.evaluate(() => { const real = HTMLImageElement.prototype.decode; window.__realDecode = real; HTMLImageElement.prototype.decode = function () { return new Promise((r) => setTimeout(() => real.call(this).then(r, r), 2000)); }; });
+  await page.tap('[data-screen=diary] .entry');
+  const held = await grow();
+  assert.ok(held && held.state === 'paused' && !held.t, 'the card holds in place while the artwork decodes: ' + JSON.stringify(held));
+  await page.waitForTimeout(250);
+  const went = await grow();
+  assert.ok(went && (went.state === 'running' || went.state === 'finished'), 'a slow decode delays the entrance by a moment at most: ' + JSON.stringify(went));
+  await page.waitForFunction(() => document.querySelector('[data-screen=detail]').getAnimations({ subtree: true }).every((a) => a.playState === 'finished' || a.effect?.getTiming?.().iterations === Infinity));
+  const art = await box(page, `${D} .painting`);
+  assert.ok(art.x === 18 && Math.abs(ratio(art) - 0.8) < 0.02, 'it ends as the expanded artwork: ' + JSON.stringify(art));
+  // a decoded artwork (as on a reopen): the card grows at once
+  await page.evaluate(() => { HTMLImageElement.prototype.decode = window.__realDecode; });
+  await page.tap(`${D} .navrow .icon-btn`);
+  await page.waitForFunction(() => document.querySelectorAll('[data-screen]').length === 1 && document.querySelector('[data-screen=diary] .entry'));
+  await page.tap('[data-screen=diary] .entry');
+  await page.waitForTimeout(60);
+  const quick = await grow();
+  assert.ok(quick && quick.state !== 'paused', 'an artwork already decoded grows straight away: ' + JSON.stringify(quick));
+  assert.equal(await page.evaluate(() => [document.scrollingElement.scrollTop, document.getElementById('app').scrollTop].join()), '0,0', 'nothing behind the page scrolled');
+  assert.deepEqual(errors, [], 'no page errors');
+  await ctx.close();
+}
+
 await browser.close();
 console.log('detail page: ok');
