@@ -280,9 +280,9 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .detail .cancel-btn { padding-left: 10px; }
 .detail > .navrow > .icon-btn:first-child { margin-left: -9px; } /* the chevron is drawn 9 pt into its box: its point lines up */
 .detail-meta { padding: 30px var(--edge) 0; flex-shrink: 0; }
-/* the journal's own scroller: its first line clears the title, and lines
-   scrolled up fade under the title rather than being cut */
-.detail-scroll { flex: 1; min-height: 0; overflow: hidden; padding: 18px var(--edge) var(--dock); scroll-padding-bottom: var(--dock); overscroll-behavior: contain; -webkit-mask-image: linear-gradient(to bottom, transparent, #000 18px); mask-image: linear-gradient(to bottom, transparent, #000 18px); }
+/* the journal's own scroller, starting below the title: nothing in it
+   passes under the title */
+.detail-scroll { flex: 1; min-height: 0; overflow: hidden; padding: 18px var(--edge) var(--dock); scroll-padding-bottom: var(--dock); overscroll-behavior: contain; }
 .detail.compact .detail-scroll { overflow-y: auto; -webkit-overflow-scrolling: touch; }
 /* the landscape card: 3:2, the portrait's width at the same margins; the
    date, title and journal keep their place and margins too */
@@ -292,6 +292,13 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 /* the keyboard is up (editing on a phone): the page fits above it and the
    player steps aside until it closes */
 .detail.kb .detail-dock { visibility: hidden; }
+.detail > .navrow { z-index: 3; background: var(--paper); }
+.detail > .navrow::before { content: ''; position: absolute; left: 0; right: 0; bottom: 100%; height: var(--top); background: var(--paper); } /* the status-bar strip too */
+.detail .art-pad, .detail-meta { transition: margin-top .32s cubic-bezier(.2, .7, .2, 1), padding-top .32s cubic-bezier(.2, .7, .2, 1); }
+.detail.kb .art-pad { margin-top: calc(24px - 22px - var(--art-h, 0px)); } /* a 24 pt sliver of the artwork under the top bar */
+.detail.kb .detail-meta { padding-top: 18px; }
+.detail.editing .detail-scroll { overscroll-behavior: none; }
+@media (prefers-reduced-motion: reduce) { .detail .art-pad, .detail-meta { transition: none; } }
 .detail.kb .detail-scroll { padding-bottom: 24px; scroll-padding-bottom: 24px; }
 .detail .caption { font-size: 26px; line-height: 1.2; text-wrap: pretty; }
 .detail .caption.untitled { color: var(--muted); }

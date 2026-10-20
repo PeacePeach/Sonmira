@@ -251,8 +251,9 @@ export function mountDetail(app, { id }) {
 
   // ── the on-screen keyboard ──────────────────────────────────────────────
   // While a field is written in on a phone, the page fits the part of the
-  // screen above the keyboard, so Save and the field stay in view; the
-  // docked player steps aside until the keyboard closes (it keeps playing).
+  // screen above the keyboard, so Save and the field stay in view: the
+  // artwork slides up to a sliver under the top bar and the docked player
+  // steps aside until the keyboard closes (it keeps playing).
   const vv = globalThis.visualViewport;
   const coarse = !!globalThis.matchMedia?.('(pointer: coarse)').matches;
   let fullH = vv?.height || 0;
@@ -261,6 +262,9 @@ export function mountDetail(app, { id }) {
     const writing = mode === 'edit' && typing() && el.contains(document.activeElement);
     if (!writing) fullH = vv.height;
     const open = writing && vv.height < fullH * 0.8;
+    // the artwork slides up under the top bar, leaving a sliver, so the
+    // fields get the room above the keyboard
+    if (open) el.style.setProperty('--art-h', `${painting.el.offsetHeight}px`);
     el.classList.toggle('kb', open);
     el.style.top = open ? `${vv.pageTop}px` : '';
     el.style.height = open ? `${vv.height}px` : '';
