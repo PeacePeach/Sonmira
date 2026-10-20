@@ -224,3 +224,17 @@ test('on the released site a browser cannot buy; previews keep the simulator', a
     assert.equal(createBilling({ ask: async () => 'success' }).simulated, true);
   } finally { globalThis.location = { reload() {} }; }
 });
+
+test('Daily Ritual bought while the server is away: one credit at once, and StoreKit refreshes add no more', async () => {
+  const plugin = fakePlugin(), server = fakeServer();
+  const b = make(plugin, server);
+  await b.ready;
+  b.dev.useUpFree?.();
+  server.down = true;
+  await b.purchase(SUB);
+  const after = b.status().ritual;
+  assert.equal(after, 1);
+  plugin.sub = { productId: SUB, expiresAt: Date.now() + 30 * 864e5, willRenew: true, jws: `jws-${SUB}-1` };
+  for (let i = 0; i < 3; i++) { await b.refresh(); await plugin.deliver({ id: 't1', originalId: 't1', productId: SUB, jws: `jws-${SUB}-1`, expiresAt: plugin.sub.expiresAt }); }
+  assert.equal(b.status().ritual, 1);
+});

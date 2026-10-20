@@ -10,11 +10,53 @@ states are the same in both.
 
 | Product | ID | Type | Price |
 | --- | --- | --- | --- |
-| Daily Ritual | `app.sonmira.daily_ritual.monthly` | Auto-renewable, 1 month, group *Sonmira* | US$4.99 |
+| Daily Ritual | `app.sonmira.daily_ritual.monthly` | Auto-renewable, 1 month, group *Sonmira* | US$5.99 (was US$4.99 until 20 Oct 2026) |
 | Little Moments | `app.sonmira.little_moments.10` | Consumable, 10 paintings | US$2.99 |
 
 Bundle ID `app.sonmira`. The first three successful paintings are free. The
-diary, recordings, playback and sharing never need a purchase.
+diary, recordings, playback and sharing never need a purchase. The app shows
+StoreKit's localized `displayPrice`; the prices in `src/app/billing/products.js`
+are only shown before the store answers (and in web previews).
+
+## Daily Ritual credits
+
+One rule set, in `src/app/billing/wallet.js`, run by the server's ledger (the
+truth) and by the app's copy of it:
+
+- **A day is 24 hours of paid subscription.** A credit lands when a
+  subscription starts and every 24 hours after that, at the same time of day,
+  for as long as it is paid for: renewals continue the same rhythm (a renewal
+  signed within an hour of the expiry counts as continuous), a billing grace
+  period counts, and turning auto-renew off changes nothing until the period
+  ends. Billing retry without grace, and any time not paid for, earns nothing.
+  Because days are counted from Apple's signed purchase and expiry times, the
+  phone's clock, calendar date and time zone can't move them.
+- **Never in advance.** Only credits whose moment has passed exist; the
+  balance can't go below zero, and spending doesn't bring the next one sooner.
+- **Saved up to 30.** A credit arriving while the balance is 30 is not kept.
+  Several can be used on the same day.
+- **30 days after the end.** When paid time ends, what's left stays usable
+  for 30 × 24 hours after the end of the last paid period, then goes.
+  Subscribing again before then keeps the balance and starts a new rhythm
+  from the new purchase, still capped at 30. A lapse the server only learns
+  about later is applied in the same order (expiry first, then new days).
+- **Late news, counted once.** A renewal that reaches the server after its
+  start (no notification, phone offline) pays the days it covered, once;
+  the same transaction from StoreKit, Apple's notification and Restore adds
+  nothing again.
+- **Refunds** take back the unused credits that refunded period earned (never
+  below zero); Apple reversing the refund gives back exactly what was taken.
+- **Order of spending:** Daily Ritual credits (the only ones that expire),
+  then free paintings, then Little Moments (no expiry, no cap, usable at once).
+- **Migration** (ledgers saved before this rule): a subscriber whose painting
+  for today wasn't used gets 1 credit, otherwise 0, and days start counting
+  from that moment; nothing is paid out for earlier days, and packs and free
+  paintings are untouched. Older transaction records without a start date are
+  taken to start 31 days before their expiry, which never earns back pay.
+
+In Sandbox a month lasts 5 minutes, so a test subscription earns only its first
+credit; daily accrual is covered by `tests/ritual.test.mjs` and, in web previews,
+by Settings → Development → Start a new day.
 
 ## How it fits together
 
@@ -37,8 +79,8 @@ diary, recordings, playback and sharing never need a purchase.
    what happens while the app is closed: renewals, auto-renew off, billing
    grace periods, expiry, refunds and refund reversals.
 4. **Spending.** The ledger (`server/billing/ledger.js`) runs the app's own
-   wallet rules (`src/app/billing/wallet.js`): today's Daily Ritual painting,
-   then free, then credits. The generation guard reserves one painting per
+   wallet rules (`src/app/billing/wallet.js`): Daily Ritual credits, then
+   free, then Little Moments credits. The generation guard reserves one painting per
    take key before the image is made, commits it only when the image exists
    and releases it otherwise (`server/billing/charge.js`). A replay of the
    same key is answered from the guard's store and never charged again. A
@@ -56,11 +98,11 @@ diary, recordings, playback and sharing never need a purchase.
    subscription settings.
 
 Refunds take back what's left of a pack (never below zero) and end Daily
-Ritual at once. Only Apple's own notification can undo a refund, so a client
-replaying an old signed transaction gets nothing back. The Daily Ritual day is
-the phone's local date, accepted only if some time zone (UTC−12 to UTC+14)
-is on that date right now, and a day at or before one already used never
-opens again, so moving the clock gains at most one early painting, once.
+Ritual at once, taking back that period's unused credits. Only Apple's own
+notification can undo a refund, so a client replaying an old signed
+transaction gets nothing back. The `x-sonmira-day` header (the phone's local
+date) now matters only once, when a ledger saved under the old one-a-day
+rule is migrated.
 
 ## Server configuration
 
@@ -144,14 +186,17 @@ check the paywall and StoreKit flows.
 
 In TestFlight, with a Sandbox account:
 
-1. First launch: 3 free paintings; the paywall shows US$2.99 and US$4.99.
+1. First launch: 3 free paintings; the paywall shows US$2.99 and US$5.99
+   (StoreKit's price for the Sandbox account's storefront).
 2. Buy Little Moments: 10 paintings, in Settings and on the server
    (`/api/billing/status`).
 3. Kill the app during the purchase sheet, reopen: the purchase is applied once.
-4. Buy Daily Ritual: one painting today; a second opens the paywall with
-   Little Moments only. Wait 5 minutes: it renews; after 6 renewals it ends.
+4. Buy Daily Ritual: one credit at once; when it's used, the paywall offers
+   Little Moments only and says when the next credit comes. Wait 5 minutes: it
+   renews; after 6 renewals it ends, and Settings shows the credit kept for 30
+   days.
 5. Settings → Daily Ritual opens Apple's subscription settings; cancel there:
-   it stays until the period ends, then stops.
+   it stays until the period ends, then stops; the balance stays.
 6. Delete and reinstall, Restore Purchases: the remaining paintings and Daily
    Ritual come back, the free paintings do not.
 7. A painting that fails to generate takes nothing.

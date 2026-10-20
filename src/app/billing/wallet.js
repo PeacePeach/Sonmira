@@ -1,10 +1,21 @@
 // The painting wallet: how many new paintings someone can make right now, and
 // the bookkeeping that makes sure only a successful painting is ever counted.
 //
-// Sources, spent in this order:
-//   daily   — Daily Ritual's one painting per calendar day (does not carry over)
+// Sources, spent in this order (the credits that expire first go first):
+//   daily   — Daily Ritual credits: one per subscription day, saved up to 30,
+//             kept for 30 days after the paid subscription ends
 //   free    — the first three paintings
-//   credits — Little Moments credits (never expire)
+//   credits — Little Moments credits (never expire, no cap)
+//
+// Daily Ritual days are counted from the moment a subscription starts: a
+// credit then, and one every 24 hours while it is paid for (renewals, a
+// billing grace period, and auto-renew turned off until the period ends all
+// count). A credit is never given ahead of its day, so the balance can't go
+// below zero or borrow from days to come, and spending doesn't bring the next
+// one sooner. A day lands only while the balance is under 30. When the paid
+// subscription ends, what's left stays for 30 days, then goes; subscribing
+// again within those 30 days keeps it. Being 24-hour steps from a moment
+// Apple signs, the days don't depend on the phone's clock or time zone.
 //
 // Every generation has a key (one per take). reserve(key) sets a source
 // aside before the engine runs, commit(key) counts it once the painting
@@ -13,17 +24,45 @@
 //
 // Pure logic: storage and the clock are injected, so it runs in Node tests.
 
-import { FREE_PAINTINGS } from './products.js';
+import { FREE_PAINTINGS, RITUAL_CAP, RITUAL_KEEP_DAYS } from './products.js';
 
 const KEEP_SPENT = 60; // recent committed keys kept for de-duplication
+const DAY = 24 * 3600_000;
+const KEEP = RITUAL_KEEP_DAYS * DAY;
+// A renewal that starts within this of the previous period's end continues the
+// same run of days (Apple's renewal can be signed a little after the expiry).
+const JOIN = 3600_000;
+// A period known only by its expiry (records from before credits rolled
+// over, or StoreKit's latest transaction) is taken to start a month before it.
+const MONTH = 31 * DAY;
 
 // The server's ledger counts a take under its guarded request's key, the
 // take key plus '.generate' (protect/client.js). The app adopts that ledger
 // (iOS), so a take counted there is the same take here.
 const SERVER_SUFFIX = '.generate';
 
+/** Paid periods [from, to) → sorted, merged runs of days. */
+export function ritualRuns(periods = []) {
+  const out = [];
+  for (const [a, b] of [...periods].filter(([a, b]) => b > a).sort((x, y) => x[0] - y[0])) {
+    const last = out.at(-1);
+    if (last && a <= last[1] + JOIN) last[1] = Math.max(last[1], b);
+    else out.push([a, b]);
+  }
+  return out;
+}
+// Credit moments in a run [a, b): a, a + 1 day, … before b. → how many are at or before t.
+const upTo = ([a, b], t) => (t < a ? 0 : Math.floor((Math.min(t, b - 1) - a) / DAY) + 1);
+const between = (runs, t0, t1) => runs.reduce((n, r) => n + upTo(r, t1) - (t0 === -Infinity ? 0 : upTo(r, t0)), 0);
+const covered = (periods, t) => periods.some(([a, b]) => a <= t && t < b);
+
 export function freshState() {
-  return { v: 1, free: FREE_PAINTINGS, credits: 0, sub: null, dailyUsed: null, holds: {}, spent: {}, granted: {}, revoked: {}, purchased: false };
+  return {
+    v: 1, free: FREE_PAINTINGS, credits: 0, sub: null, dailyUsed: null, holds: {}, spent: {}, granted: {}, revoked: {}, purchased: false,
+    // Daily Ritual: the balance, paid periods, the moment counted up to, and
+    // the moment before which no credit is given late (set by the migration).
+    ritual: 0, periods: [], ritualAt: null, ritualFloor: null, ritualRevoked: {},
+  };
 }
 
 /**
@@ -36,31 +75,96 @@ export function createWallet({ load = () => null, save = () => {}, today, now = 
   const spentFor = (key) => s.spent[key] ?? s.spent[key + SERVER_SUFFIX];
   const held = (source) => Object.values(s.holds).filter((x) => x.source === source).length;
   const subscribed = () => !!(s.sub && s.sub.expiresAt > now());
-  // A day already used, or one before it, never opens again (the server takes
-  // the phone's local day, within limits, and must not be walked back and forth).
-  const dailyOpen = () => subscribed() && !(s.dailyUsed && s.dailyUsed >= today()) && !held('daily');
+
+  // Bring the Daily Ritual balance up to now: credits for the days that have
+  // begun since last time (capped), after a lapse of 30 days without a paid
+  // subscription, nothing.
+  function accrue() {
+    const t = now();
+    if (s.ritual == null) {
+      // A wallet from before credits rolled over: today's painting, if it
+      // wasn't used, becomes one credit; days before now are not paid out.
+      s.ritual = subscribed() && !(s.dailyUsed && s.dailyUsed >= today()) ? 1 : 0;
+      s.ritualAt = t;
+      // Older paid periods the server may still send are not paid out late.
+      s.ritualFloor = s.periods.length ? Math.min(...s.periods.map((p) => p[0])) : null;
+      persist();
+      return;
+    }
+    if (s.ritualAt != null && t <= s.ritualAt) return;
+    const runs = ritualRuns(s.periods);
+    let from = s.ritualAt ?? -Infinity;
+    let changed = false;
+    for (let i = 0; i < runs.length; i++) {
+      const lapse = runs[i][1] + KEEP;
+      if (lapse > from && lapse <= t && !(runs[i + 1] && runs[i + 1][0] <= lapse)) { from = lapse; if (s.ritual) { s.ritual = 0; changed = true; } }
+    }
+    const n = between(runs, from, t);
+    if (n) { const was = s.ritual; s.ritual = Math.min(RITUAL_CAP, s.ritual + n); changed ||= s.ritual !== was; }
+    s.ritualAt = t;
+    if (changed) persist();
+  }
+
+  // New paid time that began before the balance was last brought up to date
+  // (a renewal that arrived late, a purchase just made): its credits, once.
+  function backfill(before, after) {
+    if (s.ritualAt == null) return;
+    const runs = ritualRuns(after);
+    const had = ritualRuns(before);
+    // Credits from before a lapse of 30 days would already have gone.
+    const lapsed = runs.map(([, b], i) => b + KEEP).filter((l, i) => l <= s.ritualAt && !(runs[i + 1] && runs[i + 1][0] <= l));
+    const floor = Math.max(s.ritualFloor ?? -Infinity, ...lapsed);
+    let n = 0;
+    for (const [a, b] of runs) {
+      const first = Math.max(a, a + Math.ceil((Math.max(floor, s.ritualAt - 400 * DAY) - a) / DAY) * DAY);
+      for (let t = first; t < b && t <= s.ritualAt; t += DAY) if (t > floor && !covered(had, t)) n++;
+    }
+    if (n) s.ritual = Math.min(RITUAL_CAP, s.ritual + n);
+  }
+
+  const ritualLeft = () => Math.max(0, (s.ritual ?? 0) - held('daily'));
 
   function nextSource() {
-    if (dailyOpen()) return 'daily';
+    if (ritualLeft() > 0) return 'daily';
     if (s.free - held('free') > 0) return 'free';
     if (s.credits - held('credits') > 0) return 'credits';
     return null;
   }
 
+  // When the next credit lands (while subscribed and under the cap), and when
+  // a balance left after the subscription ended goes.
+  function ritualTimes() {
+    const t = now();
+    const runs = ritualRuns(s.periods);
+    const run = runs.find(([a, b]) => a <= t && t < b);
+    let next = null;
+    if (run && subscribed()) { const at = run[0] + Math.ceil((t - run[0] + 1) / DAY) * DAY; if (at < run[1]) next = at; }
+    const last = runs.filter(([a]) => a <= t).at(-1);
+    // Gone 30 days after the paid time ends: already over, or turned off and ending.
+    const end = run && s.sub && !s.sub.willRenew ? run[1] : !run && last ? last[1] : null;
+    const expiresAt = end != null && s.ritual > 0 ? end + KEEP : null;
+    return { next, expiresAt };
+  }
+
   return {
     /** What the person can do right now (holds already subtracted). */
     status() {
+      accrue();
       const source = nextSource();
+      const { next, expiresAt } = ritualTimes();
       return {
         canCreate: !!source,
         source,
         free: Math.max(0, s.free - held('free')),
         credits: Math.max(0, s.credits - held('credits')),
+        ritual: ritualLeft(),
+        ritualCap: RITUAL_CAP,
+        ritualNextAt: s.ritual < RITUAL_CAP ? next : null,
+        ritualExpiresAt: expiresAt,
         subscribed: subscribed(),
         sub: s.sub ? { ...s.sub } : null,
-        dailyOpen: dailyOpen(),
-        dailyUsedToday: subscribed() && s.dailyUsed === today(),
         purchased: s.purchased,
+        now: now(), // the clock the times above are on (a web preview's can be moved on)
       };
     },
 
@@ -68,6 +172,7 @@ export function createWallet({ load = () => null, save = () => {}, today, now = 
     reserve(key) {
       if (spentFor(key)) return spentFor(key).source;
       if (s.holds[key]) return s.holds[key].source;
+      accrue();
       const source = nextSource();
       if (!source) return null;
       s.holds[key] = { source, day: today(), at: now() };
@@ -80,7 +185,7 @@ export function createWallet({ load = () => null, save = () => {}, today, now = 
       if (spentFor(key)) { if (s.holds[key]) { delete s.holds[key]; persist(); } return spentFor(key).source; }
       const hold = s.holds[key];
       if (!hold) return null;
-      if (hold.source === 'daily') s.dailyUsed = hold.day;
+      if (hold.source === 'daily') s.ritual = Math.max(0, (s.ritual ?? 0) - 1);
       else if (hold.source === 'free') s.free = Math.max(0, s.free - 1);
       else s.credits = Math.max(0, s.credits - 1);
       delete s.holds[key];
@@ -144,26 +249,85 @@ export function createWallet({ load = () => null, save = () => {}, today, now = 
       return old.length;
     },
 
-    /** Mirror the store's current subscription entitlement (or null). */
-    setSubscription(sub) {
+    /**
+     * Mirror the subscription (or null). sub.periods, when given (the
+     * server's ledger), are all its paid periods; otherwise the period ending
+     * at sub.expiresAt is added or updated, matched by sub.from when known.
+     * { backfill: false } when restoring time a refund took (refundRitual's
+     * credits come back with unrefundRitual instead).
+     */
+    setSubscription(sub, { backfill: late = true } = {}) {
+      accrue();
+      const before = s.periods.map((p) => [...p]);
+      if (sub?.periods) s.periods = sub.periods.map(([a, b]) => [Number(a), Number(b)]).filter(([a, b]) => b > a);
+      else if (sub?.expiresAt) s.periods = withPeriod(s.periods, sub, now());
       s.sub = sub ? { productId: sub.productId, expiresAt: sub.expiresAt, willRenew: !!sub.willRenew } : null;
       if (sub) s.purchased = true;
+      if (late) backfill(before, s.periods);
       persist();
     },
 
-    snapshot: () => JSON.parse(JSON.stringify(s)),
+    /** A refunded Daily Ritual period: take back what's left of the credits it earned, never below zero. → taken */
+    refundRitual(id, [from, to]) {
+      accrue();
+      if (s.ritualRevoked?.[id] != null) return 0;
+      const earned = ritualRuns(s.periods).reduce((n, r) => n + Math.max(0, upTo(r, Math.min(now(), to - 1)) - upTo(r, from - 1)), 0);
+      const taken = Math.min(earned, s.ritual);
+      s.ritual -= taken;
+      s.ritualRevoked = { ...s.ritualRevoked, [id]: taken };
+      persist();
+      return taken;
+    },
+
+    /** Apple reversed that refund: give back what refundRitual took. */
+    unrefundRitual(id) {
+      const taken = s.ritualRevoked?.[id];
+      if (taken == null) return 0;
+      accrue();
+      s.ritual = Math.min(RITUAL_CAP, s.ritual + taken);
+      delete s.ritualRevoked[id];
+      persist();
+      return taken;
+    },
+
+    snapshot: () => { accrue(); return JSON.parse(JSON.stringify(s)); },
     /** Adopt a ledger (e.g. after a reinstall); in-flight holds stay local. */
     replace(next) { s = { ...normalize(next), holds: s.holds }; persist(); },
   };
 }
 
+// Add or update the paid period ending at sub.expiresAt. A period continuing
+// one that is still running (a renewal) extends it; one known by its start
+// replaces that period's end (a renewal, a cancellation that took effect).
+function withPeriod(periods, sub, t) {
+  const out = periods.map((p) => [...p]);
+  const end = Number(sub.expiresAt);
+  if (sub.from != null) {
+    const same = out.find(([a]) => a === Number(sub.from));
+    if (same) same[1] = end; else out.push([Number(sub.from), end]);
+    return out;
+  }
+  const last = out.sort((x, y) => x[0] - y[0]).at(-1);
+  if (last && last[1] + JOIN >= Math.min(t, end) && last[0] < end) { last[1] = end; return out; }
+  out.push([Math.min(t, end - 1), end]);
+  return out;
+}
+
 function normalize(x) {
   const base = freshState();
   if (!x || typeof x !== 'object' || x.v !== 1) return base;
+  const periods = Array.isArray(x.periods)
+    ? x.periods.filter((p) => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]))
+    : x.sub?.expiresAt ? [[x.sub.expiresAt - MONTH, x.sub.expiresAt]] : [];
   return {
     ...base, ...x,
     free: num(x.free, base.free), credits: num(x.credits, 0),
     holds: obj(x.holds), spent: obj(x.spent), granted: obj(x.granted), revoked: obj(x.revoked),
+    // A wallet saved before Daily Ritual credits rolled over has no balance
+    // yet (null): the first look gives it one (accrue).
+    ritual: 'ritual' in x ? num(x.ritual, 0) : null, periods,
+    ritualAt: Number.isFinite(x.ritualAt) ? x.ritualAt : null, ritualFloor: Number.isFinite(x.ritualFloor) ? x.ritualFloor : null,
+    ritualRevoked: obj(x.ritualRevoked),
   };
 }
 const num = (v, d) => (Number.isFinite(v) && v >= 0 ? Math.floor(v) : d);

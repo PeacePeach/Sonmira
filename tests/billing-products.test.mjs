@@ -10,7 +10,7 @@ const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 
 test('the app sells exactly the two App Store Connect products', () => {
   assert.deepEqual(PRODUCTS.map((p) => [p.id, p.kind, p.fallbackPrice]), [
-    ['app.sonmira.daily_ritual.monthly', 'subscription', '$4.99'],
+    ['app.sonmira.daily_ritual.monthly', 'subscription', '$5.99'],
     ['app.sonmira.little_moments.10', 'consumable', '$2.99'],
   ]);
   assert.equal(PRODUCTS.find((p) => p.kind === 'consumable').credits, 10);
@@ -24,7 +24,7 @@ test('Sonmira.storekit mirrors them for Xcode testing', () => {
   assert.equal(String(pack.displayPrice), '2.99');
   const subs = kit.subscriptionGroups.flatMap((g) => g.subscriptions.map((s) => ({ ...s, group: g.name })));
   assert.deepEqual(subs.map((s) => [s.productID, s.recurringSubscriptionPeriod, String(s.displayPrice), s.group]), [
-    ['app.sonmira.daily_ritual.monthly', 'P1M', '4.99', 'Sonmira'],
+    ['app.sonmira.daily_ritual.monthly', 'P1M', '5.99', 'Sonmira'],
   ]);
 });
 

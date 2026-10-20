@@ -74,7 +74,7 @@ Without that switch, a Preview never pays: unless it has its own secret, codes a
 ## How the server enforces the Beta (server/wire.js)
 
 - One id per device: the Keychain UUID in the iOS app (StoreKit's appAccountToken), the account id, the guard's install id and the ledger key are the same value.
-- `/api/generate` sets one painting aside (Daily Ritual, then free, then pack credits) before any paid call, counts it only when the painting is made, and hands it back on any failure. One take key is counted once, however often it is retried. None left: `402 no_paintings`, no paid call.
+- `/api/generate` sets one painting aside (Daily Ritual credits, then free, then pack credits) before any paid call, counts it only when the painting is made, and hands it back on any failure. One take key is counted once, however often it is retried. None left: `402 no_paintings`, no paid call.
 - `/api/billing/*` and `/api/account/apple` answer only to a request carrying the install token of the id they name, on a live invitation with its seat held.
 - Signing in moves the guest's seat and ledger to the account only when the device proves it holds the guest id; deleting the account erases the ledger, frees the seat and removes stored results.
 
