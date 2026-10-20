@@ -1,4 +1,4 @@
-// The title's 30-character limit (counted in characters, so Chinese and
+// The title's 45-character limit (counted in characters, so Chinese and
 // emoji count once), titles from before the limit, and the journal kept with
 // a draft. No browser.
 
@@ -13,31 +13,31 @@ const typed = (prev, insert, at = prev.length) => {
   return limitEdit({ value, caret: at + insert.length, prev, max: TITLE_MAX });
 };
 
-test('the title holds 30 characters', () => {
-  assert.equal(TITLE_MAX, 30);
-  const full = 'a'.repeat(30);
-  assert.deepEqual(typed('a'.repeat(29), 'b'), { value: 'a'.repeat(29) + 'b', caret: 30 });
-  assert.deepEqual(typed(full, 'b'), { value: full, caret: 30 }, 'nothing more goes in');
+test('the title holds 45 characters', () => {
+  assert.equal(TITLE_MAX, 45);
+  const full = 'a'.repeat(45);
+  assert.deepEqual(typed('a'.repeat(44), 'b'), { value: 'a'.repeat(44) + 'b', caret: 45 });
+  assert.deepEqual(typed(full, 'b'), { value: full, caret: 45 }, 'nothing more goes in');
   assert.deepEqual(typed(full, 'b', 10), { value: full, caret: 10 }, 'not in the middle either; the caret stays');
 });
 
 test('a paste keeps what fits', () => {
-  const r = typed('Rain on the window', ' and the long road home');
-  assert.equal(r.value, 'Rain on the window and the lon');
-  assert.equal(charCount(r.value), 30);
+  const r = typed('Rain on the window', ' and the long road home through the evening');
+  assert.equal(r.value, 'Rain on the window and the long road home thr');
+  assert.equal(charCount(r.value), 45);
   assert.equal(r.caret, r.value.length);
-  const mid = typed('ab', 'X'.repeat(40), 1);
-  assert.equal(mid.value, 'a' + 'X'.repeat(28) + 'b', 'pasted in the middle: the text after the caret stays');
+  const mid = typed('ab', 'X'.repeat(60), 1);
+  assert.equal(mid.value, 'a' + 'X'.repeat(43) + 'b', 'pasted in the middle: the text after the caret stays');
 });
 
 test('Chinese and emoji count as one character each', () => {
   assert.equal(charCount('雨落在窗上'), 5);
   assert.equal(charCount('海边🌊'), 3);
-  const zh = '一'.repeat(29);
+  const zh = '一'.repeat(44);
   assert.equal(typed(zh, '二三').value, zh + '二', 'a committed IME phrase is cut to what fits');
-  const emoji = typed('a'.repeat(29), '🌊🌊');
-  assert.equal(emoji.value, 'a'.repeat(29) + '🌊', 'an emoji is never split in half');
-  assert.equal(emoji.caret, 31, 'caret in UTF-16 units, after the emoji');
+  const emoji = typed('a'.repeat(44), '🌊🌊');
+  assert.equal(emoji.value, 'a'.repeat(44) + '🌊', 'an emoji is never split in half');
+  assert.equal(emoji.caret, 46, 'caret in UTF-16 units, after the emoji');
 });
 
 test('a title from before the limit is kept and can only get shorter', () => {

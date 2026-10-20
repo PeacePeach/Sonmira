@@ -52,7 +52,7 @@ function injectStyle() {
   if (styled || typeof document === 'undefined') return;
   styled = true;
   document.head.append(h('style', {}, `
-.ux-preview-badge { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 900; pointer-events: none; white-space: nowrap;
-  font: 600 11px/1 var(--sans); letter-spacing: .04em; color: #fff; background: #B4532A; border-radius: 10px; padding: 6px 10px; }
+.ux-preview-badge { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); z-index: 900; pointer-events: none; white-space: nowrap;
+  font: 600 10px/1 var(--sans); letter-spacing: .04em; color: #fff; background: #B4532A; border-radius: 8px; padding: 3px 8px; }
 `));
 }

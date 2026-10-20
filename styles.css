@@ -269,18 +269,25 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
    and only the journal scrolls) and editing (compact, with the creation
    flow's title and journal fields). The player is docked at the bottom over
    the diary's fade, and the journal always ends clear of it. */
-.detail { display: flex; flex-direction: column; padding-top: var(--top); overflow: hidden; container-type: size; --dock: calc(var(--bottom) + 92px); }
-.detail .art-pad { padding: 22px 18px 0; flex-shrink: 0; }
-.detail-meta { padding: 30px 28px 0; flex-shrink: 0; }
+.detail { display: flex; flex-direction: column; padding-top: var(--top); overflow: hidden; --dock: calc(var(--bottom) + 92px); }
+.detail .art-pad { padding: 22px var(--edge) 0; flex-shrink: 0; }
+/* One column in every state: the large artwork's edges (18 pt) are the
+   page's edges, and the top bar, the date, title, journal and player all
+   line up with them. */
+.detail { --edge: 18px; }
+.detail > .navrow { padding: 0 calc(var(--edge) - 12px) 0 calc(var(--edge) - 10px); } /* icon and label insets */
+.detail .cancel-btn { padding-left: 10px; }
+.detail > .navrow > .icon-btn:first-child { margin-left: -9px; } /* the chevron is drawn 9 pt into its box: its point lines up */
+.detail-meta { padding: 30px var(--edge) 0; flex-shrink: 0; }
 /* the journal's own scroller: its first line clears the title, and lines
    scrolled up fade under the title rather than being cut */
-.detail-scroll { flex: 1; min-height: 0; overflow: hidden; padding: 18px 28px var(--dock); scroll-padding-bottom: var(--dock); overscroll-behavior: contain; -webkit-mask-image: linear-gradient(to bottom, transparent, #000 18px); mask-image: linear-gradient(to bottom, transparent, #000 18px); }
+.detail-scroll { flex: 1; min-height: 0; overflow: hidden; padding: 18px var(--edge) var(--dock); scroll-padding-bottom: var(--dock); overscroll-behavior: contain; -webkit-mask-image: linear-gradient(to bottom, transparent, #000 18px); mask-image: linear-gradient(to bottom, transparent, #000 18px); }
 .detail.compact .detail-scroll { overflow-y: auto; -webkit-overflow-scrolling: touch; }
-/* the landscape card: 3:2 at the same margins, smaller on short screens */
-.detail.compact .painting { width: min(100%, 40cqh); margin: 0 auto; }
+/* the landscape card: 3:2, the portrait's width at the same margins; the
+   date, title and journal keep their place and margins too */
 .detail.compact .painting[role=button] { cursor: pointer; }
-.detail.compact .detail-meta { padding-top: 22px; }
-.detail-dock { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding: 30px 28px var(--bottom); isolation: isolate; }
+.detail-dock { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding: 30px var(--edge) var(--bottom); isolation: isolate; }
+.detail-dock .player > .play-btn { margin-left: 0; }
 .detail-dock::before, .detail-dock::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
 .detail-dock::before { -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); -webkit-mask-image: linear-gradient(to bottom, transparent, #000 45%); mask-image: linear-gradient(to bottom, transparent, #000 45%); }
 .detail-dock::after { background: linear-gradient(to bottom, rgba(248,245,239,0), rgba(248,245,239,.88) 40%, var(--paper) 62%); }

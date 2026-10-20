@@ -21,7 +21,7 @@ import { morph, MORPH_MS } from '../ui/morph.js';
 import { clock, longDate } from '../format.js';
 import { openShareSheet } from '../share/sheet.js';
 import { titleField, journalField, JOURNAL_PLACEHOLDER } from '../ui/text-field.js';
-import { scrollIntent, editDrafts } from './detail-scroll.js';
+import { scrollIntent } from './detail-scroll.js';
 
 export function mountDetail(app, { id }) {
   let e = app.entries.find((x) => x.id === id);
@@ -32,7 +32,7 @@ export function mountDetail(app, { id }) {
   const player = createPlayer({ blob: e.audio, durationSec: e.durationSec, right: e.audio ? (voice ? `${clock(e.durationSec)} · ${voice}` : clock(e.durationSec)) : 'No recording saved' });
 
   let mode = 'expanded';
-  let fields = null; // { title, journal, draft } while editing
+  let fields = null; // { title, journal } while editing
   let saving = false;
 
   let confirmT = null, sheet = null;
@@ -44,10 +44,11 @@ export function mountDetail(app, { id }) {
       return;
     }
     clearTimeout(confirmT);
-    try { await app.deleteEntry(e.id); editDrafts.clear(e.id); app.navigate('diary'); }
+    try { await app.deleteEntry(e.id); app.navigate('diary'); }
     catch { app.toast('Couldn’t delete it just now. Please try again.'); }
   }
-  // Edit becomes Save in the same place while editing.
+  // While editing the top bar reads Cancel · Delete · Save: Cancel takes
+  // Back's place, Share steps aside, and Edit becomes Save in the same place.
   const editBtn = h('button', { class: 'text-btn edit-btn', onClick: () => (mode === 'edit' ? save() : edit('title')) }, 'Edit');
 
   // The title (Untitled when there is none) and the journal (its paragraphs
@@ -68,14 +69,15 @@ export function mountDetail(app, { id }) {
   showTitle();
   showJournal();
 
+  const backBtn = h('button', { class: 'icon-btn', 'aria-label': 'Back to diary', onClick: () => app.navigate('diary') }, icon('back', { size: 'lg' }));
+  const cancelBtn = h('button', { class: 'text-btn cancel-btn', hidden: true, onClick: () => cancel() }, 'Cancel');
+  const shareBtn = h('button', { class: 'icon-btn', 'aria-label': 'Share', onClick: () => { player.stop(); sheet = openShareSheet(app, { painting: e.painting, note: e.note, date: e.date, audio: e.audio, durationSec: e.durationSec }); } }, icon('share'));
   const meta = h('div', { class: 'detail-meta' }, h('div', { class: 'caps' }, longDate(e.date)), title);
   const scroll = h('div', { class: 'detail-scroll' }, journal);
   const el = h('div', { class: 'detail', 'data-screen': 'detail', 'data-mode': mode },
     h('div', { class: 'navrow' },
-      h('button', { class: 'icon-btn', 'aria-label': 'Back to diary', onClick: () => app.navigate('diary') }, icon('back', { size: 'lg' })),
-      h('div', { class: 'nav-actions' },
-        h('button', { class: 'icon-btn', 'aria-label': 'Share', onClick: () => { player.stop(); sheet = openShareSheet(app, { painting: e.painting, note: e.note, date: e.date, audio: e.audio, durationSec: e.durationSec }); } }, icon('share')),
-        del, editBtn)),
+      backBtn, cancelBtn,
+      h('div', { class: 'nav-actions' }, shareBtn, del, editBtn)),
     h('div', { class: 'art-pad' }, painting.el),
     meta,
     scroll,
@@ -186,26 +188,31 @@ export function mountDetail(app, { id }) {
   document.addEventListener('keydown', onKey);
 
   // ── editing ───────────────────────────────────────────────────────────────
-  // Both fields at once, the creation flow's own (underlined title held to 30
-  // characters with its counter; a borderless multi-line journal). What is
-  // typed is kept for this painting until Save, through Escape, Back or the
-  // keyboard closing.
+  // Both fields at once, the creation flow's own (underlined title held to
+  // TITLE_MAX characters with its counter; a borderless multi-line journal).
+  // What is typed stays while the keyboard closes and opens again; Save keeps
+  // it, Cancel (or Escape) lets it go.
   function edit(focus = 'title') {
     if (mode === 'edit') return;
-    const draft = editDrafts.get(e.id) ?? { note: e.note || '', journal: e.journal || '' };
-    const keep = () => editDrafts.set(e.id, draft);
-    const journalF = journalField({ value: draft.journal, onInput: (v) => { draft.journal = v; keep(); }, onEscape: leave });
-    const titleF = titleField({ value: draft.note, enterkeyhint: 'next', onInput: (v) => { draft.note = v; keep(); }, onEnter: () => journalF.input.focus(), onEscape: leave });
-    fields = { title: titleF, journal: journalF, draft };
+    const journalF = journalField({ value: e.journal || '', onEscape: () => cancel() });
+    const titleF = titleField({ value: e.note || '', enterkeyhint: 'next', onEnter: () => journalF.input.focus(), onEscape: () => cancel() });
+    fields = { title: titleF, journal: journalF };
     const top = scroll.scrollTop;
     go('edit', () => { title.replaceChildren(titleF.el); journal.replaceChildren(journalF.el); });
     requestAnimationFrame(() => { scroll.scrollTop = top; }); // after the journal field has grown to its text
     editBtn.textContent = 'Save';
     editBtn.classList.add('save');
+    editingBar(true);
     const input = (focus === 'journal' ? journalF : titleF).input;
     input.focus({ preventScroll: true });
     input.setSelectionRange(input.value.length, input.value.length);
   }
+
+  function editingBar(on) {
+    backBtn.hidden = shareBtn.hidden = on;
+    cancelBtn.hidden = !on;
+  }
+  const cancel = () => leave();
 
   // Back to the compact view, showing what is saved.
   function leave() {
@@ -214,6 +221,7 @@ export function mountDetail(app, { id }) {
     if (el.contains(document.activeElement)) document.activeElement.blur?.();
     editBtn.textContent = 'Edit';
     editBtn.classList.remove('save');
+    editingBar(false);
     go('compact', () => { showTitle(); showJournal(); });
     fitKeyboard();
   }
@@ -221,11 +229,11 @@ export function mountDetail(app, { id }) {
   async function save() {
     if (mode !== 'edit' || saving || !fields) return;
     const note = fields.title.value.trim(), text = fields.journal.value.trim();
-    if (note === (e.note || '') && text === (e.journal || '')) { editDrafts.clear(e.id); leave(); return; }
+    if (note === (e.note || '') && text === (e.journal || '')) { leave(); return; }
     const busy = (on) => {
       saving = on;
       fields.title.input.readOnly = fields.journal.input.readOnly = on;
-      editBtn.disabled = on;
+      editBtn.disabled = cancelBtn.disabled = on;
       editBtn.textContent = on ? 'Saving…' : 'Save';
     };
     busy(true);
@@ -233,7 +241,6 @@ export function mountDetail(app, { id }) {
       const next = { ...e, note, journal: text };
       await app.updateEntry(next);
       e = next;
-      editDrafts.clear(e.id);
       busy(false);
       leave();
     } catch {

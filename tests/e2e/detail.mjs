@@ -2,8 +2,8 @@
 // calls): expanded → compact by scrolling into the journal and back by
 // pulling down at its top (wheel and touch), the artwork never stretched, the
 // artwork / date / title / player fixed while a long journal scrolls clear of
-// the player, Edit → Save of both fields together (kept across a reload, and
-// what was typed kept through Escape), the recording playing on through every
+// the player, Edit → Save of both fields together (kept across a reload;
+// Cancel and Escape let an edit go), the recording playing on through every
 // change, short / empty / very long journals, Reduce Motion and a small screen.
 //
 //   node server.js &  then  node tests/e2e/detail.mjs   (SHOTS=dir saves screenshots)
@@ -58,6 +58,29 @@ async function wheel(page, dy, at = '.detail-scroll') {
 const sizeAnimations = (page) => page.$eval(`${D} .painting`, (c) => c.getAnimations().filter((a) => a.effect?.getKeyframes?.().some((k) => k.width)).length);
 const playing = (page) => page.getAttribute(`${D} .play-btn`, 'aria-label').then((l) => l === 'Pause recording');
 
+// Every edge on the page, left and right: all must sit on the large artwork's edges.
+const edges = (page) => page.evaluate(() => {
+  const D = document.querySelector('[data-screen=detail]'), W = D.getBoundingClientRect().width;
+  const text = (el) => { const r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect(); };
+  const bar = [...D.querySelectorAll('.navrow button:not([hidden])')];
+  const first = bar[0].querySelector('svg path') ?? bar[0]; // the chevron's point, not its box
+  const rect = (sel) => D.querySelector(sel).getBoundingClientRect();
+  const lr = [
+    ['bar', (first.tagName === 'path' ? first.getBoundingClientRect() : text(first)).left, W - text(bar[bar.length - 1]).right],
+    ['artwork', rect('.painting').left, W - rect('.painting').right],
+    ['date', text(D.querySelector('.caps')).left, null],
+    ['title', rect('.title-btn, .caption-input').left, W - rect('.title-btn, .caption-input').right],
+    ['journal', rect('.journal-btn, .journal-input').left, W - rect('.journal-btn, .journal-input').right],
+    ['player', rect('.play-btn').left, W - rect('.player .track').right],
+  ];
+  return lr.map(([k, l, r]) => [k, Math.round(l), r == null ? null : Math.round(r)]);
+});
+const aligned = async (page, label) => {
+  const e = await edges(page);
+  const off = e.filter(([, l, r]) => l !== 18 || (r != null && r !== 18));
+  assert.deepEqual(off, [], `${label}: everything lines up with the large artwork's edges: ` + JSON.stringify(e));
+};
+
 // ── iPhone size: the three states ────────────────────────────────────────
 {
   const { ctx, page, errors, ids } = await open({ width: 393, height: 852 });
@@ -65,13 +88,14 @@ const playing = (page) => page.getAttribute(`${D} .play-btn`, 'aria-label').then
   assert.equal(await mode(page), 'expanded');
   const big = await box(page, `${D} .painting`);
   assert.deepEqual([big.x, big.w, big.h], [18, 357, 446], 'the expanded artwork is as large as before: ' + JSON.stringify(big));
-  const nav = await page.$$eval(`${D} .navrow button`, (b) => b.map((x) => x.getAttribute('aria-label') || x.textContent));
+  const nav = await page.$$eval(`${D} .navrow button:not([hidden])`, (b) => b.map((x) => x.getAttribute('aria-label') || x.textContent));
   assert.deepEqual(nav, ['Back to diary', 'Share', 'Delete', 'Edit'], 'Back and Share icons, Delete and Edit labels');
   const dateTop = (await box(page, `${D} .detail-meta .caps`)).y;
   assert.ok(dateTop - big.bottom >= 30, 'more room between the artwork and the date');
   const dock = await box(page, `${D} .detail-dock`);
   assert.equal(dock.bottom, 852, 'the player is docked at the bottom');
   assert.equal(await page.$eval(`${D} .detail-dock`, (d) => getComputedStyle(d, '::after').backgroundImage.startsWith('linear-gradient')), true, 'over a fade');
+  await aligned(page, 'expanded');
   await shot(page, 'd1-expanded');
 
   // the recording plays on through every change below
@@ -85,7 +109,9 @@ const playing = (page) => page.getAttribute(`${D} .play-btn`, 'aria-label').then
   await settled(page);
   const small = await box(page, `${D} .painting`);
   assert.ok(small.h < big.h / 1.5 && Math.abs(ratio(small) - 1.5) < 0.02, 'a smaller landscape artwork: ' + JSON.stringify(small));
+  assert.deepEqual([small.x, small.w], [big.x, big.w], 'the same side margins as the portrait');
   assert.equal(await page.$eval(`${D} .painting img.art`, (i) => getComputedStyle(i).objectFit), 'cover', 'proportions kept, never stretched');
+  await aligned(page, 'compact');
   await shot(page, 'd2-compact');
 
   // only the journal scrolls; the rest stays put, and the last line clears the player
@@ -129,6 +155,8 @@ const playing = (page) => page.getAttribute(`${D} .play-btn`, 'aria-label').then
   await settled(page);
   assert.ok(Math.abs(ratio(await box(page, `${D} .painting`)) - 1.5) < 0.02, 'editing uses the compact artwork');
   assert.equal(await page.textContent(`${D} .edit-btn`), 'Save', 'Edit became Save');
+  const bar = await page.$$eval(`${D} .navrow button:not([hidden])`, (b) => b.map((x) => x.getAttribute('aria-label') || x.textContent));
+  assert.deepEqual(bar, ['Cancel', 'Delete', 'Save'], 'editing: Cancel, Delete, Save; no Share');
   const editBox = await box(page, `${D} .edit-btn`);
   assert.ok(await page.$(`${D} .detail-title .title-field .caption-input`) && await page.$(`${D} .detail-journal textarea.journal-input`), 'title and journal both editable');
   assert.equal(await page.evaluate(() => document.activeElement?.classList.contains('caption-input')), true, 'the title is focused');
@@ -136,38 +164,46 @@ const playing = (page) => page.getAttribute(`${D} .play-btn`, 'aria-label').then
   assert.deepEqual(titleStyle, ['0px', '1px'], 'title: underline');
   assert.equal(await page.$eval(`${D} .journal-input`, (i) => getComputedStyle(i).borderBottomWidth), '0px', 'journal: no underline');
   await page.fill(`${D} .caption-input`, '');
-  await page.keyboard.insertText('Evening rain over the long road home');
-  assert.equal(await page.inputValue(`${D} .caption-input`), 'Evening rain over the long roa', 'held to 30');
-  assert.equal(await page.textContent(`${D} .char-count`), '30/30', 'with its counter');
+  await page.keyboard.insertText('Evening rain over the long road home, under a quiet sky');
+  assert.equal(await page.inputValue(`${D} .caption-input`), 'Evening rain over the long road home, under a', 'held to 45');
+  assert.equal(await page.textContent(`${D} .char-count`), '45/45', 'with its counter');
   await page.press(`${D} .caption-input`, 'Enter');
   assert.equal(await page.evaluate(() => document.activeElement?.classList.contains('journal-input')), true, 'Enter moves to the journal');
   await page.fill(`${D} .journal-input`, 'Rewritten.\n\nTwo paragraphs.');
+  await aligned(page, 'editing');
   await shot(page, 'd5-edit');
-  // Escape leaves the edit, and what was typed comes back with Edit
-  await page.press(`${D} .journal-input`, 'Escape');
+  // the keyboard closing keeps what was typed; Cancel lets it go
+  await page.evaluate(() => document.activeElement.blur());
+  assert.equal(await mode(page), 'edit', 'still editing with the keyboard down');
+  assert.equal(await page.inputValue(`${D} .journal-input`), 'Rewritten.\n\nTwo paragraphs.');
+  await page.click(`${D} .cancel-btn`);
   await page.waitForFunction(() => document.querySelector('[data-screen=detail]').dataset.mode === 'compact');
   assert.equal(await page.textContent(`${D} .edit-btn`), 'Edit');
-  assert.ok((await page.textContent(`${D} .journal-text`)).startsWith('Paragraph 1'), 'nothing saved yet');
+  const viewBar = await page.$$eval(`${D} .navrow button:not([hidden])`, (b) => b.map((x) => x.getAttribute('aria-label') || x.textContent));
+  assert.deepEqual(viewBar, ['Back to diary', 'Share', 'Delete', 'Edit'], 'Back and Share return');
+  assert.ok((await page.textContent(`${D} .journal-text`)).startsWith('Paragraph 1'), 'Cancel saved nothing');
   await page.click(`${D} .journal-btn`); // tapping the journal edits too
   await page.waitForFunction(() => document.querySelector('[data-screen=detail]').dataset.mode === 'edit');
-  assert.equal(await page.inputValue(`${D} .caption-input`), 'Evening rain over the long roa', 'the typed title was kept');
-  assert.equal(await page.inputValue(`${D} .journal-input`), 'Rewritten.\n\nTwo paragraphs.', 'the typed journal was kept');
+  assert.ok((await page.inputValue(`${D} .journal-input`)).startsWith('Paragraph 1'), 'editing starts again from what is saved');
   assert.equal(await page.evaluate(() => document.activeElement?.classList.contains('journal-input')), true, 'the journal is focused');
+  await page.fill(`${D} .caption-input`, 'Evening rain over the long road home, under a');
+  await page.fill(`${D} .journal-input`, 'Rewritten.\n\nTwo paragraphs.');
   const saveBox = await box(page, `${D} .edit-btn`);
   await page.click(`${D} .edit-btn`); // Save
   await page.waitForFunction(() => document.querySelector('[data-screen=detail]').dataset.mode === 'compact');
   const right = (b) => [b.x + b.w, b.y, b.h];
   assert.deepEqual(right(saveBox), right(editBox), 'Save sits where Edit is, at the top right');
-  assert.equal(await page.textContent(`${D} .caption`), 'Evening rain over the long roa');
+  assert.equal(await page.textContent(`${D} .caption`), 'Evening rain over the long road home, under a');
   assert.equal(await page.textContent(`${D} .journal-text`), 'Rewritten.\n\nTwo paragraphs.');
   assert.ok(await playing(page), 'audio kept playing through editing');
+  await aligned(page, 'saved');
   await shot(page, 'd6-saved');
 
   // both kept after a reload
   await page.reload();
   await page.waitForSelector('[data-screen=diary]');
   await detail(page, ids[0]);
-  assert.equal(await page.textContent(`${D} .caption`), 'Evening rain over the long roa');
+  assert.equal(await page.textContent(`${D} .caption`), 'Evening rain over the long road home, under a');
   assert.equal(await page.textContent(`${D} .journal-text`), 'Rewritten.\n\nTwo paragraphs.');
 
   // a short journal and an empty one
@@ -214,13 +250,13 @@ const playing = (page) => page.getAttribute(`${D} .play-btn`, 'aria-label').then
   await page.waitForFunction(() => document.querySelector('[data-screen=detail]').dataset.mode === 'compact');
   assert.equal(await sizeAnimations(page), 0, 'no size animation with Reduce Motion');
   const art = await box(page, `${D} .painting`);
-  assert.ok(art.h <= 568 * 0.28 && Math.abs(ratio(art) - 1.5) < 0.02, 'a smaller landscape card on a short screen: ' + JSON.stringify(art));
+  assert.ok(art.x === 18 && art.w === 284 && Math.abs(ratio(art) - 1.5) < 0.02, 'the landscape card keeps the portrait margins on a small screen too: ' + JSON.stringify(art));
   const room = await box(page, `${D} .detail-scroll`);
-  assert.ok(room.h > 150, 'room left for the journal: ' + JSON.stringify(room));
+  assert.ok(room.h > 120, 'room left for the journal: ' + JSON.stringify(room));
   await shot(page, 'd9-small-compact');
   await page.click(`${D} .edit-btn`);
   await page.waitForFunction(() => document.querySelector('[data-screen=detail]').dataset.mode === 'edit');
-  await page.click(`${D} .journal-input`);
+  await page.click(`${D} .journal-input`, { position: { x: 20, y: 12 } }); // its top: the rest runs under the player here
   await page.keyboard.press('Control+End');
   await page.keyboard.type('\nOne more line at the end.');
   await page.waitForTimeout(500);
