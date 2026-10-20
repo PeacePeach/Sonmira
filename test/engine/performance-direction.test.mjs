@@ -104,8 +104,12 @@ test('every tier: the same performance sections; the reference gives technique o
       assert.equal(d.resolved.sections[k], d.loose.sections[k], k);
     }
     // Palette family differs by reference; the colour relations do not.
+    // Resolved inherits the reference's colour range (Han, 19 Oct); the
+    // singing still sets the relations between those colours.
     const rel = (x) => x.sections.palette.split('): ')[1];
-    assert.equal(rel(d.resolved), rel(d.loose));
+    assert.equal(rel(d.gathered), rel(d.loose));
+    assert.match(d.resolved.sections.palette, /^Palette, inherited from the reference: .* Colour relations, from how it was sung: /);
+    assert.ok(d.resolved.sections.palette.endsWith(rel(d.loose).replace(/^Closely related hues that sit/, 'The colours sit').replace(/^Mostly related hues/, 'Mostly harmonious colour relations')));
     assert.notEqual(d.loose.sections.subject, d.resolved.sections.subject);
   }
 });

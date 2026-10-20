@@ -36,6 +36,16 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
     }
    ],
    "accent": null,
+   "families": [
+    {
+     "hex": "#d0d0c4",
+     "share": 0.461
+    },
+    {
+     "hex": "#d6c0a5",
+     "share": 0.366
+    }
+   ],
    "paper": 0.112,
    "dark": 0.0,
    "lightness": 0.799,
@@ -68,6 +78,20 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
     }
    ],
    "accent": null,
+   "families": [
+    {
+     "hex": "#c2c5c4",
+     "share": 0.387
+    },
+    {
+     "hex": "#98b0c4",
+     "share": 0.282
+    },
+    {
+     "hex": "#d8c2a7",
+     "share": 0.23
+    }
+   ],
    "paper": 0.1,
    "dark": 0.0,
    "lightness": 0.76,
@@ -95,6 +119,16 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
     }
    ],
    "accent": null,
+   "families": [
+    {
+     "hex": "#c9cbc7",
+     "share": 0.292
+    },
+    {
+     "hex": "#aaaa93",
+     "share": 0.146
+    }
+   ],
    "paper": 0.562,
    "dark": 0.0,
    "lightness": 0.854,
@@ -124,6 +158,16 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
     }
    ],
    "accent": null,
+   "families": [
+    {
+     "hex": "#79875d",
+     "share": 0.663
+    },
+    {
+     "hex": "#879186",
+     "share": 0.263
+    }
+   ],
    "paper": 0.0,
    "dark": 0.181,
    "lightness": 0.464,
@@ -155,6 +199,12 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
     }
    ],
    "accent": null,
+   "families": [
+    {
+     "hex": "#9b7a5a",
+     "share": 0.97
+    }
+   ],
    "paper": 0.003,
    "dark": 0.112,
    "lightness": 0.482,
@@ -187,6 +237,16 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
     }
    ],
    "accent": null,
+   "families": [
+    {
+     "hex": "#93b7d0",
+     "share": 0.294
+    },
+    {
+     "hex": "#dfe7e8",
+     "share": 0.033
+    }
+   ],
    "paper": 0.577,
    "dark": 0.001,
    "lightness": 0.879,
@@ -212,6 +272,12 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
     }
    ],
    "accent": null,
+   "families": [
+    {
+     "hex": "#7fcbd7",
+     "share": 0.96
+    }
+   ],
    "paper": 0.014,
    "dark": 0.0,
    "lightness": 0.677,
@@ -241,6 +307,20 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
     }
    ],
    "accent": null,
+   "families": [
+    {
+     "hex": "#d5d7cb",
+     "share": 0.284
+    },
+    {
+     "hex": "#ccc691",
+     "share": 0.176
+    },
+    {
+     "hex": "#9fb79b",
+     "share": 0.029
+    }
+   ],
    "paper": 0.371,
    "dark": 0.0,
    "lightness": 0.82,
@@ -266,6 +346,16 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
     }
    ],
    "accent": null,
+   "families": [
+    {
+     "hex": "#628fb9",
+     "share": 0.489
+    },
+    {
+     "hex": "#e3eef2",
+     "share": 0.124
+    }
+   ],
    "paper": 0.387,
    "dark": 0.004,
    "lightness": 0.744,
@@ -295,6 +385,20 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
     }
    ],
    "accent": null,
+   "families": [
+    {
+     "hex": "#7da3cd",
+     "share": 0.773
+    },
+    {
+     "hex": "#56535a",
+     "share": 0.032
+    },
+    {
+     "hex": "#37211c",
+     "share": 0.029
+    }
+   ],
    "paper": 0.167,
    "dark": 0.027,
    "lightness": 0.675,
@@ -328,6 +432,20 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
     }
    ],
    "accent": null,
+   "families": [
+    {
+     "hex": "#a29986",
+     "share": 0.295
+    },
+    {
+     "hex": "#1a92a0",
+     "share": 0.286
+    },
+    {
+     "hex": "#717470",
+     "share": 0.154
+    }
+   ],
    "paper": 0.004,
    "dark": 0.143,
    "lightness": 0.474,
@@ -360,6 +478,20 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
     "hex": "#c97252",
     "share": 0.008
    },
+   "families": [
+    {
+     "hex": "#09567f",
+     "share": 0.476
+    },
+    {
+     "hex": "#a8aea9",
+     "share": 0.106
+    },
+    {
+     "hex": "#c7b09b",
+     "share": 0.069
+    }
+   ],
    "paper": 0.009,
    "dark": 0.201,
    "lightness": 0.435,
@@ -393,6 +525,20 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
     "hex": "#eacc9f",
     "share": 0.004
    },
+   "families": [
+    {
+     "hex": "#7eb5be",
+     "share": 0.515
+    },
+    {
+     "hex": "#d5e1d5",
+     "share": 0.097
+    },
+    {
+     "hex": "#eacc9f",
+     "share": 0.02
+    }
+   ],
    "paper": 0.311,
    "dark": 0.0,
    "lightness": 0.764,
@@ -422,6 +568,16 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
     }
    ],
    "accent": null,
+   "families": [
+    {
+     "hex": "#75abe3",
+     "share": 0.899
+    },
+    {
+     "hex": "#d1d0d2",
+     "share": 0.043
+    }
+   ],
    "paper": 0.049,
    "dark": 0.001,
    "lightness": 0.692,
@@ -458,6 +614,20 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
     "hex": "#e19575",
     "share": 0.006
    },
+   "families": [
+    {
+     "hex": "#ccccab",
+     "share": 0.317
+    },
+    {
+     "hex": "#769e75",
+     "share": 0.251
+    },
+    {
+     "hex": "#e19575",
+     "share": 0.02
+    }
+   ],
    "paper": 0.094,
    "dark": 0.0,
    "lightness": 0.673,
@@ -494,6 +664,16 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
     }
    ],
    "accent": null,
+   "families": [
+    {
+     "hex": "#b0b8d7",
+     "share": 0.483
+    },
+    {
+     "hex": "#cfcbd0",
+     "share": 0.258
+    }
+   ],
    "paper": 0.194,
    "dark": 0.0,
    "lightness": 0.812,
@@ -529,6 +709,20 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
     }
    ],
    "accent": null,
+   "families": [
+    {
+     "hex": "#c0dce2",
+     "share": 0.417
+    },
+    {
+     "hex": "#ced5cf",
+     "share": 0.174
+    },
+    {
+     "hex": "#f2e6d2",
+     "share": 0.122
+    }
+   ],
    "paper": 0.089,
    "dark": 0.004,
    "lightness": 0.811,
@@ -562,6 +756,16 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
     }
    ],
    "accent": null,
+   "families": [
+    {
+     "hex": "#b69d7e",
+     "share": 0.634
+    },
+    {
+     "hex": "#dfe8cf",
+     "share": 0.162
+    }
+   ],
    "paper": 0.065,
    "dark": 0.0,
    "lightness": 0.701,
@@ -599,6 +803,12 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
     }
    ],
    "accent": null,
+   "families": [
+    {
+     "hex": "#466d83",
+     "share": 0.522
+    }
+   ],
    "paper": 0.002,
    "dark": 0.021,
    "lightness": 0.473,
@@ -632,6 +842,20 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
     }
    ],
    "accent": null,
+   "families": [
+    {
+     "hex": "#818985",
+     "share": 0.354
+    },
+    {
+     "hex": "#87b4c4",
+     "share": 0.254
+    },
+    {
+     "hex": "#a3907c",
+     "share": 0.16
+    }
+   ],
    "paper": 0.001,
    "dark": 0.035,
    "lightness": 0.572,
@@ -670,6 +894,28 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
     "hex": "#b14f2e",
     "share": 0.058
    },
+   "families": [
+    {
+     "hex": "#b4caeb",
+     "share": 0.444
+    },
+    {
+     "hex": "#974d44",
+     "share": 0.143
+    },
+    {
+     "hex": "#b9b1c0",
+     "share": 0.067
+    },
+    {
+     "hex": "#8c859f",
+     "share": 0.031
+    },
+    {
+     "hex": "#7b657a",
+     "share": 0.021
+    }
+   ],
    "paper": 0.017,
    "dark": 0.011,
    "lightness": 0.716,
@@ -705,6 +951,16 @@ export const REFERENCE_LIBRARY = /*BEGIN*/[
     }
    ],
    "accent": null,
+   "families": [
+    {
+     "hex": "#c9d6d0",
+     "share": 0.533
+    },
+    {
+     "hex": "#85a596",
+     "share": 0.368
+    }
+   ],
    "paper": 0.0,
    "dark": 0.041,
    "lightness": 0.679,

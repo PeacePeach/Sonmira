@@ -144,5 +144,6 @@ test('the same take without the miss is Strong', () => {
 test('calibration: held-note bar and missed-landing limit', () => {
   assert.equal(SINGING_CALIBRATION.intonation.minNoteSec, 0.25);
   assert.equal(SINGING_CALIBRATION.strongPerformance.missedLandingCents, 300);
-  assert.equal(SINGING_CALIBRATION.strong.intonation, 0.8); // unchanged
+  assert.equal(SINGING_CALIBRATION.strong.intonation, 0.6); // approved in PR #26
+  assert.equal(SINGING_CALIBRATION.strongPerformance.maxTuningDriftCents, 90); // approved for PR #28 Preview
 });

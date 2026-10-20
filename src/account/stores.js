@@ -32,9 +32,11 @@ export function createMemoryStore({ onChange } = {}) {
 }
 
 /** Upstash Redis over its REST API (one command per request). */
-export function createUpstashStore({ url, token, fetchImpl = fetch }) {
-  async function cmd(...args) {
-    const r = await fetchImpl(url, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify(args) });
+export function createUpstashStore({ url, token, fetchImpl = fetch, prefix = '' }) {
+  async function cmd(op, ...args) {
+    // The key is always the first argument; DEL takes several.
+    args = op === 'DEL' ? args.map((k) => prefix + k) : [prefix + args[0], ...args.slice(1)];
+    const r = await fetchImpl(url, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify([op, ...args]) });
     if (!r.ok) throw new Error(`kv ${r.status}`);
     const { result, error } = await r.json();
     if (error) throw new Error(`kv ${error}`);
