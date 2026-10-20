@@ -47,8 +47,19 @@ export function openShareSheet(app, item) {
   const preview = h('img', { class: 'share-preview card', alt: 'Share card preview' });
   // While the video is made, the canvas being recorded is the preview (the
   // painting painting itself); then the finished video plays in place.
-  const videoEl = h('video', { class: 'share-preview card', playsinline: true, controls: true, preload: 'metadata', 'aria-label': 'Video preview' });
+  const videoEl = h('video', { class: 'share-preview card', playsinline: true, preload: 'metadata', 'aria-label': 'Video preview' });
   videoEl.style.aspectRatio = '9 / 16';
+  // No player controls over the picture (they covered the bottom of it):
+  // a tap plays or pauses, and a quiet play mark shows while paused.
+  const playBtn = h('button', { class: 'share-play', 'aria-label': 'Play video' }, icon('play'));
+  const tapToPlay = (v) => {
+    v.addEventListener('click', () => (v.paused ? v.play().catch(() => {}) : v.pause()));
+    const sync = () => { if (v.isConnected) playBtn.hidden = !v.paused; };
+    for (const e of ['play', 'pause', 'ended', 'emptied']) v.addEventListener(e, sync);
+    v.show = () => { playBtn.onclick = () => v.play().catch(() => {}); playBtn.hidden = !v.paused; return [v, playBtn]; };
+    return v;
+  };
+  tapToPlay(videoEl);
   const formatBtns = Object.entries(FORMATS).map(([key, f]) => h('button', {
     class: 'share-format', role: 'radio', 'data-format': key, onClick: () => choose(key),
   }, h('span', {}, f.label), h('span', { class: 'share-format-hint' }, f.hint)));
@@ -100,7 +111,7 @@ export function openShareSheet(app, item) {
     if (showInPlace && ![preview, videoEl, liveCanvas].includes(previewBox.firstChild)) return; // the file shown in place
     const vid = state === 'exporting' || state === 'video';
     if (state === 'video' && videoUrl) {
-      if (previewBox.firstChild !== videoEl) previewBox.replaceChildren(videoEl);
+      if (previewBox.firstChild !== videoEl) previewBox.replaceChildren(...videoEl.show());
     } else if (state === 'exporting' && liveCanvas) {
       if (previewBox.firstChild !== liveCanvas) previewBox.replaceChildren(liveCanvas);
     } else if (previewBox.firstChild !== preview) { videoEl.pause(); previewBox.replaceChildren(preview); }
@@ -142,9 +153,9 @@ export function openShareSheet(app, item) {
     if (showInPlace) {
       const url = URL.createObjectURL(file);
       const media = file.type.startsWith('video')
-        ? h('video', { class: 'share-preview story', src: url, controls: true, playsinline: true, autoplay: true })
+        ? tapToPlay(h('video', { class: 'share-preview story', src: url, playsinline: true, autoplay: true }))
         : h('img', { class: 'share-preview', src: url, alt: 'Share card' });
-      previewBox.replaceChildren(media);
+      previewBox.replaceChildren(...(media.show ? media.show() : [media]));
       say('This preview can’t open the share sheet. This is the file it would share.');
       return;
     }
