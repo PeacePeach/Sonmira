@@ -112,13 +112,15 @@ function drawColophon(ctx, cx, top, k) {
   return storySize + gapColophon + markH;
 }
 
-// The video (1080×1920, 9:16): the Story card's type and colophon, with every
-// word above the artwork, so a player's controls and playhead (and a Story's
-// reply bar) at the bottom cover nothing but paper. Everything stays inside
-// VIDEO_SAFE, clear of the top and bottom bars of Moments, Stories and Photos.
+// The video (1080×1920, 9:16), in the first share video's layout: a large
+// painting, a left-aligned serif title, quiet caps for the date and the
+// Sonmira mark, every element on the painting's edges. The words sit above
+// the painting (the detail page's order: caps, then title), so a player's
+// controls and playhead at the bottom cover only paper. Everything stays
+// inside VIDEO_SAFE, clear of the bars of Moments, Stories and Photos.
 export const VIDEO = { W: 1080, H: 1920 };
-export const VIDEO_SAFE = { top: 250, bottom: 380, side: 100 };
-const WAVE_GAP = 44, WAVE_H = 72;
+export const VIDEO_SAFE = { top: 190, bottom: 300, side: 90 };
+const WAVE_GAP = 40, WAVE_H = 72;
 
 /**
  * Draws the video's still composition (no waveform) and returns where the
@@ -126,37 +128,61 @@ const WAVE_GAP = 44, WAVE_H = 72;
  * @returns {{art:{x:number,y:number,w:number,h:number}, wave:{x:number,y:number,w:number,h:number}, text:{top:number,bottom:number}}}
  */
 export function drawVideoCard(ctx, { painting, img, note, date, createdAt, durationSec }) {
-  const { W, H } = VIDEO, S = VIDEO_SAFE, k = FRAME.story.k, cx = W / 2;
+  const { W, H } = VIDEO, S = VIDEO_SAFE;
   ctx.fillStyle = C.paper;
   ctx.fillRect(0, 0, W, H);
   ctx.textBaseline = 'alphabetic';
+
+  // type, as in the first video: serif 600 44/54 title, 20 px caps, 30 px wordmark
+  const capsH = 20, gapCaps = 30, titleSize = 44, titleLead = 54, gapArt = 40;
+  const aspect = img ? img.naturalWidth / img.naturalHeight : 4 / 5;
+  const maxW = W - 2 * S.side;
+  // head: the sentence on the left, the mark and wordmark on the right; on a
+  // narrow painting the sentence takes a line of its own below them
+  ctx.font = `italic 600 30px ${C.serif}`;
+  const word = 'Sonmira', wordW = ctx.measureText(word).width, markH = 22, markW = markH * (120 / 82);
+  ctx.font = `italic 500 28px ${C.serif}`;
+  const lineW = ctx.measureText(STORY_LINE).width;
+  const stacked = (w) => lineW > w - wordW - markW - 40;
+  const fit = (w) => {
+    const headH = stacked(w) ? 34 + 44 : 34, gapHead = 60;
+    ctx.font = `600 ${titleSize}px ${C.serif}`;
+    const title = note ? wrap(ctx, note, w, 2) : [];
+    const textH = headH + gapHead + capsH + (title.length ? gapCaps + title.length * titleLead - (titleLead - titleSize) : 0) + gapArt;
+    return { title, headH, gapHead, textH, artH: H - S.top - S.bottom - textH - WAVE_GAP - WAVE_H };
+  };
+  let artW = maxW, f = fit(artW), artH = artW / aspect;
+  if (artH > f.artH) { artH = f.artH; artW = artH * aspect; f = fit(artW); artH = Math.min(artH, f.artH); artW = artH * aspect; }
+  const x = (W - artW) / 2, right = x + artW;
+  const top = S.top + Math.max(0, (H - S.top - S.bottom - (f.textH + artH + WAVE_GAP + WAVE_H)) / 2);
+
+  const base = top + 34 * 0.8;
+  ctx.font = `italic 600 30px ${C.serif}`;
+  ctx.fillStyle = C.muted; ctx.textAlign = 'right';
+  ctx.fillText(word, right, base);
+  drawMark(ctx, right - wordW - 10 - markW, base - markH + 2, markH * 0.9, C.muted);
+  ctx.fillStyle = C.secondary; ctx.textAlign = 'left';
+  ctx.font = `italic 500 28px ${C.serif}`;
+  if (stacked(artW)) { ctx.textAlign = 'right'; ctx.fillText(STORY_LINE, right, base + 44); } // under the mark, on the right edge
+  else ctx.fillText(STORY_LINE, x, base);
+
+  // caps line, then the title
+  let y = top + f.headH + f.gapHead;
+  ctx.fillStyle = C.muted;
+  ctx.font = `450 ${capsH}px ${C.sans}`;
+  tracked(ctx, madeLine(date, createdAt, durationSec), x, y + capsH * 0.8, 1.6);
+  y += capsH;
+  if (f.title.length) {
+    y += gapCaps;
+    ctx.fillStyle = C.ink;
+    ctx.font = `600 ${titleSize}px ${C.serif}`;
+    f.title.forEach((ln, i) => ctx.fillText(ln, x, y + titleSize * 0.8 + i * titleLead));
+    y += f.title.length * titleLead - (titleLead - titleSize);
+  }
+  const textBottom = y;
   ctx.textAlign = 'center';
 
-  const storySize = Math.round(31 * k), markH = Math.round(28 * k), colophonH = storySize + Math.round(22 * k) + markH;
-  const titleSize = Math.round(54 * k), titleLead = Math.round(66 * k);
-  ctx.font = `500 ${titleSize}px ${C.serif}`;
-  const title = note ? wrap(ctx, note, W - 2 * S.side, 2) : [];
-  const gapTitle = Math.round(56 * k), metaSize = Math.round(22 * k), gapMeta = Math.round(title.length ? 26 * k : 0);
-  const gapArt = Math.round(48 * k);
-  const textH = colophonH + gapTitle + title.length * titleLead + gapMeta + metaSize + gapArt;
-
-  const aspect = img ? img.naturalWidth / img.naturalHeight : 4 / 5;
-  let artH = H - S.top - S.bottom - textH - WAVE_GAP - WAVE_H, artW = artH * aspect;
-  if (artW > FRAME.story.artMaxW) { artW = FRAME.story.artMaxW; artH = artW / aspect; }
-  const groupH = textH + artH + WAVE_GAP + WAVE_H;
-  const top = S.top + Math.max(0, (H - S.top - S.bottom - groupH) / 2);
-
-  let y = top + drawColophon(ctx, cx, top, k) + gapTitle;
-  ctx.fillStyle = C.ink;
-  ctx.font = `500 ${titleSize}px ${C.serif}`;
-  title.forEach((ln, i) => ctx.fillText(ln, cx, y + titleSize * 0.8 + i * titleLead));
-  y += title.length * titleLead + gapMeta;
-  ctx.fillStyle = C.muted;
-  ctx.font = `450 ${metaSize}px ${C.sans}`;
-  tracked(ctx, madeLine(date, createdAt, durationSec), cx, y + metaSize * 0.8, 1.6 * k);
-  const textBottom = y + metaSize;
-
-  const art = { x: cx - artW / 2, y: textBottom + gapArt, w: artW, h: artH };
+  const art = { x, y: textBottom + gapArt, w: artW, h: artH };
   drawPainting(ctx, { painting, img, ...art, scale: 1 });
   return { art, wave: { x: art.x, y: art.y + art.h + WAVE_GAP, w: art.w, h: WAVE_H }, text: { top, bottom: textBottom } };
 }
