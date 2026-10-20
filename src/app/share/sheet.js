@@ -10,7 +10,8 @@ import { clock } from '../format.js';
 import { renderShareCard, FORMATS, DEFAULT_FORMAT } from './card.js';
 import { createExportAudioContext, renderShareVideo, renderVideoPoster, videoMimeType, VideoExportError } from './video.js';
 import { canShareFiles, deliverFile, saveFile, fileName } from './deliver.js';
-import { photosAvailable, saveToPhotos } from './photos.js';
+import { saveToPhotos } from './photos.js';
+import { isNativeIOS } from '../native/platform.js';
 
 const VIDEO_ERRORS = {
   decode: 'This recording can’t be turned into a video on this device. You can still share the image.',
@@ -23,8 +24,11 @@ const VIDEO_ERRORS = {
 export const SAVED_TO_PHOTOS = 'Saved to Photos. Open WeChat → Moments to post.';
 const PHOTOS_ERRORS = {
   denied: 'Sonmira can’t add to Photos. Turn it on in Settings → Sonmira → Photos, then try again.',
-  failed: 'It couldn’t be saved to Photos. Please try again, or use Share.',
+  unavailable: 'Save to Photos needs the latest Sonmira from TestFlight. Update the app, then try again.',
+  failed: 'It couldn’t be saved to Photos. Please try again.',
 };
+// the reason, for a beta tester's report: the native error code or message
+const reason = (e) => { const c = e?.cause?.code || e?.cause?.message || ''; return c ? ` (${String(c).slice(0, 60)})` : ''; };
 
 /**
  * @param {any} app
@@ -37,7 +41,8 @@ export function openShareSheet(app, item) {
   // so there the sheet shows the finished file in place instead.
   const showInPlace = !!app.dev?.preview && !sharesNatively;
   const verb = sharesNatively || showInPlace ? 'Share' : 'Save';
-  const photos = photosAvailable(); // the iOS app, from the build that has the plugin
+  // In the iOS app Save always means Photos (never the share sheet); in a browser it is a download.
+  const photos = isNativeIOS();
 
   let state = 'preparing'; // preparing | image | exporting | video
   let imageFile = null, videoFile = null, previewUrl = null, posterUrl = null, liveCanvas = null, posterAsked = false, videoUrl = null, abort = null, closed = false;
@@ -93,7 +98,7 @@ export function openShareSheet(app, item) {
       b.disabled = state === 'exporting' || state === 'video';
     }
     formats.hidden = state === 'exporting' || state === 'video';
-    saveBtn.hidden = !(sharesNatively && !showInPlace);
+    saveBtn.hidden = !(photos || (sharesNatively && !showInPlace));
     saveBtn.disabled = saving || !(state === 'image' || state === 'video');
     saveBtn.textContent = saving ? 'Saving…' : photos ? 'Save to Photos' : state === 'video' || state === 'exporting' ? 'Save video' : 'Save image';
     progress.hidden = state !== 'exporting';
@@ -182,8 +187,7 @@ export function openShareSheet(app, item) {
     try { await saveToPhotos(file); say(SAVED_TO_PHOTOS); }
     catch (e) {
       console.warn('[sonmira] save to Photos failed', e);
-      if (e?.kind === 'unavailable') await send(file); // an older app build: its share sheet has Save Image / Save Video
-      else say(PHOTOS_ERRORS[e?.kind] || PHOTOS_ERRORS.failed);
+      say((PHOTOS_ERRORS[e?.kind] || PHOTOS_ERRORS.failed) + (e?.kind === 'denied' ? '' : reason(e)));
     } finally {
       saving = false;
       if (!closed) render();
