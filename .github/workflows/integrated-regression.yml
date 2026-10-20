@@ -1,0 +1,42 @@
+name: Integrated Engine + UX regression (temporary)
+on:
+  push:
+    branches:
+      - test/integrated-engine-ux-20261019
+permissions:
+  contents: read
+jobs:
+  unit:
+    name: Full unit / engine tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+  ux-e2e:
+    name: Browser flow / Journal / Mock Preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Start Sonmira local server
+        run: |
+          node server.js >/tmp/sonmira-server.log 2>&1 &
+          for i in $(seq 1 30); do if curl -fsS http://localhost:5173/ >/dev/null; then exit 0; fi; sleep 1; done
+          cat /tmp/sonmira-server.log
+          exit 1
+      - run: node tests/e2e/ux-preview.mjs
+      - run: node tests/e2e/journal.mjs
+      - run: node tests/e2e/flow.mjs
