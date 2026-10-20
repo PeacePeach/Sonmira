@@ -54,9 +54,9 @@ function fakeIOS() {
   globalThis.Capacitor = { isNativePlatform: () => true, getPlatform: () => 'ios', Plugins: { SonmiraStore: store }, registerPlugin: (n) => (n === 'SonmiraStore' ? store : null) };
 }
 
-async function fresh() {
+async function fresh({ ios = IOS } = {}) {
   const ctx = await browser.newContext({ viewport: { width: 393, height: 852 }, isMobile: true, hasTouch: true });
-  if (IOS) await ctx.addInitScript(fakeIOS);
+  if (ios) await ctx.addInitScript(fakeIOS);
   const page = await ctx.newPage();
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
@@ -93,8 +93,8 @@ async function save(page, { twice = false } = {}) {
   await page.waitForSelector('[data-screen=diary] .entry');
 }
 // Two free paintings made and saved: the next one is the last.
-async function twoMade() {
-  const s = await fresh();
+async function twoMade(o) {
+  const s = await fresh(o);
   for (let i = 0; i < 2; i++) {
     await record(s.page); await create(s.page);
     await s.page.waitForSelector('[data-phase=result]', { timeout: 30000 });
@@ -237,6 +237,83 @@ await step('last free painting: a failed painting counts nothing, and the retry 
   await page.waitForSelector('[data-phase=result]', { timeout: 30000 });
   await save(page);
   await lastOneKept(page, await page.install());
+  await ctx.close();
+});
+
+// Saved recordings from before this fix, opened at zero in the iOS app,
+// with the app's own copy of the wallet out of date: what the server knows
+// about the take decides.
+const legacyWallet = (page, patch) => page.evaluate((patch) => {
+  const w = JSON.parse(localStorage.getItem('sonmira.wallet'));
+  localStorage.setItem('sonmira.wallet', JSON.stringify({ ...w, ...patch, holds: {} }));
+}, patch);
+const offline = (page) => page.route('**/api/billing/status*', (r) => r.fulfill({ status: 503, json: { ok: false, code: 'unavailable' } }));
+async function openDraft(page) {
+  await page.reload();
+  await page.waitForSelector('.drafts-row');
+  await page.click('.drafts-row');
+  await page.click('[data-draft] .draft-open');
+  await page.waitForSelector('[data-phase=preview], [data-phase=generating], [data-phase=result]');
+  if (await page.isVisible('[data-phase=preview]')) await page.click('text=Create painting');
+}
+
+await step('saved recording, counted on the server, the app\'s wallet at zero and unaware: the painting is recovered at no charge', async () => {
+  const { ctx, page } = await twoMade({ ios: true });
+  let drop = true;
+  await page.route('**/api/generate', async (route) => {
+    if (route.request().method() !== 'POST' || !drop) return route.continue();
+    drop = false;
+    await route.fetch().catch(() => {});
+    return route.abort('connectionreset');
+  });
+  await record(page); await create(page);
+  await page.waitForSelector('[data-phase=error][data-kind=generation]', { timeout: 30000 });
+  const me = await page.install();
+  assert.deepEqual(await charged(me), ['free', 'free', 'free'], 'the server made and counted it');
+  await legacyWallet(page, { free: 0, spent: {} });
+  await offline(page);
+  await openDraft(page);
+  await page.waitForSelector('[data-phase=result]', { timeout: 30000 });
+  assert.ok((await generations(me)).some((e) => e.outcome === 'replay'), 'the painting already made');
+  await save(page);
+  await lastOneKept(page, me);
+  await ctx.close();
+});
+
+await step('saved recording, never sent, the app\'s wallet out of date at zero: the server still has one, so it paints, counted once', async () => {
+  const { ctx, page } = await twoMade({ ios: true });
+  let block = true;
+  await page.route('**/api/generate', (route) => (route.request().method() === 'POST' && block ? (block = false, route.abort('internetdisconnected')) : route.continue()));
+  await record(page); await create(page);
+  await page.waitForSelector('[data-phase=error][data-kind=generation]', { timeout: 30000 });
+  const me = await page.install();
+  assert.deepEqual(await charged(me), ['free', 'free'], 'nothing was counted for it');
+  await legacyWallet(page, { free: 0 });
+  await offline(page);
+  await openDraft(page);
+  await page.waitForSelector('[data-phase=result]', { timeout: 30000 });
+  await save(page);
+  await lastOneKept(page, me);
+  await ctx.close();
+});
+
+await step('saved recording, never counted, and nothing left: the usual offer, nothing made or counted', async () => {
+  const { ctx, page } = await twoMade({ ios: true });
+  let block = true;
+  await page.route('**/api/generate', (route) => (route.request().method() === 'POST' && block ? (block = false, route.abort('internetdisconnected')) : route.continue()));
+  await record(page); await create(page);
+  await page.waitForSelector('[data-phase=error][data-kind=generation]', { timeout: 30000 });
+  assert.equal((await status(page)).free, 1, 'its painting went back');
+  await page.click('[aria-label=Close]');
+  // the last free painting goes to another song
+  await record(page); await create(page);
+  await page.waitForSelector('[data-phase=result]', { timeout: 30000 });
+  await save(page);
+  const me = await page.install();
+  await openDraft(page);
+  await page.waitForSelector('[data-paywall]', { timeout: 30000 });
+  assert.deepEqual(await charged(me), ['free', 'free', 'free']);
+  assert.equal((await drafts(page)).length, 1, 'the recording is still kept');
   await ctx.close();
 });
 
