@@ -465,13 +465,9 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
     progress.style.display = 'none';
     painting.setStrokes(d.painting?.wash ?? d.analysis?.wash ?? []);
     if (d.status === 'ready' && d.painting) {
-      // Shown now, so counted now by showResult(); once per take, so a
-      // painting already counted on its result screen isn't counted again.
-      if (!app.billing.reserve(take.key)) {
-        preview();
-        openPaywall(app, { from: 'sing', onContinue: () => { if (phase === 'preview') resume(key); } });
-        return;
-      }
+      // This artwork has already been generated (and charged server-side).
+      // Reopening it to save must never require another free painting or credit.
+      // showResult() commits any existing local hold idempotently.
       result = d.painting;
       await painting.setArtwork(result.artwork);
       if (phase !== 'resuming') return;
