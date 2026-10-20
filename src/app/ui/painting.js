@@ -54,7 +54,9 @@ export function createPainting({ ratio = '32', strokes = [], artwork = null, use
   const wash = h('div', { class: 'wash' });
   // The grain: a bitmap baked once (html.grain-baked, wash.js), else the SVG filter.
   const grain = h('div', { class: 'grain', 'aria-hidden': 'true' }, svg(`<svg><rect width="100%" height="100%" filter="url(#grain)"/></svg>`));
-  const el = h('div', { class: `painting r${ratio}` }, wash, grain);
+  // iOS doesn't clip a composited child (the moving wash, its canvas) to the
+  // painting's rounded corners; a masked layer of its own does.
+  const el = h('div', { class: `painting r${ratio}` }, h('div', { class: 'wash-clip' }, wash), grain);
   let art = null;
   const gpu = createWash(wash, el);
 

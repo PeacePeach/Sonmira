@@ -115,13 +115,14 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .painting { position: relative; width: 100%; border-radius: 4px; overflow: hidden; background: var(--painting-paper); box-shadow: var(--shadow-card); transform: translateZ(0); }
 .painting.r32 { aspect-ratio: 3 / 2; }
 .painting.r45 { aspect-ratio: 4 / 5; box-shadow: var(--shadow-card-lg); }
+.painting .wash-clip { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; -webkit-mask-image: linear-gradient(#000, #000); mask-image: linear-gradient(#000, #000); }
 .painting .wash { position: absolute; inset: -6%; filter: url(#wc); }
 .painting .stroke { position: absolute; mix-blend-mode: multiply; transform: translate(-50%, -50%) rotate(var(--rot)); }
 .painting .stroke.bloom { animation: bloom 1s ease-out both; }
 @keyframes bloom { from { opacity: 0; scale: .5 } 60% { opacity: 1 } to { opacity: 1; scale: 1 } }
-.painting .art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 1; transition: opacity 1.6s ease-in-out; }
+.painting .art { position: absolute; inset: 0; border-radius: inherit; width: 100%; height: 100%; object-fit: cover; opacity: 1; transition: opacity 1.6s ease-in-out; }
 .painting .art.hidden { opacity: 0; }
-.painting .grain { position: absolute; inset: 0; width: 100%; height: 100%; mix-blend-mode: multiply; pointer-events: none; }
+.painting .grain { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; width: 100%; height: 100%; mix-blend-mode: multiply; pointer-events: none; }
 .painting .grain svg { display: block; width: 100%; height: 100%; }
 /* the grain baked once into a bitmap (ui/wash.js), the same noise in the same place */
 .grain-baked .painting .grain { background: var(--grain-image) 0 0 / var(--grain-size) repeat; }
