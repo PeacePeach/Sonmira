@@ -1,9 +1,9 @@
-// When a scroll gesture changes the detail page's layout, and the edit
-// drafts kept per painting. No browser (tests/e2e/detail.mjs drives the page).
+// When a scroll gesture changes the detail page's layout. No browser
+// (tests/e2e/detail.mjs drives the page).
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { scrollIntent, editDrafts, COLLAPSE_AT, EXPAND_AT } from '../src/app/screens/detail-scroll.js';
+import { scrollIntent, COLLAPSE_AT, EXPAND_AT } from '../src/app/screens/detail-scroll.js';
 
 test('scrolling toward the journal collapses the expanded artwork', () => {
   assert.equal(scrollIntent({ mode: 'expanded', travel: COLLAPSE_AT, startedAtTop: true, atTop: true }), 'collapse');
@@ -20,12 +20,4 @@ test('only a fresh pull at the journal’s top expands it again', () => {
 
 test('editing never changes the layout', () => {
   for (const travel of [-1000, 1000]) assert.equal(scrollIntent({ mode: 'edit', travel, startedAtTop: true, atTop: true }), null);
-});
-
-test('what is typed is kept per painting until Save clears it', () => {
-  editDrafts.set('a', { note: 'Rain', journal: 'Wet streets.' });
-  assert.deepEqual(editDrafts.get('a'), { note: 'Rain', journal: 'Wet streets.' });
-  assert.equal(editDrafts.get('b'), null);
-  editDrafts.clear('a');
-  assert.equal(editDrafts.get('a'), null);
 });

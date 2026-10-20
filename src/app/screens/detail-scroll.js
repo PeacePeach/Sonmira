@@ -19,13 +19,3 @@ export function scrollIntent({ mode, travel, startedAtTop, atTop }) {
   if (mode === 'compact') return startedAtTop && atTop && travel <= -EXPAND_AT ? 'expand' : null;
   return null; // editing stays compact
 }
-
-// The title and journal being written, kept per painting for as long as the
-// app is open, so leaving the edit (Escape, Back) never loses what was typed;
-// Save clears it.
-const drafts = new Map();
-export const editDrafts = {
-  get: (id) => drafts.get(id) ?? null,
-  set: (id, d) => drafts.set(id, d),
-  clear: (id) => drafts.delete(id),
-};

@@ -2,7 +2,7 @@
 // feature existed: a diary seeded by the mock engine through the app, plus a
 // record written straight to IndexedDB the way older builds stored an AI
 // painting (image bytes, no note field). Covers Edit and tapping the title,
-// keeping the old title while editing, Save / Escape, cleared titles, the
+// keeping the old title while editing, Save / Cancel / Escape, cleared titles, the
 // saving state, a failed save, and the title surviving a reload. (The detail
 // page's states are covered by detail.mjs.)
 //
@@ -78,18 +78,19 @@ assert.equal(await titleText(), 'Rain on the bus window', 'Save saves');
 assert.equal((await stored(a.id)).note, 'Rain on the bus window', 'written to IndexedDB');
 assert.ok((await stored(a.id)).painting, 'the painting itself is untouched');
 
-// ── Escape leaves the saved title as it was ──────────────────────────────
+// ── Cancel and Escape keep the saved title ───────────────────────────────
 await page.click('[data-screen=detail] .edit-btn');
+await page.fill('.detail-title .caption-input', 'something else');
+await page.click('[data-screen=detail] .cancel-btn');
+await viewing();
+assert.equal(await titleText(), 'Rain on the bus window', 'Cancel keeps the saved title');
+await page.click('[data-screen=detail] .title-btn');
+assert.equal(await page.inputValue('.detail-title .caption-input'), 'Rain on the bus window', 'the next edit starts from what is saved');
 await page.fill('.detail-title .caption-input', 'something else');
 await page.press('.detail-title .caption-input', 'Escape');
 await viewing();
 assert.equal(await titleText(), 'Rain on the bus window', 'Escape keeps the saved title');
 assert.equal((await stored(a.id)).note, 'Rain on the bus window');
-await page.click('[data-screen=detail] .title-btn');
-assert.equal(await page.inputValue('.detail-title .caption-input'), 'something else', 'what was typed comes back with the next edit');
-await page.fill('.detail-title .caption-input', 'Rain on the bus window');
-await save();
-await viewing();
 
 // ── the diary and a reload show the new title ────────────────────────────
 await page.click('[aria-label="Back to diary"]');
