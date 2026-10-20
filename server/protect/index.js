@@ -274,9 +274,9 @@ export function createSessionHandler(deps = {}) {
     const now = deps.now ?? Date.now, log = deps.log ?? defaultLog;
     res.setHeader?.('cache-control', 'no-store');
     const deny = (status, code, error) => res.status(status).json({ ok: false, code, error });
-    // Han's PR #27 preview: automatic admission, with the full spend guard.
+    // Preview-only, named-branch admission; signed seats and the full spend guard remain enforced.
     // The deployment environment and exact branch are server-owned.
-    const autoAccess = env.VERCEL_ENV === 'preview' && env.VERCEL_GIT_COMMIT_REF === 'claude/resolved-scene-palette-rules-i2ko7r';
+    const autoAccess = env.VERCEL_ENV === 'preview' && ['claude/resolved-scene-palette-rules-i2ko7r', 'test/integrated-ai-no-invite-20261019'].includes(env.VERCEL_GIT_COMMIT_REF);
     // Outside Production, GET also says whether paid work is set up: no
     // values, no paid call. The free check for a Preview.
     if (req.method === 'GET') return res.status(200).json({ ok: true, autoAccess, ...(env.VERCEL_ENV === 'production' ? {} : guardStatus(env, cfg, kv)) });
