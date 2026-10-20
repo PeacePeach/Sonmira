@@ -115,13 +115,24 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .painting { position: relative; width: 100%; border-radius: 4px; overflow: hidden; background: var(--painting-paper); box-shadow: var(--shadow-card); transform: translateZ(0); }
 .painting.r32 { aspect-ratio: 3 / 2; }
 .painting.r45 { aspect-ratio: 4 / 5; box-shadow: var(--shadow-card-lg); }
+.painting .wash-clip { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; -webkit-mask-image: linear-gradient(#000, #000); mask-image: linear-gradient(#000, #000); }
 .painting .wash { position: absolute; inset: -6%; filter: url(#wc); }
 .painting .stroke { position: absolute; mix-blend-mode: multiply; transform: translate(-50%, -50%) rotate(var(--rot)); }
 .painting .stroke.bloom { animation: bloom 1s ease-out both; }
 @keyframes bloom { from { opacity: 0; scale: .5 } 60% { opacity: 1 } to { opacity: 1; scale: 1 } }
-.painting .art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 1; transition: opacity 1.6s ease-in-out; }
+.painting .art { position: absolute; inset: 0; border-radius: inherit; width: 100%; height: 100%; object-fit: cover; opacity: 1; transition: opacity 1.6s ease-in-out; }
 .painting .art.hidden { opacity: 0; }
-.painting .grain { position: absolute; inset: 0; width: 100%; height: 100%; mix-blend-mode: multiply; pointer-events: none; }
+.painting .grain { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; width: 100%; height: 100%; mix-blend-mode: multiply; pointer-events: none; }
+.painting .grain svg { display: block; width: 100%; height: 100%; }
+/* the grain baked once into a bitmap (ui/wash.js), the same noise in the same place */
+.grain-baked .painting .grain { background: var(--grain-image) 0 0 / var(--grain-size) repeat; }
+.grain-baked .painting .grain svg { display: none; }
+/* the wash drawn on the GPU (ui/wash.js; 24 px beyond the wash for the displacement) */
+.painting .wash.gl { filter: none; }
+.painting .wash-gl { position: absolute; left: -24px; top: -24px; width: calc(100% + 48px); height: calc(100% + 48px); pointer-events: none; }
+/* the opaque artwork covers the wash: nothing to draw under it */
+.painting.covered .wash:not(.gl) { display: none; } /* the SVG fallback; a GPU wash just stops drawing */
+.painting.art-pending .wash { visibility: hidden; } /* a moment, while a saved artwork decodes */
 
 /* ── diary ───────────────────────────────────────────────────────────────── */
 .diary-scroll { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: calc(var(--top) + 56px) 0 140px; }
@@ -135,7 +146,7 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .entry-meta .cap { font-size: 15px; color: var(--body); text-wrap: pretty; }
 .entry-meta .cap.untitled { color: var(--muted); }
 .entry-meta .dur { font-size: 12px; color: var(--muted); flex-shrink: 0; }
-.empty { padding: 48px 28px; text-align: center; font-size: 18px; color: var(--muted); font-style: italic; }
+.empty { padding: 80px 28px 48px; text-align: center; font-size: 18px; color: var(--muted); font-style: italic; }
 .notice { margin: 18px 28px 0; font-size: 13px; color: var(--secondary); text-align: center; line-height: 1.5; }
 .fab-fade { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--bottom) + 90px); background: linear-gradient(to bottom, rgba(248,245,239,0), var(--paper) 55%); pointer-events: none; z-index: 2; }
 .fab { position: absolute; left: 50%; bottom: var(--bottom); transform: translateX(-50%); width: 64px; height: 64px; border-radius: 32px; background: var(--ink); box-shadow: var(--shadow-fab); display: flex; align-items: center; justify-content: center; z-index: 3; transition: transform .12s; }
@@ -162,7 +173,7 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .sing .date { font-size: 13px; color: var(--muted); letter-spacing: .04em; }
 .sing-canvas { padding: 28px 24px 0; flex-shrink: 0; }
 .rec-track { height: 2px; background: var(--hairline); margin-top: 18px; border-radius: 1px; overflow: hidden; }
-.rec-fill { height: 100%; width: 0; background: var(--ink); transition: width .1s linear; }
+.rec-fill { height: 100%; background: var(--ink); transform: scaleX(0); transform-origin: left; transition: transform .1s linear; } /* scaled, not resized: no layout per frame */
 .rec-times { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--muted); }
 .phase { flex: 1; display: flex; flex-direction: column; justify-content: space-between; min-height: 0; }
 .phase.centered { align-items: center; padding: 36px 32px 0; }
@@ -257,7 +268,7 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .play-btn[disabled] { border-color: var(--disabled); opacity: .6; cursor: default; }
 .play-btn [data-icon=play] { margin-left: 2px; } /* optical centre of the triangle */
 .player .track { height: 4px; background: var(--track); border-radius: 2px; overflow: hidden; } /* thicker than the hairlines, so it reads as a control */
-.player .fill { height: 100%; width: 0; background: var(--ink); }
+.player .fill { height: 100%; background: var(--ink); transform: scaleX(0); transform-origin: left; }
 /* the track and the time row, as one block, are centred on the button (the
    row's box hugs its digits: line-height 1) */
 .player .times { display: flex; justify-content: space-between; gap: 10px; margin-top: 11px; font-size: 12px; line-height: 1; color: var(--muted); }
@@ -405,8 +416,8 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .pw-done .pw-lede { max-width: 300px; margin-left: auto; margin-right: auto; }
 .pw-done .actions { padding-top: 26px; }
 .pw-done .pw-dev { margin-top: 16px; }
-/* watercolor illustrations (ui/illustration.js): multiply melts the paper into the surface */
-.illo { display: block; height: 136px; width: auto; max-width: 60%; margin: 6px auto 28px; mix-blend-mode: multiply; -webkit-mask-image: radial-gradient(closest-side, #000 86%, transparent 100%); mask-image: radial-gradient(closest-side, #000 86%, transparent 100%); animation: bloomIn 1.6s ease-out both; }
+/* watercolor illustrations (ui/illustration.js): transparent, the paper is cut out */
+.illo { display: block; height: 136px; width: auto; max-width: 60%; margin: 6px auto 28px; -webkit-mask-image: radial-gradient(closest-side, #000 86%, transparent 100%); mask-image: radial-gradient(closest-side, #000 86%, transparent 100%); animation: bloomIn 1.6s ease-out both; }
 .illo-s { height: 104px; margin-bottom: 10px; }
 /* the bird is wider than the drops; match their visual size */
 .illo[data-illo=mic-off] { height: 118px; margin-top: 15px; }

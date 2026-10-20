@@ -46,7 +46,8 @@ const url = (q = '') => BASE + '?' + [ENGINE, q].filter(Boolean).join('&');
 async function run() {
   const browser = await chromium.launch({
     executablePath: exe,
-    args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${wav}`, '--autoplay-policy=no-user-gesture-required'],
+    // no GPU here: the wash's SVG-filter fallback keeps frames at speed (ui/wash.js)
+    args: ['--disable-webgl', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${wav}`, '--autoplay-policy=no-user-gesture-required'],
   });
   const ctx = await browser.newContext({ viewport, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
   // The API is mocked below, so any install token will do (no invitation sheet).

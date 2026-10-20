@@ -136,7 +136,7 @@ const settled = (page) => page.waitForFunction((s) => !document.querySelector(s)
   await page.click('.entry');
   await page.waitForSelector('[data-screen=detail] .journal-text');
   assert.equal(await page.textContent('[data-screen=detail] .journal-text'), 'First line.\n\nA second paragraph.');
-  await page.waitForFunction(() => document.querySelector('[data-screen=detail]').getAnimations().every((a) => a.playState !== 'running')); // the push-in has finished
+  await page.waitForFunction(() => document.querySelector('[data-screen=detail]').getAnimations({ subtree: true }).every((a) => a.playState !== 'running')); // the card has grown into the page
   assert.deepEqual(await box(page, '[data-screen=detail] .painting'), big, 'the expanded artwork was exactly the detail artwork');
   await shot(page, 'j4-detail');
   await page.click('[data-screen=detail] .journal-btn');

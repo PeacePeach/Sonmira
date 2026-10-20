@@ -79,7 +79,7 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
 
   const later = (fn, ms) => timers.push(setTimeout(fn, ms));
   const show = (node) => { player?.destroy(); player = null; shareBtn.hidden = true; smallCanvas(); phaseHost.replaceChildren(node); };
-  const setProgress = (t) => { fill.style.width = `${Math.min(100, (t / maxSeconds) * 100)}%`; tLabel.textContent = clock(t); };
+  const setProgress = (t) => { fill.style.transform = `scaleX(${Math.min(1, t / maxSeconds).toFixed(4)})`; tLabel.textContent = clock(t); };
 
   // ── ready ────────────────────────────────────────────────────────────────
   function ready() {

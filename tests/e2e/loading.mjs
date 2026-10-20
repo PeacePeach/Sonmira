@@ -12,6 +12,8 @@ import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 
+// strokes on the card: DOM strokes (SVG-filter fallback) or the GPU wash's count (ui/wash.js)
+const strokeCount = (w) => w.querySelectorAll('.stroke').length || Number(w.dataset.strokes || 0);
 const BASE = process.env.BASE || 'http://localhost:5173/';
 const SHOTS = process.env.SHOTS;
 const wav = fileURLToPath(new URL('./hum.wav', import.meta.url));
@@ -19,7 +21,9 @@ const jpg = readFileSync(fileURLToPath(new URL('../../assets/art/impression-1.pn
 const shot = async (page, name) => SHOTS && page.screenshot({ path: `${SHOTS}/${name}.png` });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const browser = await chromium.launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${wav}`] });
+// No GPU here: WebGL would run on the CPU and slow every frame past these
+// timing checks, so the wash takes its SVG-filter fallback (ui/wash.js).
+const browser = await chromium.launch({ args: ['--disable-webgl', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${wav}`] });
 
 async function session({ reducedMotion = 'no-preference', dev = false } = {}) {
   const ctx = await browser.newContext({ viewport: { width: 393, height: 852 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, reducedMotion });
@@ -71,7 +75,7 @@ const watchLine = (page) => page.evaluate(() => {
 {
   const s = await session();
   assert.ok(s.scaleWhileSinging && Number(s.scaleWhileSinging) >= 1, `the wash follows the voice while singing (scale ${s.scaleWhileSinging})`);
-  const strokesBefore = await s.page.$$eval('.sing .painting .stroke', (x) => x.length);
+  const strokesBefore = await s.page.$eval('.sing .painting .wash', strokeCount);
   assert.ok(strokesBefore > 3, 'the recording wash is on the card');
   const t0 = Date.now();
   await s.page.click('text=Create painting');
@@ -79,7 +83,7 @@ const watchLine = (page) => page.evaluate(() => {
   assert.ok(Date.now() - t0 < 500, 'processing feedback appears at once');
   await watchLine(s.page);
   // Same card, same strokes, now developing; hairline present; no percentage anywhere.
-  assert.equal(await s.page.$$eval('.sing .painting .stroke', (x) => x.length), strokesBefore, 'no reset of the watercolour');
+  assert.equal(await s.page.$eval('.sing .painting .wash', strokeCount), strokesBefore, 'no reset of the watercolour');
   assert.ok(await s.page.$('.sing .painting.developing'));
   assert.ok(await s.page.$('[data-phase=generating] .develop-track .develop-run'));
   assert.doesNotMatch(await s.page.textContent('[data-phase=generating]'), /\d+\s*%/);

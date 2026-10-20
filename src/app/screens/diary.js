@@ -58,7 +58,7 @@ export function mountDiary(app) {
   function entryCard(e) {
     const p = createPainting({ ratio: '32', strokes: e.painting?.wash, artwork: e.painting?.artwork, lazy: true });
     paintings.push(p);
-    return h('button', { class: 'entry', 'data-entry': e.id, onClick: () => app.navigate('detail', { id: e.id }) },
+    return h('button', { class: 'entry', 'data-entry': e.id, onClick: () => app.navigate('detail', { id: e.id, from: p.el }) },
       p.el,
       h('div', { class: 'entry-meta' },
         h('span', { class: 'cap' + (e.note ? '' : ' untitled') }, e.note || 'Untitled'),
