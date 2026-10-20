@@ -41,6 +41,9 @@
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; height: 100%; }
+/* No whole-page rubber band (WKWebView, iOS Safari): screens scroll inside themselves,
+   so a drag on a screen with nothing to scroll (the expanded detail page) leaves it still. */
+html, body { overscroll-behavior: none; }
 body {
   background: #E8E5DF;
   font-family: var(--sans);

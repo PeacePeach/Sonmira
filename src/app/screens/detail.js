@@ -24,6 +24,7 @@ import { titleField, journalField, JOURNAL_PLACEHOLDER } from '../ui/text-field.
 import { scrollIntent } from './detail-scroll.js';
 
 const ENTER_MS = 620;
+export const ENTER_DECODE_MS = 150; // the longest the entrance waits for the artwork to decode
 
 export function mountDetail(app, { id }) {
   let e = app.entries.find((x) => x.id === id);
@@ -296,11 +297,21 @@ export function mountDetail(app, { id }) {
     ], { duration: ENTER_MS, easing: MORPH_EASING });
     grow.finished.catch(() => {}).finally(() => { artPad.style.height = ''; });
     const paper = getComputedStyle(el).backgroundColor;
-    el.animate([{ backgroundColor: 'transparent' }, { backgroundColor: paper }], { duration: 260, easing: 'ease-out' });
+    const all = [grow, el.animate([{ backgroundColor: 'transparent' }, { backgroundColor: paper }], { duration: 260, easing: 'ease-out' })];
     for (const n of [navrow, meta, scroll, dock]) {
-      n.animate([{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'none' }], { duration: 380, delay: 160, easing: 'cubic-bezier(.2, .7, .2, 1)', fill: 'backwards' });
+      all.push(n.animate([{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'none' }], { duration: 380, delay: 160, easing: 'cubic-bezier(.2, .7, .2, 1)', fill: 'backwards' }));
     }
-    lockedUntil = performance.now() + ENTER_MS;
+    lockedUntil = performance.now() + ENTER_MS + ENTER_DECODE_MS;
+    // The first time a painting opens, iOS has only decoded the artwork at the
+    // diary card's size: decoding it at full size while it grows drops frames
+    // and the page appears to jump. The entrance holds on its first frame (the
+    // card, in place) until the artwork is decoded, or ENTER_DECODE_MS at most.
+    const img = painting.el.querySelector('img.art');
+    if (img?.decode) {
+      all.forEach((x) => x.pause());
+      const go = () => { if (all[0].playState === 'paused') { all.forEach((x) => x.play()); lockedUntil = performance.now() + ENTER_MS; } };
+      Promise.race([img.decode(), new Promise((r) => setTimeout(r, ENTER_DECODE_MS))]).then(go, go);
+    }
     return true;
   }
 
