@@ -6,8 +6,8 @@
 // small iPhone), the video's preview matching the exported MP4, the painting
 // painting itself in the MP4 (blank paper, then painted, finished by half
 // time or after 5 s) and the live canvas shown while it is made, Photos access
-// denied, and an older app build without the plugin (falls back to the
-// system share sheet). No AI, nothing uploaded. SHOTS=dir saves screenshots.
+// denied, and an app build without the plugin (a clear error; Save never
+// opens the share sheet). No AI, nothing uploaded. SHOTS=dir saves screenshots.
 //
 //   npm i -D playwright   (once; CHROMIUM_PATH=/opt/pw-browsers/chromium in cloud sessions)
 //   node server.js &  then  node tests/e2e/save-photos.mjs
@@ -42,12 +42,14 @@ function fakeIOS({ plugin = true, deny = false } = {}) {
     },
     async discard({ id }) { delete open[id]; },
   };
-  const missing = new Proxy({}, { get: () => async () => { throw Object.assign(new Error('not implemented'), { code: 'UNIMPLEMENTED' }); } });
+  // as Capacitor's iOS native bridge does it: no registerPlugin; each plugin
+  // in the build is injected as Capacitor.Plugins.<jsName>
+  const plugins = plugin ? { SonmiraPhotos: photos } : {};
   window.Capacitor = {
     isNativePlatform: () => true,
     getPlatform: () => 'ios',
-    isPluginAvailable: (name) => plugin && name === 'SonmiraPhotos',
-    registerPlugin: (name) => (name === 'SonmiraPhotos' && plugin ? photos : missing),
+    Plugins: plugins,
+    isPluginAvailable: (name) => Object.prototype.hasOwnProperty.call(plugins, name),
   };
 }
 
@@ -236,16 +238,17 @@ async function run() {
     // TestFlight build 3 and older: no plugin, the old Save image (share sheet)
     {
       const { ctx, page } = await openSheet(browser, { plugin: false });
-      assert.equal((await page.textContent('[data-share] [data-save]')).trim(), 'Save image');
+      assert.equal((await page.textContent('[data-share] [data-save]')).trim(), 'Save to Photos', 'in the app Save always means Photos');
       await page.click('[data-share] [data-save]');
-      const shared = await inspect(page, '__shared');
-      assert.equal(shared?.type, 'image/jpeg', 'opens the system share sheet, whose first row is Save Image');
-      assert.ok(!(await message(page)).includes('Photos'));
-      await page.click('[data-share] .quiet-btn:has-text("Make a video")');
-      await page.waitForSelector('[data-share] .share-progress:not([hidden])');
-      assert.equal((await page.textContent('[data-share] [data-save]')).trim(), 'Save video', 'while the video is made, the button already speaks of the video');
+      await page.waitForFunction(() => /latest Sonmira from TestFlight/.test(document.querySelector('[data-share] .share-message')?.textContent));
+      await page.waitForTimeout(500);
+      assert.equal(await page.evaluate(() => window.__shared.length), 0, 'Save to Photos never opens the share sheet');
+      assert.ok(!(await message(page)).startsWith('Saved'), 'no false confirmation');
+      // Share still opens the share sheet
+      await page.click('[data-share] [data-primary]');
+      assert.equal((await inspect(page, '__shared'))?.type, 'image/jpeg', 'Share opens the system share sheet');
       await ctx.close();
-      console.log('ok - older app build keeps the share sheet');
+      console.log('ok - an app build without the plugin: a clear error, no share sheet');
     }
   } finally { await browser.close(); }
 }

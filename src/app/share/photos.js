@@ -1,9 +1,10 @@
 // Save to Photos in the iOS app (ios/App/App/SonmiraPhotosPlugin.swift).
 // The file goes to the native side in base64 chunks and is added to the
-// photo library unchanged. Builds without the plugin (TestFlight build 3 and
-// older) report it unavailable, and the share sheet keeps its old path.
+// photo library unchanged. Save to Photos never falls back to the share
+// sheet: an app build without the plugin (TestFlight build 3 and older)
+// reports 'unavailable' and the sheet says to update the app.
 
-import { isNativeIOS, nativePlugin } from '../native/platform.js';
+import { nativePlugin } from '../native/platform.js';
 
 const NAME = 'SonmiraPhotos';
 const CHUNK = 3 * 256 * 1024; // bytes per bridge call (a multiple of 3: whole base64 groups)
@@ -12,8 +13,6 @@ export class PhotosError extends Error {
   /** @param {'denied'|'unavailable'|'failed'} kind */
   constructor(kind, cause) { super(kind); this.kind = kind; this.cause = cause; }
 }
-
-export const photosAvailable = () => isNativeIOS() && !!globalThis.Capacitor?.isPluginAvailable?.(NAME);
 
 function base64(bytes) {
   let s = '';
@@ -39,7 +38,7 @@ export async function saveToPhotos(file, plugin = nativePlugin(NAME)) {
     }
   } catch (e) {
     if (id) plugin.discard({ id }).catch(() => {});
-    throw new PhotosError(e?.code === 'UNIMPLEMENTED' ? 'unavailable' : 'failed', e);
+    throw new PhotosError(e?.code === 'UNIMPLEMENTED' || !plugin.begin ? 'unavailable' : 'failed', e);
   }
   try { await plugin.finish({ id }); }
   catch (e) { throw new PhotosError(e?.code === 'denied' ? 'denied' : 'failed', e); }

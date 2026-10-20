@@ -24,13 +24,13 @@ export async function deliverFile(file) {
 }
 
 /**
- * Saves the file to the device (a download; in Safari, Downloads or Files).
- * In the iOS app, where the web view can't download, it opens the share
- * sheet instead, whose first row is Save Image.
- * @returns {Promise<'saved'|'shared'|'cancelled'>}
+ * Saves the file as a browser download (in Safari, Downloads or Files).
+ * Browsers only: the iOS app saves to Photos (photos.js) and never comes
+ * here, so Save there can't turn into the share sheet.
+ * @returns {Promise<'saved'>}
  */
 export async function saveFile(file) {
-  if (isNativeIOS() && canShareFiles(file)) return deliverFile(file);
+  if (isNativeIOS()) throw new Error('saveFile is for browsers; the iOS app saves to Photos');
   const url = URL.createObjectURL(file);
   const a = document.createElement('a');
   a.href = url; a.download = file.name; a.rel = 'noopener';

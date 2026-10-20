@@ -5,7 +5,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { photosAvailable, saveToPhotos, PhotosError } from '../src/app/share/photos.js';
+import { saveToPhotos, PhotosError } from '../src/app/share/photos.js';
+import { saveFile } from '../src/app/share/deliver.js';
 
 function fakePlugin({ finishError = null, appendError = null } = {}) {
   const p = {
@@ -75,17 +76,26 @@ test('an app build without the plugin is reported as unavailable', async () => {
     (e) => e instanceof PhotosError && e.kind === 'unavailable');
 });
 
-test('Save to Photos is offered only in an iOS app that has the plugin', () => {
+test('in the iOS app, Save to Photos reaches the plugin the way the native bridge exposes it', async () => {
+  // Capacitor's iOS bridge has no registerPlugin; each native plugin's methods
+  // are injected as Capacitor.Plugins.<jsName> (JSExport.exportJS).
   const was = globalThis.Capacitor;
+  const p = fakePlugin();
+  let shared = 0;
+  globalThis.Capacitor = { isNativePlatform: () => true, getPlatform: () => 'ios', Plugins: { SonmiraPhotos: p } };
+  const nav = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { canShare: () => true, share: async () => { shared++; } } });
   try {
-    delete globalThis.Capacitor;
-    assert.equal(photosAvailable(), false, 'a browser');
-    const ios = (has) => ({ isNativePlatform: () => true, getPlatform: () => 'ios', isPluginAvailable: (n) => has && n === 'SonmiraPhotos' });
-    globalThis.Capacitor = ios(false);
-    assert.equal(photosAvailable(), false, 'TestFlight build 3 and older');
-    globalThis.Capacitor = ios(true);
-    assert.equal(photosAvailable(), true);
-  } finally { globalThis.Capacitor = was; }
+    await saveToPhotos(new File([bytes(1000)], 'a.jpg', { type: 'image/jpeg' }));
+    await saveToPhotos(new File([bytes(1000)], 'a.mp4', { type: 'video/mp4' }));
+    assert.deepEqual(p.files.map((f) => f.kind), ['image', 'video']);
+    assert.equal(shared, 0, 'no share sheet');
+    await assert.rejects(saveFile(new File([bytes(10)], 'a.jpg', { type: 'image/jpeg' })), 'a download never stands in for Photos in the app');
+    assert.equal(shared, 0, 'and never opens the share sheet');
+  } finally {
+    globalThis.Capacitor = was;
+    if (nav) Object.defineProperty(globalThis, 'navigator', nav);
+  }
 });
 
 test('the iOS app registers the plugin and explains the Photos permission', () => {
