@@ -24,6 +24,7 @@ const GLYPHS = {
   back: ['chevron-left', '<path d="m15 18-6-6 6-6"/>'],
   forward: ['chevron-right', '<path d="m9 18 6-6-6-6"/>'],
   close: ['x', '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'],
+  check: ['check', '<path d="M20 6 9 17l-5-5"/>'],
   share: ['share', '<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/>'],
   calendar: ['calendar', '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>'],
   diary: ['gallery-vertical-end', '<path d="M7 2h10"/><path d="M5 6h14"/><rect width="18" height="12" x="3" y="10" rx="2"/>'],

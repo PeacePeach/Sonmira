@@ -20,7 +20,13 @@ import assert from 'node:assert/strict';
 const BASE = process.env.BASE || 'http://localhost:5173/';
 const exe = process.env.CHROMIUM_PATH;
 const wav = readFileSync(fileURLToPath(new URL('./hum.wav', import.meta.url)));
-const SAVED = 'Saved to Photos. Open WeChat → Moments to post.';
+const SAVED = 'Saved to Photos';
+// The success toast: a check and "Saved to Photos", gone after ~2 s.
+async function savedToast(page, timeout = 5000) {
+  await page.waitForFunction((t) => { const el = document.querySelector('[data-share] .share-toast'); return el && !el.hidden && el.textContent === t && el.querySelector('svg'); }, SAVED, { timeout });
+  assert.equal(await page.textContent('[data-share] .share-message'), '', 'no other message under the preview');
+  await page.waitForSelector('[data-share] .share-toast', { state: 'hidden', timeout: 3500 });
+}
 const SHOTS = process.env.SHOTS;
 const shot = (page, name) => SHOTS && page.screenshot({ path: `${SHOTS}/${name}.png` });
 const SMALL = { width: 375, height: 667 }; // iPhone SE
@@ -166,7 +172,7 @@ async function run() {
       const imageButtons = await mainButtons(page, LARGE);
       await shot(page, 'sheet-image');
       await page.click('[data-share] [data-save]');
-      await page.waitForFunction((t) => document.querySelector('[data-share] .share-message')?.textContent === t, SAVED);
+      await savedToast(page);
       const img = await inspect(page, '__photos');
       assert.equal(img.type, 'image/jpeg');
       assert.deepEqual([img.width, img.height], [1080, 1440], 'the full-size feed card');
@@ -188,7 +194,7 @@ async function run() {
       assert.ok(await page.isVisible('[data-share] .share-preview-box video[poster^="blob:"]'), 'the finished video plays in the preview');
       await shot(page, 'sheet-video');
       await page.click('[data-share] [data-save]');
-      await page.waitForFunction((t) => document.querySelector('[data-share] .share-message')?.textContent === t, SAVED, { timeout: 15000 });
+      await savedToast(page, 15000);
       const vid = await inspect(page, '__photos');
       assert.equal(vid.type, 'video/mp4');
       assert.deepEqual([vid.width, vid.height], [1080, 1920]);
