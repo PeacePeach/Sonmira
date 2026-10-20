@@ -102,6 +102,7 @@ export function mountDetail(app, { id }) {
     if (!resize) { setMode(next); apply(); return; }
     lockedUntil = performance.now() + MORPH_MS;
     if (next === 'expanded') scroll.scrollTop = 0;
+    restingSince = performance.now();
     morph(painting.el, () => { setMode(next); apply(); }, { follow: [meta, scroll] });
   }
   const collapse = () => { if (mode === 'expanded') go('compact'); };
@@ -123,6 +124,13 @@ export function mountDetail(app, { id }) {
   // state the journal scrolls (also when the gesture starts on the artwork or
   // title), and a fresh pull past its top expands the artwork again.
   const atTop = () => scroll.scrollTop <= 0;
+  // Since when the journal has rested at its top. A gesture counts as
+  // starting there only after a moment's rest, so the one that scrolled it
+  // up (even a single wheel notch, scrolled before its event arrives) can't
+  // also expand the artwork.
+  let restingSince = performance.now();
+  scroll.addEventListener('scroll', () => { restingSince = atTop() ? (restingSince ?? performance.now()) : null; }, { passive: true });
+  const rested = () => atTop() && restingSince != null && performance.now() - restingSince > 200;
   const decide = (travel, startedAtTop) => {
     if (performance.now() < lockedUntil) return false;
     const intent = scrollIntent({ mode, travel, startedAtTop, atTop: atTop() });
@@ -135,7 +143,7 @@ export function mountDetail(app, { id }) {
   function onWheel(ev) {
     if (ev.ctrlKey) return; // pinch zoom
     const now = performance.now();
-    if (now - wheel.last > 220) wheel = { last: now, travel: 0, startedAtTop: atTop() }; // a new gesture
+    if (now - wheel.last > 220) wheel = { last: now, travel: 0, startedAtTop: rested() }; // a new gesture
     wheel.last = now;
     const dy = ev.deltaY * (ev.deltaMode === 1 ? 16 : ev.deltaMode === 2 ? scroll.clientHeight : 1);
     if (mode !== 'expanded' && !scroll.contains(ev.target)) scroll.scrollTop += dy;
@@ -146,7 +154,7 @@ export function mountDetail(app, { id }) {
   let touch = null;
   function onTouchStart(ev) {
     if (ev.touches.length !== 1) { touch = null; return; }
-    touch = { y: ev.touches[0].clientY, startedAtTop: atTop(), inScroll: scroll.contains(ev.target), from: scroll.scrollTop, done: false };
+    touch = { y: ev.touches[0].clientY, startedAtTop: rested(), inScroll: scroll.contains(ev.target), from: scroll.scrollTop, done: false };
   }
   function onTouchMove(ev) {
     if (!touch || ev.touches.length !== 1) return;
