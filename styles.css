@@ -267,8 +267,9 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 /* Three states (screens/detail.js): expanded (the artwork large, as made),
    compact (the artwork as a landscape card; artwork, date and title stay put
    and only the journal scrolls) and editing (compact, with the creation
-   flow's title and journal fields). The player is docked at the bottom over
-   the diary's fade, and the journal always ends clear of it. */
+   flow's title and journal fields). The player is docked at the bottom on a
+   solid paper ground (no text shows through it), and the journal always
+   ends clear of it. */
 .detail { display: flex; flex-direction: column; padding-top: var(--top); overflow: hidden; --dock: calc(var(--bottom) + 92px); }
 .detail .art-pad { padding: 22px var(--edge) 0; flex-shrink: 0; }
 /* One column in every state: the large artwork's edges (18 pt) are the
@@ -286,11 +287,8 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 /* the landscape card: 3:2, the portrait's width at the same margins; the
    date, title and journal keep their place and margins too */
 .detail.compact .painting[role=button] { cursor: pointer; }
-.detail-dock { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding: 30px var(--edge) var(--bottom); isolation: isolate; }
+.detail-dock { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding: 30px var(--edge) var(--bottom); background: var(--paper); }
 .detail-dock .player > .play-btn { margin-left: 0; }
-.detail-dock::before, .detail-dock::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
-.detail-dock::before { -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); -webkit-mask-image: linear-gradient(to bottom, transparent, #000 45%); mask-image: linear-gradient(to bottom, transparent, #000 45%); }
-.detail-dock::after { background: linear-gradient(to bottom, rgba(248,245,239,0), rgba(248,245,239,.88) 40%, var(--paper) 62%); }
 /* the keyboard is up (editing on a phone): the page fits above it and the
    player steps aside until it closes */
 .detail.kb .detail-dock { visibility: hidden; }
