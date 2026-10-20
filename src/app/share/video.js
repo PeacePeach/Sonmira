@@ -1,9 +1,11 @@
-// Share as video: 1080×1920 (9:16) MP4 with the original recording, the
-// painting, the note and a quiet audio-responsive waveform. Everything runs
+// Share as video: 1080×1920 (9:16) MP4 with the original recording and the
+// Story card's composition (card.js drawVideoCard: colophon, title and date
+// above the painting) plus a quiet audio-responsive waveform under it. Everything runs
 // on the device (canvas + Web Audio + MediaRecorder); nothing is uploaded.
 // Encoding is real-time, so a 12 s recording takes about 12 s to export.
 
-import { COLORS, drawComposition, ensureFonts, loadArtwork, LAYOUTS } from './compose.js';
+import { COLORS, ensureFonts, loadArtwork } from './compose.js';
+import { drawVideoCard, VIDEO } from './card.js';
 
 export const MAX_VIDEO_SECONDS = 30;
 const FPS = 30;
@@ -34,6 +36,46 @@ function envelope(buffer, seconds, n) {
   return out;
 }
 
+// The still layer and the waveform, drawn the same for the export and its preview.
+async function composition(item) {
+  const [img] = await Promise.all([loadArtwork(item.painting?.artwork), ensureFonts()]);
+  const base = document.createElement('canvas');
+  base.width = VIDEO.W; base.height = VIDEO.H;
+  const { wave } = drawVideoCard(base.getContext('2d'), { painting: item.painting, img, note: item.note, date: item.date, durationSec: Math.min(MAX_VIDEO_SECONDS, item.durationSec) });
+  // Bars already heard are ink; the bar being heard breathes with the live level.
+  const draw = (ctx, env, at, level) => {
+    ctx.drawImage(base, 0, 0);
+    const gap = wave.w / BARS, cy = wave.y + wave.h / 2;
+    for (let i = 0; i < BARS; i++) {
+      const current = i === Math.floor(at);
+      const bh = Math.max(4, env[i] * wave.h * (current ? 0.75 + level * 0.5 : 1));
+      ctx.fillStyle = i < at ? 'rgba(31,29,26,0.62)' : COLORS.track;
+      ctx.beginPath();
+      ctx.roundRect(wave.x + i * gap + gap * 0.3, cy - bh / 2, gap * 0.4, bh, gap * 0.2);
+      ctx.fill();
+    }
+  };
+  return { draw };
+}
+
+/** The video's first frame as a JPEG: the share sheet's preview of the video. */
+export async function renderVideoPoster(item) {
+  const [{ draw }, buffer] = await Promise.all([composition(item), decodeQuietly(item.audio)]);
+  const canvas = document.createElement('canvas');
+  canvas.width = VIDEO.W; canvas.height = VIDEO.H;
+  const env = buffer ? envelope(buffer, Math.min(MAX_VIDEO_SECONDS, buffer.duration), BARS) : new Float32Array(BARS).fill(0.4);
+  draw(canvas.getContext('2d'), env, 0, 0);
+  return new Promise((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej(new Error('poster-encode-failed'))), 'image/jpeg', 0.9));
+}
+
+// The recording, decoded without a tap (for the waveform's shape), or null.
+async function decodeQuietly(audio) {
+  try {
+    const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    return audio && OAC ? await new OAC(1, 1, 44100).decodeAudioData(await audio.arrayBuffer()) : null;
+  } catch { return null; }
+}
+
 /** Must be called from a tap so iOS lets audio run. */
 export function createExportAudioContext() {
   const AC = window.AudioContext || window.webkitAudioContext;
@@ -56,45 +98,27 @@ export async function renderShareVideo(item, { audioContext: ac, onProgress, sig
   catch (e) { ac.close().catch(() => {}); throw new VideoExportError('decode', e); }
   const total = Math.min(MAX_VIDEO_SECONDS, buffer.duration);
 
-  const [img] = await Promise.all([loadArtwork(item.painting?.artwork), ensureFonts()]);
-  const L = LAYOUTS.story, s = 1;
-
   // Static layer drawn once; each frame adds only the waveform.
-  const base = document.createElement('canvas');
-  base.width = L.W; base.height = L.H;
-  drawComposition(base.getContext('2d'), { layout: 'story', scale: s, painting: item.painting, img, note: item.note, date: item.date });
-
+  const { draw } = await composition(item);
   const canvas = document.createElement('canvas');
-  canvas.width = L.W; canvas.height = L.H;
+  canvas.width = VIDEO.W; canvas.height = VIDEO.H;
   const ctx = canvas.getContext('2d');
 
   const src = ac.createBufferSource();
   src.buffer = buffer;
   const analyser = ac.createAnalyser();
   analyser.fftSize = 512;
-    const dest = ac.createMediaStreamDestination();
+  const dest = ac.createMediaStreamDestination();
   src.connect(analyser); analyser.connect(dest);
   const live = new Float32Array(analyser.fftSize);
 
-  // Waveform = the recording's loudness envelope, one bar per slice. Bars
-  // already heard are ink; the bar being heard breathes with the live level.
+  // Waveform = the recording's loudness envelope, one bar per slice.
   const env = envelope(buffer, total, BARS);
 
   function frame(t) {
-    ctx.drawImage(base, 0, 0);
     analyser.getFloatTimeDomainData(live);
     let sum = 0; for (let i = 0; i < live.length; i++) sum += live[i] * live[i];
-    const level = Math.min(1, Math.sqrt(sum / live.length) * 5);
-    const { y, h } = L.wave, x0 = L.art.x, w = L.art.w, gap = w / BARS;
-    const at = (t / total) * BARS;
-    for (let i = 0; i < BARS; i++) {
-      const current = i === Math.floor(at);
-      const bh = Math.max(4, env[i] * h * (current ? 0.75 + level * 0.5 : 1));
-      ctx.fillStyle = i < at ? 'rgba(31,29,26,0.62)' : COLORS.track;
-      ctx.beginPath();
-      ctx.roundRect(x0 + i * gap + gap * 0.3, y - bh / 2, gap * 0.4, bh, gap * 0.2);
-      ctx.fill();
-    }
+    draw(ctx, env, (t / total) * BARS, Math.min(1, Math.sqrt(sum / live.length) * 5));
   }
   frame(0);
 

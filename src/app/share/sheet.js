@@ -8,11 +8,9 @@ import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { clock } from '../format.js';
 import { renderShareCard, FORMATS, DEFAULT_FORMAT } from './card.js';
-import { createExportAudioContext, renderShareVideo, videoMimeType, VideoExportError } from './video.js';
+import { createExportAudioContext, renderShareVideo, renderVideoPoster, videoMimeType, VideoExportError } from './video.js';
 import { canShareFiles, deliverFile, saveFile, fileName } from './deliver.js';
 import { photosAvailable, saveToPhotos } from './photos.js';
-
-const PREVIEW_H = 320; // css px, the same for every format (.share-preview.card)
 
 const VIDEO_ERRORS = {
   decode: 'This recording can’t be turned into a video on this device. You can still share the image.',
@@ -42,11 +40,14 @@ export function openShareSheet(app, item) {
   const photos = photosAvailable(); // the iOS app, from the build that has the plugin
 
   let state = 'preparing'; // preparing | image | exporting | video
-  let imageFile = null, videoFile = null, previewUrl = null, abort = null, closed = false;
+  let imageFile = null, videoFile = null, previewUrl = null, posterUrl = null, posterAsked = false, videoUrl = null, abort = null, closed = false;
   let format = DEFAULT_FORMAT;
   const made = {}; // format -> Promise<{ file, url }>, each drawn once
 
   const preview = h('img', { class: 'share-preview card', alt: 'Share card preview' });
+  // The finished video plays in place; until then its first frame (the same drawing) stands in.
+  const videoEl = h('video', { class: 'share-preview card', playsinline: true, controls: true, preload: 'metadata', 'aria-label': 'Video preview' });
+  videoEl.style.aspectRatio = '9 / 16';
   const formatBtns = Object.entries(FORMATS).map(([key, f]) => h('button', {
     class: 'share-format', role: 'radio', 'data-format': key, onClick: () => choose(key),
   }, h('span', {}, f.label), h('span', { class: 'share-format-hint' }, f.hint)));
@@ -59,16 +60,16 @@ export function openShareSheet(app, item) {
     h('div', { class: 'caps' }, 'Preparing video'),
     h('div', { class: 'rec-track' }, fill),
     h('div', { class: 'rec-times tabular' }, progressLabel, h('span', {}, clock(Math.min(30, item.durationSec)))));
-  const primary = h('button', { class: 'pill', disabled: true, onClick: onPrimary }, 'Preparing…');
-  // Save sits under Share wherever Share opens the system sheet; elsewhere the primary already saves.
-  const saveBtn = h('button', { class: 'quiet-btn', 'data-save': '', hidden: true, onClick: () => save(state === 'video' ? videoFile : imageFile) }, photos ? 'Save to Photos' : 'Save image');
+  const primary = h('button', { class: 'pill', 'data-primary': '', disabled: true, onClick: onPrimary }, 'Preparing…');
+  // Save sits beside Share, for the image and the video, wherever Share opens the system sheet; elsewhere the primary already saves.
+  const saveBtn = h('button', { class: 'pill light', 'data-save': '', hidden: true, onClick: () => save(state === 'video' ? videoFile : imageFile) }, photos ? 'Save to Photos' : 'Save image');
   let saving = false;
   const secondary = h('button', { class: 'quiet-btn', onClick: onSecondary, hidden: !canVideo }, `Make a video · ${clock(Math.min(30, item.durationSec))}`);
 
   const panel = h('div', { class: 'share-panel', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Share' },
     h('div', { class: 'share-head' }, h('span'), h('button', { class: 'icon-btn', 'aria-label': 'Close', onClick: close }, icon('close'))), // no title: the formats lead
     formats, previewBox, progress, message,
-    h('div', { class: 'actions' }, primary, saveBtn, secondary));
+    h('div', { class: 'actions' }, h('div', { class: 'share-main' }, primary, saveBtn), secondary));
   const scrim = h('div', { class: 'share-scrim', onClick: close });
   const el = h('div', { class: 'share-layer', 'data-share': '' }, scrim, panel);
   app.root.append(el);
@@ -80,8 +81,9 @@ export function openShareSheet(app, item) {
       b.disabled = state === 'exporting' || state === 'video';
     }
     formats.hidden = state === 'exporting' || state === 'video';
-    saveBtn.hidden = !(sharesNatively && !showInPlace && (state === 'image' || (photos && state === 'video')));
-    saveBtn.disabled = saving;
+    saveBtn.hidden = !(sharesNatively && !showInPlace);
+    saveBtn.disabled = saving || !(state === 'image' || state === 'video');
+    saveBtn.textContent = saving ? 'Saving…' : photos ? 'Save to Photos' : state === 'video' ? 'Save video' : 'Save image';
     progress.hidden = state !== 'exporting';
     primary.disabled = state === 'preparing' || state === 'exporting';
     primary.textContent = state === 'preparing' ? 'Preparing…'
@@ -90,6 +92,18 @@ export function openShareSheet(app, item) {
     secondary.hidden = !canVideo && state !== 'video';
     secondary.textContent = state === 'exporting' ? 'Cancel'
       : state === 'video' ? `${verb} image instead` : `Make a video · ${clock(Math.min(30, item.durationSec))}`;
+    showPreview();
+  }
+
+  function showPreview() {
+    if (showInPlace && previewBox.firstChild !== preview && previewBox.firstChild !== videoEl) return; // the file shown in place
+    const vid = state === 'exporting' || state === 'video';
+    if (state === 'video' && videoUrl) {
+      if (previewBox.firstChild !== videoEl) previewBox.replaceChildren(videoEl);
+    } else if (previewBox.firstChild !== preview) { videoEl.pause(); previewBox.replaceChildren(preview); }
+    const src = vid ? posterUrl : previewUrl;
+    if (src && preview.getAttribute('src') !== src) preview.src = src;
+    preview.style.aspectRatio = vid ? '9 / 16' : `${FORMATS[format].W} / ${FORMATS[format].H}`;
   }
   const say = (t) => { message.textContent = t || ''; };
 
@@ -104,12 +118,11 @@ export function openShareSheet(app, item) {
   function choose(key) {
     if (state === 'exporting' || state === 'video' || !FORMATS[key]) return;
     format = key;
-    preview.style.width = `${Math.round((PREVIEW_H * FORMATS[key].W) / FORMATS[key].H)}px`;
     if (state !== 'retry-image') state = 'preparing';
     say(''); render();
     make(key).then(({ file, url }) => {
       if (closed || format !== key) return;
-      imageFile = file; previewUrl = url; preview.src = url;
+      imageFile = file; previewUrl = url;
       state = 'image'; render();
     }).catch((e) => {
       console.warn('[sonmira] share image failed', e);
@@ -145,18 +158,20 @@ export function openShareSheet(app, item) {
   async function save(file) {
     if (!file || saving) return;
     say('');
+    const what = file.type.startsWith('video') ? 'video' : 'image';
     if (!photos) {
-      try { await saveFile(file); say('Image saved.'); } catch (e) { console.warn('[sonmira] save failed', e); say('The image couldn’t be saved. Please try again.'); }
+      try { if (await saveFile(file) === 'saved') say(`${what === 'video' ? 'Video' : 'Image'} saved.`); }
+      catch (e) { console.warn('[sonmira] save failed', e); say(`The ${what} couldn’t be saved. Please try again.`); }
       return;
     }
-    saving = true; saveBtn.textContent = 'Saving…'; render();
+    saving = true; render();
     try { await saveToPhotos(file); say(SAVED_TO_PHOTOS); }
     catch (e) {
       console.warn('[sonmira] save to Photos failed', e);
       if (e?.kind === 'unavailable') await send(file); // an older app build: its share sheet has Save Image / Save Video
       else say(PHOTOS_ERRORS[e?.kind] || PHOTOS_ERRORS.failed);
     } finally {
-      saving = false; saveBtn.textContent = 'Save to Photos';
+      saving = false;
       if (!closed) render();
     }
   }
@@ -179,6 +194,11 @@ export function openShareSheet(app, item) {
     if (videoFile) { state = 'video'; render(); return; }
     const audioContext = createExportAudioContext(); // inside the tap, for iOS
     abort = new AbortController();
+    if (!posterAsked) {
+      posterAsked = true;
+      renderVideoPoster(item).then((b) => { posterUrl = URL.createObjectURL(b); videoEl.poster = posterUrl; if (!closed) showPreview(); },
+        (e) => { posterAsked = false; console.warn('[sonmira] video poster failed', e); });
+    }
     state = 'exporting'; fill.style.width = '0%'; progressLabel.textContent = clock(0); render();
     renderShareVideo(item, {
       audioContext, signal: abort.signal,
@@ -186,6 +206,7 @@ export function openShareSheet(app, item) {
     }).then((blob) => {
       if (closed) return;
       videoFile = new File([blob], fileName(item.date, 'mp4'), { type: blob.type.split(';')[0] || 'video/mp4' });
+      videoUrl = URL.createObjectURL(videoFile); videoEl.src = videoUrl;
       state = 'video'; render();
     }).catch((e) => {
       if (closed) return;
@@ -201,8 +222,9 @@ export function openShareSheet(app, item) {
     if (closed) return;
     closed = true;
     abort?.abort();
+    videoEl.pause();
     el.classList.add('leaving');
-    setTimeout(() => { el.remove(); for (const p of Object.values(made)) p.then(({ url }) => URL.revokeObjectURL(url), () => {}); }, 220);
+    setTimeout(() => { el.remove(); for (const u of [posterUrl, videoUrl]) u && URL.revokeObjectURL(u); for (const p of Object.values(made)) p.then(({ url }) => URL.revokeObjectURL(url), () => {}); }, 220);
   }
 
   render();

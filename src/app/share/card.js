@@ -91,11 +91,17 @@ export function drawCard(ctx, { format, painting, img, note, date, durationSec }
   const meta = durationSec ? `${longDate(date)}  ·  ${clock(durationSec)}` : longDate(date);
   tracked(ctx, meta, cx, y + metaSize * 0.8, 1.6 * k);
 
-  // Colophon: one sentence, then the mark and the wordmark.
+  drawColophon(ctx, cx, colophonTop, k);
+}
+
+// Colophon: one sentence, then the mark and the wordmark. Returns its height.
+function drawColophon(ctx, cx, top, k) {
+  const storySize = Math.round(31 * k), markH = Math.round(28 * k), gapColophon = Math.round(22 * k);
+  ctx.textAlign = 'center';
   ctx.fillStyle = C.secondary;
   ctx.font = `italic 500 ${storySize}px ${C.serif}`;
-  ctx.fillText(STORY_LINE, cx, colophonTop + storySize * 0.8);
-  const rowY = colophonTop + storySize + gapColophon;
+  ctx.fillText(STORY_LINE, cx, top + storySize * 0.8);
+  const rowY = top + storySize + gapColophon;
   ctx.font = `italic 600 ${Math.round(markH * 1.12)}px ${C.serif}`;
   const word = 'Sonmira', wordW = ctx.measureText(word).width, markW = markH * (120 / 82), gap = Math.round(12 * k);
   const startX = cx - (markW + gap + wordW) / 2;
@@ -104,6 +110,57 @@ export function drawCard(ctx, { format, painting, img, note, date, durationSec }
   ctx.textAlign = 'left';
   ctx.fillText(word, startX + markW + gap, rowY + markH * 0.86);
   ctx.textAlign = 'center';
+  return storySize + gapColophon + markH;
+}
+
+// The video (1080×1920, 9:16): the Story card's type and colophon, with every
+// word above the artwork, so a player's controls and playhead (and a Story's
+// reply bar) at the bottom cover nothing but paper. Everything stays inside
+// VIDEO_SAFE, clear of the top and bottom bars of Moments, Stories and Photos.
+export const VIDEO = { W: 1080, H: 1920 };
+export const VIDEO_SAFE = { top: 250, bottom: 380, side: 100 };
+const WAVE_GAP = 44, WAVE_H = 72;
+
+/**
+ * Draws the video's still composition (no waveform) and returns where the
+ * waveform goes. The share sheet's video preview is this same drawing.
+ * @returns {{art:{x:number,y:number,w:number,h:number}, wave:{x:number,y:number,w:number,h:number}, text:{top:number,bottom:number}}}
+ */
+export function drawVideoCard(ctx, { painting, img, note, date, durationSec }) {
+  const { W, H } = VIDEO, S = VIDEO_SAFE, k = FRAME.story.k, cx = W / 2;
+  ctx.fillStyle = C.paper;
+  ctx.fillRect(0, 0, W, H);
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'center';
+
+  const storySize = Math.round(31 * k), markH = Math.round(28 * k), colophonH = storySize + Math.round(22 * k) + markH;
+  const titleSize = Math.round(54 * k), titleLead = Math.round(66 * k);
+  ctx.font = `500 ${titleSize}px ${C.serif}`;
+  const title = note ? wrap(ctx, note, W - 2 * S.side, 2) : [];
+  const gapTitle = Math.round(56 * k), metaSize = Math.round(22 * k), gapMeta = Math.round(title.length ? 26 * k : 0);
+  const gapArt = Math.round(48 * k);
+  const textH = colophonH + gapTitle + title.length * titleLead + gapMeta + metaSize + gapArt;
+
+  const aspect = img ? img.naturalWidth / img.naturalHeight : 4 / 5;
+  let artH = H - S.top - S.bottom - textH - WAVE_GAP - WAVE_H, artW = artH * aspect;
+  if (artW > FRAME.story.artMaxW) { artW = FRAME.story.artMaxW; artH = artW / aspect; }
+  const groupH = textH + artH + WAVE_GAP + WAVE_H;
+  const top = S.top + Math.max(0, (H - S.top - S.bottom - groupH) / 2);
+
+  let y = top + drawColophon(ctx, cx, top, k) + gapTitle;
+  ctx.fillStyle = C.ink;
+  ctx.font = `500 ${titleSize}px ${C.serif}`;
+  title.forEach((ln, i) => ctx.fillText(ln, cx, y + titleSize * 0.8 + i * titleLead));
+  y += title.length * titleLead + gapMeta;
+  ctx.fillStyle = C.muted;
+  ctx.font = `450 ${metaSize}px ${C.sans}`;
+  const meta = durationSec ? `${longDate(date)}  ·  ${clock(durationSec)}` : longDate(date);
+  tracked(ctx, meta, cx, y + metaSize * 0.8, 1.6 * k);
+  const textBottom = y + metaSize;
+
+  const art = { x: cx - artW / 2, y: textBottom + gapArt, w: artW, h: artH };
+  drawPainting(ctx, { painting, img, ...art, scale: 1 });
+  return { art, wave: { x: art.x, y: art.y + art.h + WAVE_GAP, w: art.w, h: WAVE_H }, text: { top, bottom: textBottom } };
 }
 
 /** @param {{painting:any, note?:string, date:string, durationSec?:number}} item @returns {Promise<Blob>} */
