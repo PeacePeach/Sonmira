@@ -279,6 +279,9 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .detail > .navrow { padding: 0 calc(var(--edge) - 12px) 0 calc(var(--edge) - 10px); } /* icon and label insets */
 .detail .cancel-btn { padding-left: 10px; }
 .detail > .navrow > .icon-btn:first-child { margin-left: -9px; } /* the chevron is drawn 9 pt into its box: its point lines up */
+/* no pressed circle on Back: it would reach past the page's left edge; it dims instead */
+.detail > .navrow > .icon-btn:first-child:hover, .detail > .navrow > .icon-btn:first-child:active { background: none; }
+.detail > .navrow > .icon-btn:first-child:active { opacity: .5; }
 .detail-meta { padding: 30px var(--edge) 0; flex-shrink: 0; }
 /* the journal's own scroller, starting below the title: nothing in it
    passes under the title */
