@@ -53,6 +53,7 @@ Icons are outline only. No filled glyphs, no accent colors, and no motion of the
 | `dailyRitual` | sunrise | Settings → Daily Ritual |
 | `morePaintings` | circle-plus | Settings → More paintings |
 | `restore` | rotate-ccw | Settings → Restore purchases |
+| `nextCredit`, `aboutCredits` | clock, info | Available credits sheet |
 | `rate` | star | Settings (Coming soon) |
 | `privacy` | shield | Settings → Privacy policy |
 | `terms` | file-text | Settings → Terms |

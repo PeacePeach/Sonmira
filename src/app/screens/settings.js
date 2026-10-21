@@ -5,7 +5,7 @@ import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { openPaywall } from '../paywall/paywall.js';
 import { openLayer } from '../paywall/layer.js';
-import { balanceLabel, availableLabel, nextCreditLabel, subscriptionLabel } from '../paywall/copy.js';
+import { balanceLabel, availableLabel, creditsLede, nextCreditLabel, subscriptionLabel } from '../paywall/copy.js';
 
 export function mountSettings(app) {
   const b = app.billing;
@@ -64,11 +64,18 @@ export function mountSettings(app) {
   const openAvailable = () => {
     const st = b.status();
     const next = nextCreditLabel(st);
-    const layer = openLayer(app, { label: 'Available paintings', cls: 'acct-sheet' });
+    const layer = openLayer(app, { label: 'Available credits', cls: 'credits-sheet' });
     layer.panel.dataset.availableSheet = '';
+    const card = (cls, ic, title, text, ...more) => h('div', { class: `credits-card ${cls}` },
+      h('div', { class: 'credits-card-main' }, icon(ic, { size: 'lg' }),
+        h('div', {}, h('div', { class: 'serif credits-card-title' }, title), h('p', { class: 'credits-card-text', ...(ic === 'nextCredit' ? { 'data-next-credit': '' } : {}) }, text))),
+      ...more);
     layer.body.append(
-      h('h2', { class: 'serif pw-title' }, availableLabel(st)),
-      next ? h('p', { class: 'pw-lede', 'data-next-credit': '' }, next) : null);
+      h('h2', { class: 'serif pw-title' }, 'Available credits'),
+      h('p', { class: 'pw-lede' }, creditsLede(st)),
+      next ? card('outlined', 'nextCredit', 'Next credit', next,
+        h('p', { class: 'credits-card-note' }, 'As a Daily Ritual subscriber, we add 1 credit to your account every day. Credits can be saved up to 30.')) : null,
+      card('filled', 'aboutCredits', 'Credits never expire', 'All your credits, including daily credits and purchased credits, stay in your account until you use them.'));
   };
 
   // A row's label, with its leading icon (muted, or faint while the row is Coming soon).

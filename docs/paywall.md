@@ -49,9 +49,10 @@ A subscriber who has used every credit so far sees *Your credits are used for
 now.*, when the next credit comes, and only Little Moments.
 
 Settings → Paintings shows *Available* with the total (*12 paintings*) and a
-chevron; tapping it opens a sheet with the total and, while a Daily Ritual
-credit is on its way, *+1 Daily Ritual credit tomorrow at 9:00 AM* (hidden at
-the cap of 30 and once the subscription has ended). The *Daily Ritual* row says *Active*, *Ends November 16* (auto-renew
+chevron; tapping it opens *Available credits*: the total, a *Next credit*
+card while a Daily Ritual credit is on its way (*You’ll get 1 more credit
+tomorrow at 9:00 AM.*; hidden at the cap of 30 and once the subscription has
+ended), and *Credits never expire*. The *Daily Ritual* row says *Active*, *Ends November 16* (auto-renew
 off) or *Ended October 2*, and opens Apple's subscription settings; it is
 hidden for someone who never subscribed. Then *More paintings* and *Restore
 purchases*.

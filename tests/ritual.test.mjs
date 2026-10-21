@@ -365,7 +365,7 @@ test('StoreKit’s subscription without its start (the app’s refresh) neither 
 });
 
 test('what the paywall, Sing and Settings say: one total, never which kind', async () => {
-  const { balanceLabel, usesLabel, availableLabel, nextCreditLabel, subscriptionLabel } = await import('../src/app/paywall/copy.js');
+  const { balanceLabel, usesLabel, availableLabel, creditsLede, nextCreditLabel, subscriptionLabel } = await import('../src/app/paywall/copy.js');
   const base = { free: 0, credits: 0, ritual: 0, ritualCap: 30, ritualNextAt: null, subscribed: true };
   const now = new Date(2027, 0, 15, 20, 0).getTime();
   const tomorrow9 = new Date(2027, 0, 16, 9, 0).getTime();
@@ -381,9 +381,11 @@ test('what the paywall, Sing and Settings say: one total, never which kind', asy
   assert.equal(availableLabel({ ...base, ritual: 3, free: 2, credits: 7 }), '12 paintings');
   // Scenarios A, B, C: the same line whatever the balance.
   for (const st of [{ ...base }, { ...base, credits: 10 }, { ...base, ritual: 5 }]) {
-    assert.match(nextCreditLabel({ ...st, ritualNextAt: tomorrow9 }, now), /^\+1 Daily Ritual credit tomorrow\sat\s9:00/);
+    assert.match(nextCreditLabel({ ...st, ritualNextAt: tomorrow9 }, now), /^You’ll get 1 more credit tomorrow\sat\s9:00.*\.$/);
   }
   assert.equal(nextCreditLabel({ ...base, ritual: 30 }, now), '', 'at the cap: nothing scheduled, nothing said');
+  assert.equal(creditsLede({ ...base, ritual: 3, credits: 1, ritualNextAt: tomorrow9 }), 'You have 4 credits to create paintings. Here’s when you’ll get more.');
+  assert.equal(creditsLede({ ...base, subscribed: false, credits: 1 }), 'You have 1 credit to create paintings.');
   assert.equal(nextCreditLabel({ ...base, subscribed: false, ritual: 4, ritualNextAt: tomorrow9 }, now), '', 'not subscribed: nothing coming');
   const sub = (o) => ({ productId: 'app.sonmira.daily_ritual.monthly', expiresAt: new Date(2027, 1, 14).getTime(), willRenew: true, ...o });
   assert.equal(subscriptionLabel(sub(), now), 'Active');

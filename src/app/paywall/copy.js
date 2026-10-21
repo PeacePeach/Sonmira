@@ -21,10 +21,16 @@ export function availableLabel(s) {
   return plural(total(s), 'painting', 'paintings');
 }
 
-/** Under Available, while a Daily Ritual credit is on its way: "+1 Daily Ritual credit tomorrow at 9:00 AM".
- *  The "when" part is held together so a narrow row breaks before it. */
+/** Available credits sheet: "You have 4 credits to create paintings. Here’s when you’ll get more." */
+export function creditsLede(s) {
+  const more = s.subscribed && s.ritualNextAt ? ' Here’s when you’ll get more.' : '';
+  return `You have ${plural(total(s), 'credit', 'credits')} to create paintings.${more}`;
+}
+
+/** Available credits sheet → Next credit, while a Daily Ritual credit is on its way:
+ *  "You’ll get 1 more credit tomorrow at 9:00 AM." The "when" part is held together. */
 export function nextCreditLabel(s, now = s.now ?? Date.now()) {
-  return s.subscribed && s.ritualNextAt ? `+1 Daily Ritual credit ${whenLabel(s.ritualNextAt, now).replace(/ /g, '\u00a0')}` : '';
+  return s.subscribed && s.ritualNextAt ? `You’ll get 1 more credit ${whenLabel(s.ritualNextAt, now).replace(/ /g, '\u00a0')}.` : '';
 }
 
 /** Settings → Daily Ritual: "Active", "Ends November 16" (auto-renew off), "Ended October 2". */
