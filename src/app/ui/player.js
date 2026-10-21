@@ -21,7 +21,7 @@ export function createPlayer({ blob, durationSec, right = '' }) {
   if (!blob) { btn.disabled = true; btn.setAttribute('aria-label', 'No recording'); }
 
   function paint(t) {
-    fill.style.width = `${Math.min(100, (t / dur) * 100)}%`;
+    fill.style.transform = `scaleX(${Math.min(1, t / dur).toFixed(4)})`;
     elapsed.textContent = clock(Math.min(t, dur));
   }
   function setPlaying(p) {

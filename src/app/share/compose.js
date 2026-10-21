@@ -1,10 +1,7 @@
-// Draws Sonmira share compositions onto a <canvas>: the painting as the
-// centrepiece, an optional note, the date and a quiet wordmark. The video
-// uses drawComposition; the image card (card.js) shares the painting, fonts
-// and text helpers. Works from contract data only (painting,
-// note, date), so it never depends on how a painting was generated.
-
-import { longDate } from '../format.js';
+// Shared drawing for Sonmira's share files: the painting card, fonts and
+// text helpers. The image card and the video's composition are card.js.
+// Works from contract data only (painting, note, date), so it never depends
+// on how a painting was generated.
 
 const C = {
   paper: '#F8F5EF', paintingPaper: '#F3EDE1', ink: '#1F1D1A', secondary: '#8C867D', muted: '#A39D93', track: '#E4DDD1',
@@ -40,7 +37,7 @@ export function loadArtwork(artwork) {
 }
 
 let grainTile = null;
-function grain() {
+export function grain() {
   if (grainTile) return grainTile;
   const n = 256, c = document.createElement('canvas');
   c.width = c.height = n;
@@ -135,44 +132,4 @@ export function wrap(ctx, text, maxW, maxLines) {
     return kept;
   }
   return lines;
-}
-
-function spaced(ctx, text, x, y, tracking, align = 'left') {
-  if ('letterSpacing' in ctx) {
-    ctx.letterSpacing = `${tracking}px`;
-    ctx.textAlign = align; ctx.fillText(text, x, y);
-    ctx.letterSpacing = '0px';
-    return;
-  }
-  ctx.textAlign = align; ctx.fillText(text, x, y);
-}
-
-/**
- * Lays out the video's composition in base units then scales to pixels.
- * layout: 'story' (1080×1920, 9:16 video). The share image is card.js.
- */
-export const LAYOUTS = {
-  story: { W: 1080, H: 1920, art: { x: 90, y: 230, w: 900, h: 1125 }, noteY: 1450, footY: 1790, wave: { y: 1625, h: 72 } },
-};
-
-export function drawComposition(ctx, { layout, scale, painting, img, note, date }) {
-  const L = LAYOUTS[layout], s = scale;
-  ctx.fillStyle = C.paper;
-  ctx.fillRect(0, 0, L.W * s, L.H * s);
-  drawPainting(ctx, { painting, img, x: L.art.x * s, y: L.art.y * s, w: L.art.w * s, h: L.art.h * s, scale: s });
-
-  ctx.textBaseline = 'alphabetic';
-  if (note) {
-    ctx.fillStyle = C.ink;
-    ctx.font = `600 ${44 * s}px ${C.serif}`;
-    const lines = wrap(ctx, note, L.art.w * s, 2);
-    lines.forEach((ln, i) => { ctx.textAlign = 'left'; ctx.fillText(ln, L.art.x * s, (L.noteY + i * 54) * s); });
-  }
-  ctx.fillStyle = C.muted;
-  ctx.font = `450 ${20 * s}px ${C.sans}`;
-  spaced(ctx, longDate(date), L.art.x * s, L.footY * s, 0.8 * s);
-  ctx.font = `italic 600 ${30 * s}px ${C.serif}`;
-  ctx.textAlign = 'right';
-  ctx.fillText('Sonmira', (L.art.x + L.art.w) * s, L.footY * s);
-  ctx.textAlign = 'left';
 }

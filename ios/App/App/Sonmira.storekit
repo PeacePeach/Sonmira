@@ -50,14 +50,14 @@
           "codeOffers" : [
 
           ],
-          "displayPrice" : "4.99",
+          "displayPrice" : "5.99",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "5A0E1C54",
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "One painting every day.",
+              "description" : "One painting credit every day. Save up to 30.",
               "displayName" : "Daily Ritual",
               "locale" : "en_US"
             }

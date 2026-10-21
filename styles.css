@@ -18,6 +18,12 @@
   --disabled: #CFC9BF;
   --track: #E4DDD1;
   --underline: #DDD6CA;
+  /* banners: muted, paper-friendly kinds (only the icon is coloured) */
+  --success: #6F8A64;
+  --warning: #B08540;
+  --error: #A9574C;
+  --error-line: #E3CFC8;
+  --banner-shadow: 0 4px 16px rgba(60,45,30,.08);
 
   /* icons (src/app/ui/icons.js, docs/icons.md) */
   --icon: var(--ink);            /* navigation and actions */
@@ -41,6 +47,9 @@
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; height: 100%; }
+/* No whole-page rubber band (WKWebView, iOS Safari): screens scroll inside themselves,
+   so a drag on a screen with nothing to scroll (the expanded detail page) leaves it still. */
+html, body { overscroll-behavior: none; }
 body {
   background: #E8E5DF;
   font-family: var(--sans);
@@ -115,13 +124,24 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .painting { position: relative; width: 100%; border-radius: 4px; overflow: hidden; background: var(--painting-paper); box-shadow: var(--shadow-card); transform: translateZ(0); }
 .painting.r32 { aspect-ratio: 3 / 2; }
 .painting.r45 { aspect-ratio: 4 / 5; box-shadow: var(--shadow-card-lg); }
+.painting .wash-clip { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; -webkit-mask-image: linear-gradient(#000, #000); mask-image: linear-gradient(#000, #000); }
 .painting .wash { position: absolute; inset: -6%; filter: url(#wc); }
 .painting .stroke { position: absolute; mix-blend-mode: multiply; transform: translate(-50%, -50%) rotate(var(--rot)); }
 .painting .stroke.bloom { animation: bloom 1s ease-out both; }
 @keyframes bloom { from { opacity: 0; scale: .5 } 60% { opacity: 1 } to { opacity: 1; scale: 1 } }
-.painting .art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 1; transition: opacity 1.6s ease-in-out; }
+.painting .art { position: absolute; inset: 0; border-radius: inherit; width: 100%; height: 100%; object-fit: cover; opacity: 1; transition: opacity 1.6s ease-in-out; }
 .painting .art.hidden { opacity: 0; }
-.painting .grain { position: absolute; inset: 0; width: 100%; height: 100%; mix-blend-mode: multiply; pointer-events: none; }
+.painting .grain { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; width: 100%; height: 100%; mix-blend-mode: multiply; pointer-events: none; }
+.painting .grain svg { display: block; width: 100%; height: 100%; }
+/* the grain baked once into a bitmap (ui/wash.js), the same noise in the same place */
+.grain-baked .painting .grain { background: var(--grain-image) 0 0 / var(--grain-size) repeat; }
+.grain-baked .painting .grain svg { display: none; }
+/* the wash drawn on the GPU (ui/wash.js; 24 px beyond the wash for the displacement) */
+.painting .wash.gl { filter: none; }
+.painting .wash-gl { position: absolute; left: -24px; top: -24px; width: calc(100% + 48px); height: calc(100% + 48px); pointer-events: none; }
+/* the opaque artwork covers the wash: nothing to draw under it */
+.painting.covered .wash:not(.gl) { display: none; } /* the SVG fallback; a GPU wash just stops drawing */
+.painting.art-pending .wash { visibility: hidden; } /* a moment, while a saved artwork decodes */
 
 /* ── diary ───────────────────────────────────────────────────────────────── */
 .diary-scroll { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: calc(var(--top) + 56px) 0 140px; }
@@ -135,7 +155,7 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .entry-meta .cap { font-size: 15px; color: var(--body); text-wrap: pretty; }
 .entry-meta .cap.untitled { color: var(--muted); }
 .entry-meta .dur { font-size: 12px; color: var(--muted); flex-shrink: 0; }
-.empty { padding: 48px 28px; text-align: center; font-size: 18px; color: var(--muted); font-style: italic; }
+.empty { padding: 80px 28px 48px; text-align: center; font-size: 18px; color: var(--muted); font-style: italic; }
 .notice { margin: 18px 28px 0; font-size: 13px; color: var(--secondary); text-align: center; line-height: 1.5; }
 .fab-fade { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--bottom) + 90px); background: linear-gradient(to bottom, rgba(248,245,239,0), var(--paper) 55%); pointer-events: none; z-index: 2; }
 .fab { position: absolute; left: 50%; bottom: var(--bottom); transform: translateX(-50%); width: 64px; height: 64px; border-radius: 32px; background: var(--ink); box-shadow: var(--shadow-fab); display: flex; align-items: center; justify-content: center; z-index: 3; transition: transform .12s; }
@@ -162,7 +182,7 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .sing .date { font-size: 13px; color: var(--muted); letter-spacing: .04em; }
 .sing-canvas { padding: 28px 24px 0; flex-shrink: 0; }
 .rec-track { height: 2px; background: var(--hairline); margin-top: 18px; border-radius: 1px; overflow: hidden; }
-.rec-fill { height: 100%; width: 0; background: var(--ink); transition: width .1s linear; }
+.rec-fill { height: 100%; background: var(--ink); transform: scaleX(0); transform-origin: left; transition: transform .1s linear; } /* scaled, not resized: no layout per frame */
 .rec-times { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--muted); }
 .phase { flex: 1; display: flex; flex-direction: column; justify-content: space-between; min-height: 0; }
 .phase.centered { align-items: center; padding: 36px 32px 0; }
@@ -257,33 +277,64 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .play-btn[disabled] { border-color: var(--disabled); opacity: .6; cursor: default; }
 .play-btn [data-icon=play] { margin-left: 2px; } /* optical centre of the triangle */
 .player .track { height: 4px; background: var(--track); border-radius: 2px; overflow: hidden; } /* thicker than the hairlines, so it reads as a control */
-.player .fill { height: 100%; width: 0; background: var(--ink); }
+.player .fill { height: 100%; background: var(--ink); transform: scaleX(0); transform-origin: left; }
 /* the track and the time row, as one block, are centred on the button (the
    row's box hugs its digits: line-height 1) */
 .player .times { display: flex; justify-content: space-between; gap: 10px; margin-top: 11px; font-size: 12px; line-height: 1; color: var(--muted); }
 .player .times span:last-child { text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ── detail ──────────────────────────────────────────────────────────────── */
-.detail { display: flex; flex-direction: column; padding: var(--top) 0 var(--bottom); overflow-y: auto; }
-.detail .art-pad { padding: 22px 18px 0; flex-shrink: 0; }
-.detail .body { padding: 26px 28px 0; flex: 1; display: flex; flex-direction: column; min-height: 150px; }
+/* Three states (screens/detail.js): expanded (the artwork large, as made),
+   compact (the artwork as a landscape card; artwork, date and title stay put
+   and only the journal scrolls) and editing (compact, with the creation
+   flow's title and journal fields). The player is docked at the bottom on a
+   solid paper ground (no text shows through it), and the journal always
+   ends clear of it. */
+.detail { display: flex; flex-direction: column; padding-top: var(--top); overflow: hidden; --dock: calc(var(--bottom) + 92px); }
+.detail .art-pad { padding: 22px var(--edge) 0; flex-shrink: 0; }
+/* One column in every state: the large artwork's edges (18 pt) are the
+   page's edges, and the top bar, the date, title, journal and player all
+   line up with them. */
+.detail { --edge: 18px; }
+.detail > .navrow { padding: 0 calc(var(--edge) - 12px) 0 calc(var(--edge) - 10px); } /* icon and label insets */
+.detail .cancel-btn { padding-left: 10px; }
+.detail > .navrow > .icon-btn:first-child { margin-left: -9px; } /* the chevron is drawn 9 pt into its box: its point lines up */
+/* no pressed circle on Back: it would reach past the page's left edge; it dims instead */
+.detail > .navrow > .icon-btn:first-child:hover, .detail > .navrow > .icon-btn:first-child:active { background: none; }
+.detail > .navrow > .icon-btn:first-child:active { opacity: .5; }
+.detail-meta { padding: 30px var(--edge) 0; flex-shrink: 0; }
+/* the journal's own scroller, starting below the title: nothing in it
+   passes under the title */
+.detail-scroll { flex: 1; min-height: 0; overflow: hidden; padding: 18px var(--edge) var(--dock); scroll-padding-bottom: var(--dock); overscroll-behavior: contain; }
+.detail.compact .detail-scroll { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+/* the landscape card: 3:2, the portrait's width at the same margins; the
+   date, title and journal keep their place and margins too */
+.detail.compact .painting[role=button] { cursor: pointer; }
+.detail-dock { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding: 30px var(--edge) var(--bottom); background: var(--paper); }
+.detail-dock .player > .play-btn { margin-left: 0; }
+/* the keyboard is up (editing on a phone): the page fits above it and the
+   player steps aside until it closes */
+.detail.kb .detail-dock { visibility: hidden; }
+.detail > .navrow { z-index: 3; background: var(--paper); }
+.detail > .navrow::before { content: ''; position: absolute; left: 0; right: 0; bottom: 100%; height: var(--top); background: var(--paper); } /* the status-bar strip too */
+.detail .art-pad, .detail-meta { transition: margin-top .32s cubic-bezier(.2, .7, .2, 1), padding-top .32s cubic-bezier(.2, .7, .2, 1); }
+.detail.kb .art-pad { margin-top: calc(24px - 22px - var(--art-h, 0px)); } /* a 24 pt sliver of the artwork under the top bar */
+.detail.kb .detail-meta { padding-top: 18px; }
+.detail.editing .detail-scroll { overscroll-behavior: none; }
+@media (prefers-reduced-motion: reduce) { .detail .art-pad, .detail-meta { transition: none; } }
+.detail.kb .detail-scroll { padding-bottom: 24px; scroll-padding-bottom: 24px; }
 .detail .caption { font-size: 26px; line-height: 1.2; text-wrap: pretty; }
 .detail .caption.untitled { color: var(--muted); }
-/* The title is tappable to rename; the pencil sits on its first line */
-.detail .title-btn { display: flex; align-items: flex-start; gap: 8px; margin-top: 6px; text-align: left; color: inherit; }
-.detail .title-btn .icon { margin-top: 8px; }
-.detail .caption-input { margin-top: 0; font-size: 26px; line-height: 1.2; padding: 6px 0 10px; }
-.detail .title-actions { display: flex; justify-content: flex-end; margin: 2px -12px 0 0; }
-.detail .title-actions .save { color: var(--ink); }
-.detail .title-actions .text-btn[disabled] { opacity: .6; }
-.detail .player { margin-top: auto; padding-top: 22px; }
+.detail .title-btn { display: block; width: 100%; margin-top: 6px; text-align: left; color: inherit; }
+.detail .caption-input { margin-top: 6px; font-size: 26px; line-height: 1.2; padding: 0 0 10px; }
 .detail .char-count { text-align: left; }
+.detail .edit-btn.save { color: var(--ink); }
+.detail .edit-btn[disabled] { opacity: .6; }
 /* the journal under the title: its paragraphs as written; tap to edit */
-.detail-journal { margin-top: 14px; }
 .detail .journal-btn { display: block; width: 100%; text-align: left; color: var(--body); font-size: 16px; line-height: 1.55; padding: 4px 0; }
 .detail .journal-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .detail .journal-btn.journal-empty { color: var(--placeholder); font-size: 15px; }
-.detail .journal-input { margin-top: 0; }
+.detail .journal-input { margin-top: 0; padding: 4px 0 12px; }
 .text-btn.confirm { color: var(--ink); }
 
 /* ── settings ────────────────────────────────────────────────────────────── */
@@ -305,9 +356,9 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .legal .draft { padding: 22px 28px 0; font-family: var(--sans); }
 
 /* ── share sheet ─────────────────────────────────────────────────────────── */
-.share-layer { position: absolute; inset: 0; z-index: 30; }
+.share-layer { position: absolute; inset: 0; z-index: 30; container-type: size; }
 .share-scrim { position: absolute; inset: 0; background: rgba(31,29,26,.28); animation: fadeIn .25s ease-out both; }
-.share-panel { position: absolute; left: 0; right: 0; bottom: 0; background: var(--paper); border-radius: 20px 20px 0 0; padding: 10px 24px var(--bottom); box-shadow: 0 -10px 30px -18px rgba(60,45,30,.35); animation: sheetIn .34s cubic-bezier(.2,.7,.2,1) both; max-height: 92%; overflow-y: auto; }
+.share-panel { position: absolute; left: 0; right: 0; bottom: 0; background: var(--paper); border-radius: 20px 20px 0 0; padding: 10px 24px var(--bottom); box-shadow: 0 -10px 30px -18px rgba(60,45,30,.35); animation: sheetIn .34s cubic-bezier(.2,.7,.2,1) both; max-height: 92%; overflow-y: auto; overscroll-behavior: contain; }
 .share-layer.leaving .share-scrim { animation: fadeOut .2s ease-in both; }
 .share-layer.leaving .share-panel { animation: sheetOut .2s ease-in both; }
 @keyframes sheetIn { from { transform: translateY(100%); } }
@@ -318,11 +369,18 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .quiet-sheet .share-head { flex-shrink: 0; }
 .sheet-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin: 0 -24px; padding: 0 24px; }
 .share-title { font-size: 26px; }
-.share-preview-box { display: flex; justify-content: center; padding: 8px 0 18px; }
+.share-preview-box { position: relative; display: flex; justify-content: center; padding: 8px 0 18px; }
+.share-play { position: absolute; left: 50%; top: calc(50% - 5px); transform: translate(-50%, -50%); width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; background: rgba(248,245,239,0.86); color: var(--ink); box-shadow: 0 2px 10px rgba(60,45,30,0.18); }
+.share-play svg { width: 20px; height: 20px; margin-left: 3px; fill: currentColor; }
+.share-play[hidden] { display: none; }
 .share-preview { width: 52%; max-width: 220px; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 3px; background: var(--painting-paper); box-shadow: var(--shadow-card); }
 .share-preview.story { aspect-ratio: 9 / 16; width: 46%; }
-/* the image card: one height for every format, so switching never moves the buttons */
-.share-preview.card { width: 240px; max-width: 100%; height: 320px; aspect-ratio: auto; object-fit: contain; }
+/* the image card and the video: one height for every format, so switching never moves the buttons;
+   on a short screen the preview gives way, so Share and Save always show without scrolling */
+.share-preview.card { width: auto; max-width: 100%; height: 320px; height: clamp(150px, calc(92cqh - 400px), 320px); object-fit: contain; }
+.share-main { display: flex; gap: 10px; }
+.share-main .pill { flex: 1 1 0; min-width: 0; border: 1px solid transparent; }
+.pill.light { background: var(--tile); color: var(--ink); border: 1px solid var(--tile-line); }
 .share-formats { display: flex; justify-content: center; gap: 6px; padding: 4px 0 6px; }
 .share-format { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 92px; padding: 8px 10px; font-size: 14px; color: var(--secondary); border-bottom: 1px solid transparent; }
 .share-format-hint { font-size: 11px; color: var(--muted); letter-spacing: .02em; }
@@ -332,8 +390,12 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .share-progress .rec-track { margin-top: 10px; }
 .share-message { font-family: var(--serif); font-weight: 600; font-style: italic; font-size: 16px; color: var(--secondary); line-height: 1.35; text-align: center; min-height: 0; }
 .share-message:empty { display: none; }
+.share-toast { position: absolute; left: 50%; top: calc(var(--top) + 12px); transform: translateX(-50%); z-index: 2; display: flex; align-items: center; gap: 8px; padding: 10px 16px 10px 13px; border-radius: 18px; font-size: 13px; line-height: 1.45; color: var(--body); background: var(--tile); border: 1px solid var(--tile-line); box-shadow: var(--banner-shadow); pointer-events: none; white-space: nowrap; animation: shareToast 2s ease-in-out both; }
+.share-toast .icon { color: var(--success); }
+.share-toast[hidden] { display: none; }
+@keyframes shareToast { 0% { opacity: 0; transform: translate(-50%, -4px); } 10%, 82% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
 .nav-actions { display: flex; align-items: center; }
-@media (prefers-reduced-motion: reduce) { .share-panel, .share-scrim { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .share-panel, .share-scrim { animation: none !important; } .share-toast { animation-name: fadeIn; animation-duration: .2s; } }
 
 /* ── paywall (a sheet in the Share sheet's style) ────────────────────────── */
 .paywall { padding-bottom: calc(var(--bottom) - 8px); }
@@ -374,8 +436,8 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .pw-done .pw-lede { max-width: 300px; margin-left: auto; margin-right: auto; }
 .pw-done .actions { padding-top: 26px; }
 .pw-done .pw-dev { margin-top: 16px; }
-/* watercolor illustrations (ui/illustration.js): multiply melts the paper into the surface */
-.illo { display: block; height: 136px; width: auto; max-width: 60%; margin: 6px auto 28px; mix-blend-mode: multiply; -webkit-mask-image: radial-gradient(closest-side, #000 86%, transparent 100%); mask-image: radial-gradient(closest-side, #000 86%, transparent 100%); animation: bloomIn 1.6s ease-out both; }
+/* watercolor illustrations (ui/illustration.js): transparent, the paper is cut out */
+.illo { display: block; height: 136px; width: auto; max-width: 60%; margin: 6px auto 28px; -webkit-mask-image: radial-gradient(closest-side, #000 86%, transparent 100%); mask-image: radial-gradient(closest-side, #000 86%, transparent 100%); animation: bloomIn 1.6s ease-out both; }
 .illo-s { height: 104px; margin-bottom: 10px; }
 /* the bird is wider than the drops; match their visual size */
 .illo[data-illo=mic-off] { height: 118px; margin-top: 15px; }
@@ -424,8 +486,23 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .acct-sheet .pw-lede { max-width: 330px; }
 .acct-sheet .actions { padding-top: 26px; }
 
-/* ── toast (quiet, bottom) ───────────────────────────────────────────────── */
-.toast { position: absolute; left: 24px; right: 24px; bottom: calc(var(--bottom) + 84px); z-index: 20; text-align: center; font-size: 13px; color: var(--body); background: var(--tile); border: 1px solid var(--tile-line); border-radius: 14px; padding: 12px 16px; line-height: 1.45; animation: fadeIn .25s ease-out both; }
+/* ── banners (ui/banner.js): success, info, warning, error ─────────────────
+   Below the top bar, so they never cover a screen's actions or hide behind
+   the keyboard. Quiet paper tones; only the icon carries the kind. */
+.banner { position: absolute; left: 50%; top: calc(var(--top) + 60px); z-index: 20; width: max-content; max-width: min(354px, calc(100% - 48px)); transform: translateX(-50%);
+  display: flex; align-items: flex-start; gap: 8px; padding: 10px 16px 10px 13px; border-radius: 18px;
+  font-size: 13px; line-height: 1.45; color: var(--body); text-wrap: pretty; background: var(--tile); border: 1px solid var(--tile-line); box-shadow: var(--banner-shadow);
+  cursor: default; animation: bannerIn .24s cubic-bezier(.2,.7,.2,1) both; }
+.banner .banner-icon { margin-top: 1.5px; color: var(--banner-icon); }
+.banner-success { --banner-icon: var(--success); }
+.banner-info { --banner-icon: var(--secondary); }
+.banner-warning { --banner-icon: var(--warning); }
+.banner-error { --banner-icon: var(--error); border-color: var(--error-line); }
+.banner.out { animation: bannerOut .18s ease-in both; }
+@keyframes bannerIn { from { opacity: 0; transform: translate(-50%, -6px); } }
+@keyframes bannerOut { to { opacity: 0; transform: translate(-50%, -4px); } }
+@media (prefers-reduced-motion: reduce) { .banner { animation-name: fadeIn; animation-duration: .2s; } .banner.out { animation-name: fadeOut; } }
+@keyframes fadeOut { to { opacity: 0 } }
 
 /* ── developer panel (only with ?dev) ────────────────────────────────────── */
 .devpanel { position: fixed; left: 12px; top: 12px; z-index: 1000; font: 11px/1.4 ui-monospace, Menlo, monospace; background: rgba(31,29,26,.92); color: #eee; border-radius: 10px; padding: 8px 10px; max-width: 220px; box-sizing: border-box; max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; }

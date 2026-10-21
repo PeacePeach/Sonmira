@@ -37,6 +37,33 @@ test('retrying the same take counts once', () => {
   assert.equal(w.status().free, 2);
 });
 
+test('the last free painting, counted by the server, stays usable after the app adopts its ledger', () => {
+  // The server counts a take under its request key (take key + '.generate').
+  const server = setup().w;
+  for (const k of ['a.generate', 'b.generate', 'c.generate']) paint(server, k);
+  const { w } = setup();
+  w.reserve('c'); // the app was painting c when it closed
+  w.releaseAll(); // and opened again
+  w.replace(server.snapshot());
+  assert.equal(w.status().free, 0);
+  assert.equal(w.status().canCreate, false, 'nothing new can be made');
+  assert.equal(w.reserve('c'), 'free', 'the painting already made needs no credit');
+  assert.equal(w.commit('c'), 'free');
+  assert.equal(w.status().free, 0, 'and is not counted again');
+  assert.equal(w.reserve('d'), null, 'a new take still needs one');
+});
+
+test('a take the server counted while the app held it is counted once', () => {
+  const server = setup().w;
+  paint(server, 'a.generate');
+  const { w } = setup();
+  w.reserve('a');
+  w.replace(server.snapshot()); // the ledger arrives before the app's own commit
+  assert.equal(w.commit('a'), 'free');
+  assert.equal(w.status().free, 2, 'counted once');
+  assert.deepEqual(w.snapshot().holds, {});
+});
+
 test('holds left by a restart go back', () => {
   const { w, make } = setup();
   w.reserve('a');
@@ -56,40 +83,44 @@ test('a pack adds ten once per transaction, and they never expire', () => {
   assert.equal(w.status().credits, 9);
 });
 
-test('Daily Ritual: one a day, no carry-over, extra from packs', () => {
+test('Daily Ritual: a credit a day, saved up; extra from packs', () => {
   const { w, clock } = setup();
   ['a', 'b', 'c'].forEach((k) => paint(w, k));
-  w.setSubscription({ productId: 'sub', expiresAt: clock.now + 30 * 864e5, willRenew: true });
-  assert.equal(w.status().source, 'daily');
+  w.setSubscription({ productId: 'sub', from: clock.now, expiresAt: clock.now + 30 * 864e5, willRenew: true });
+  assert.equal(w.status().ritual, 1, 'the first day’s credit at once');
   assert.equal(paint(w, 'd'), 'daily');
-  assert.equal(w.status().canCreate, false);
-  assert.equal(w.status().dailyUsedToday, true);
+  assert.equal(w.status().canCreate, false, 'tomorrow’s credit is not lent today');
   w.grant('tx1', 10);
   assert.equal(paint(w, 'e'), 'credits', 'same-day extra comes from the pack');
-  clock.day = '2026-10-18'; // two days later: still just one
-  assert.equal(w.status().source, 'daily');
+  clock.now += 2 * 864e5; // two more days: two credits
+  assert.equal(w.status().ritual, 2);
   assert.equal(paint(w, 'f'), 'daily');
+  assert.equal(paint(w, 'g'), 'daily');
   assert.equal(w.status().source, 'credits');
 });
 
-test('daily is used before free paintings and packs', () => {
+test('Daily Ritual credits are used before free paintings and packs', () => {
   const { w, clock } = setup();
   w.grant('tx1', 10);
-  w.setSubscription({ productId: 'sub', expiresAt: clock.now + 864e5, willRenew: true });
+  w.setSubscription({ productId: 'sub', from: clock.now, expiresAt: clock.now + 864e5, willRenew: true });
   assert.equal(paint(w, 'a'), 'daily');
   assert.equal(paint(w, 'b'), 'free');
 });
 
-test('an ended subscription keeps pack credits; nothing else is touched', () => {
+test('an ended subscription keeps pack credits; Daily Ritual credits stay for 30 days', () => {
   const { w, clock } = setup();
   ['a', 'b', 'c'].forEach((k) => paint(w, k));
   w.grant('tx1', 10);
-  w.setSubscription({ productId: 'sub', expiresAt: clock.now + 864e5, willRenew: false });
+  w.setSubscription({ productId: 'sub', from: clock.now, expiresAt: clock.now + 864e5, willRenew: false });
   clock.now += 2 * 864e5; clock.day = '2026-10-18';
   const s = w.status();
   assert.equal(s.subscribed, false);
   assert.equal(s.credits, 10);
-  assert.equal(s.source, 'credits');
+  assert.equal(s.ritual, 1, 'the one day paid for');
+  assert.equal(s.source, 'daily');
+  clock.now += 30 * 864e5;
+  assert.equal(w.status().ritual, 0);
+  assert.equal(w.status().source, 'credits');
 });
 
 test('the ledger survives a reinstall when adopted', () => {

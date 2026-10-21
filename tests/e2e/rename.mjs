@@ -1,9 +1,10 @@
 // Renaming a kept painting from its detail view, on paintings made before the
 // feature existed: a diary seeded by the mock engine through the app, plus a
 // record written straight to IndexedDB the way older builds stored an AI
-// painting (image bytes, no note field). Covers the pencil, keeping the old
-// title while editing, Done / Save / Cancel / Escape, cleared titles, the
-// saving state, a failed save, and the title surviving a reload.
+// painting (image bytes, no note field). Covers Edit and tapping the title,
+// keeping the old title while editing, Save / Cancel / Escape, cleared titles, the
+// saving state, a failed save, and the title surviving a reload. (The detail
+// page's states are covered by detail.mjs.)
 //
 //   node server.js &  then  node tests/e2e/rename.mjs   (SHOTS=dir saves screenshots)
 
@@ -32,7 +33,7 @@ const stored = (id) => page.evaluate((id) => new Promise((res, rej) => {
 const titleText = () => page.textContent('[data-screen=detail] .detail-title .caption');
 const open = async (id) => {
   await page.evaluate((id) => window.sonmira.navigate('detail', { id }), id);
-  await page.waitForFunction(() => document.querySelectorAll('[data-screen]').length === 1 && document.querySelector('[data-screen=detail] .title-btn'));
+  await page.waitForFunction(() => document.querySelectorAll('[data-screen]').length === 1 && document.querySelector('[data-screen=detail] .title-btn') && !document.querySelector('[data-screen=detail]').getAnimations().some((a) => a.playState === 'running'));
 };
 
 // ── previously generated paintings ───────────────────────────────────────
@@ -57,33 +58,38 @@ await page.waitForSelector('[data-entry=legacy-ai-1]');
 const seeded = await page.evaluate(() => window.sonmira.sortedEntries().filter((e) => e.id.startsWith('sample-')).map((e) => ({ id: e.id, note: e.note })));
 assert.ok(seeded.length >= 5, 'the mock diary was seeded');
 
-// ── a titled painting: the pencil, old title kept, Done saves ────────────
+// ── a titled painting: Edit, old title kept, Save saves ──────────────────
 const a = seeded.find((e) => e.note === 'Rain on the window');
+const save = () => page.click('[data-screen=detail] .edit-btn');
+const viewing = () => page.waitForFunction(() => document.querySelector('[data-screen=detail]')?.dataset.mode === 'compact');
 await open(a.id);
 assert.equal(await titleText(), 'Rain on the window');
-assert.equal(await page.getAttribute('[data-screen=detail] .title-btn svg', 'data-icon'), 'rename', 'a pencil sits by the title');
+assert.equal(await page.textContent('[data-screen=detail] .edit-btn'), 'Edit', 'an Edit label at the top right');
 await shot(page, 'r1-detail');
 await page.click('[data-screen=detail] .detail-title .caption'); // tapping the title itself edits
 assert.equal(await page.inputValue('.detail-title .caption-input'), 'Rain on the window', 'editing starts from the existing title');
 assert.equal(await page.evaluate(() => document.activeElement?.classList.contains('caption-input')), true, 'the field is focused');
-assert.equal(await page.getAttribute('.detail-title .caption-input', 'enterkeyhint'), 'done');
+assert.equal(await page.getAttribute('.detail-title .caption-input', 'enterkeyhint'), 'next', 'as in the creation flow, Enter goes on to the journal');
 await shot(page, 'r2-editing');
 await page.fill('.detail-title .caption-input', 'Rain on the bus window');
-await page.press('.detail-title .caption-input', 'Enter');
-await page.waitForSelector('[data-screen=detail] .title-btn');
-assert.equal(await titleText(), 'Rain on the bus window', 'Done saves');
+await save();
+await viewing();
+assert.equal(await titleText(), 'Rain on the bus window', 'Save saves');
 assert.equal((await stored(a.id)).note, 'Rain on the bus window', 'written to IndexedDB');
 assert.ok((await stored(a.id)).painting, 'the painting itself is untouched');
 
-// ── Cancel and Escape keep the title ─────────────────────────────────────
-await page.click('[data-screen=detail] .title-btn svg'); // the pencil
+// ── Cancel and Escape keep the saved title ───────────────────────────────
+await page.click('[data-screen=detail] .edit-btn');
 await page.fill('.detail-title .caption-input', 'something else');
-await page.click('.detail-title .title-actions >> text=Cancel');
-assert.equal(await titleText(), 'Rain on the bus window', 'Cancel keeps the title');
+await page.click('[data-screen=detail] .cancel-btn');
+await viewing();
+assert.equal(await titleText(), 'Rain on the bus window', 'Cancel keeps the saved title');
 await page.click('[data-screen=detail] .title-btn');
+assert.equal(await page.inputValue('.detail-title .caption-input'), 'Rain on the bus window', 'the next edit starts from what is saved');
 await page.fill('.detail-title .caption-input', 'something else');
 await page.press('.detail-title .caption-input', 'Escape');
-assert.equal(await titleText(), 'Rain on the bus window', 'Escape keeps the title');
+await viewing();
+assert.equal(await titleText(), 'Rain on the bus window', 'Escape keeps the saved title');
 assert.equal((await stored(a.id)).note, 'Rain on the bus window');
 
 // ── the diary and a reload show the new title ────────────────────────────
@@ -98,7 +104,7 @@ assert.equal(await titleText(), 'Rain on the bus window', 'survives a reload');
 // ── a cleared title reads Untitled; pasted line breaks become spaces ─────
 await page.click('[data-screen=detail] .title-btn');
 await page.fill('.detail-title .caption-input', '   ');
-await page.click('.detail-title .title-actions >> text=Save');
+await save();
 await page.waitForSelector('[data-screen=detail] .caption.untitled');
 assert.equal(await titleText(), 'Untitled');
 assert.equal((await stored(a.id)).note, '');
@@ -106,8 +112,8 @@ await page.click('[data-screen=detail] .title-btn');
 assert.equal(await page.inputValue('.detail-title .caption-input'), '', 'an untitled painting edits from empty, not from the word Untitled');
 await page.fill('.detail-title .caption-input', 'Rain\non the window');
 assert.equal(await page.inputValue('.detail-title .caption-input'), 'Rain on the window');
-await page.press('.detail-title .caption-input', 'Enter');
-await page.waitForSelector('[data-screen=detail] .title-btn');
+await save();
+await viewing();
 assert.equal(await titleText(), 'Rain on the window');
 
 // ── an older AI painting with no note field at all ───────────────────────
@@ -115,8 +121,8 @@ await open('legacy-ai-1');
 assert.equal(await titleText(), 'Untitled');
 assert.equal('note' in (await stored('legacy-ai-1')), false, 'stored before notes were kept');
 await page.click('[data-screen=detail] .title-btn');
-await page.click('.detail-title .title-actions >> text=Save'); // nothing changed
-await page.waitForSelector('[data-screen=detail] .title-btn');
+await save(); // nothing changed
+await viewing();
 assert.equal('note' in (await stored('legacy-ai-1')), false, 'saving an unchanged title writes nothing');
 await page.click('[data-screen=detail] .title-btn');
 await page.fill('.detail-title .caption-input', 'By the lake, September');
@@ -126,11 +132,12 @@ await page.evaluate(() => {
   window.__idb = { put: IDBObjectStore.prototype.put };
   IDBObjectStore.prototype.put = function () { throw new DOMException('Quota exceeded', 'QuotaExceededError'); };
 });
-await page.click('.detail-title .title-actions >> text=Save');
+await save();
 await page.waitForSelector('.toast');
-assert.match(await page.textContent('.toast'), /Couldn’t save the title/);
+assert.match(await page.textContent('.toast'), /Couldn’t save/);
 assert.equal(await page.inputValue('.detail-title .caption-input'), 'By the lake, September', 'the edit stays on screen');
-assert.equal(await page.isDisabled('.detail-title .title-actions >> text=Save'), false, 'Save can be tried again');
+assert.equal(await page.textContent('[data-screen=detail] .edit-btn'), 'Save');
+assert.equal(await page.isDisabled('[data-screen=detail] .edit-btn'), false, 'Save can be tried again');
 assert.equal('note' in (await stored('legacy-ai-1')), false);
 await shot(page, 'r3-save-failed');
 
@@ -144,10 +151,9 @@ await page.evaluate(() => {
     return req;
   };
 });
-await page.click('.detail-title .title-actions >> text=Save');
-assert.equal(await page.textContent('.detail-title .title-actions .save'), 'Saving…');
-assert.equal(await page.isDisabled('.detail-title .title-actions .save'), true);
-assert.equal(await page.isDisabled('.detail-title .title-actions >> text=Cancel'), true);
+await save();
+assert.equal(await page.textContent('[data-screen=detail] .edit-btn'), 'Saving…');
+assert.equal(await page.isDisabled('[data-screen=detail] .edit-btn'), true);
 assert.equal(await page.getAttribute('.detail-title .caption-input', 'readonly'), '');
 await shot(page, 'r4-saving');
 await page.waitForSelector('[data-screen=detail] .title-btn');

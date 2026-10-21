@@ -9,7 +9,7 @@
 
 import { h } from './dom.js';
 
-export const TITLE_MAX = 30;
+export const TITLE_MAX = 45;
 export const TITLE_PLACEHOLDER = 'What was this moment?';
 export const JOURNAL_PLACEHOLDER = 'Write about this moment...';
 
@@ -48,7 +48,7 @@ function keepInView(el) {
 
 /**
  * The title: the existing underline caption input, one paragraph (Enter
- * finishes, pasted line breaks become spaces), with a quiet n/30 counter
+ * finishes, pasted line breaks become spaces), with a quiet n/45 counter
  * while it is being edited.
  * @param {{value?: string, label?: string, enterkeyhint?: string, onInput?: (v: string) => void, onEnter?: () => void, onEscape?: () => void}} o
  */

@@ -1,17 +1,22 @@
 // What Sonmira sells. Prices here are fallbacks for the prototype and for the
 // moment before the store answers; the UI always shows the store's localized
-// displayPrice when it has one. Product ids match the planned App Store
-// Connect products (not created yet).
+// displayPrice when it has one. Product ids are the App Store Connect
+// products (bundle app.sonmira); ios/App/App/Sonmira.storekit mirrors them
+// for Xcode testing, and tests/billing-products.test.mjs keeps the two equal.
 
 export const FREE_PAINTINGS = 3;
+// Daily Ritual: one credit per subscription day, saved up to RITUAL_CAP, kept
+// for RITUAL_KEEP_DAYS after the paid subscription ends (src/app/billing/wallet.js).
+export const RITUAL_CAP = 30;
+export const RITUAL_KEEP_DAYS = 30;
 
 export const PRODUCTS = [
   {
     id: 'app.sonmira.daily_ritual.monthly',
     kind: 'subscription', // auto-renewable, one subscription group
     name: 'Daily Ritual',
-    blurb: 'One painting every day.',
-    fallbackPrice: '$4.99',
+    blurb: 'One painting credit every day. Save up to 30.',
+    fallbackPrice: '$5.99',
     period: 'month',
   },
   {

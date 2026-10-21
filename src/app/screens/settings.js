@@ -4,7 +4,7 @@
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { openPaywall } from '../paywall/paywall.js';
-import { balanceLabel, renewalLabel } from '../paywall/copy.js';
+import { balanceLabel, renewalLabel, ritualLabel } from '../paywall/copy.js';
 
 export function mountSettings(app) {
   const b = app.billing;
@@ -18,7 +18,9 @@ export function mountSettings(app) {
     const st = b.status();
     paintings.replaceChildren(...[
       h('div', { class: 'row' }, lead('Available', 'paintings'), h('span', { class: 'val' }, balanceLabel(st))),
-      st.sub ? action('Daily Ritual', h('span', { class: 'val' }, renewalLabel(st.sub)), manage, 'dailyRitual') : null,
+      st.sub ? action('Daily Ritual', h('span', { class: 'val' }, renewalLabel(st.sub, st.now)), manage, 'dailyRitual') : null,
+      st.subscribed || st.ritual ? h('div', { class: 'row', 'data-ritual-credits': '' }, lead('Daily Ritual credits'), h('span', { class: 'val' }, ritualLabel(st))) : null,
+      st.credits ? h('div', { class: 'row', 'data-pack-credits': '' }, lead('Little Moments'), h('span', { class: 'val' }, `${st.credits} · never expire`)) : null,
       link('More paintings', () => openPaywall(app, { from: 'settings', onContinue: () => app.navigate('sing') }), 'morePaintings'),
       action('Restore purchases', null, restore, 'restore'),
     ].filter(Boolean));
@@ -27,16 +29,16 @@ export function mountSettings(app) {
 
   // In the app this opens Apple's subscription settings (AppStore.showManageSubscriptions).
   const manage = () => (b.manageSubscriptions
-    ? b.manageSubscriptions().then(() => b.refresh()).then(paint).catch(() => app.toast('We couldn’t open your subscription settings. You’ll also find them in Settings, under your name.'))
+    ? b.manageSubscriptions().then(() => b.refresh()).then(paint).catch(() => app.toast('We couldn’t open your subscription settings. You’ll also find them in Settings, under your name.', { kind: 'error' }))
     : app.toast('In the app, this opens Apple’s subscription settings. In this simulation, use Development below.'));
 
   async function restore() {
     try {
       const r = await b.restore();
-      app.toast(r.subscription || r.credits ? `Restored. ${balanceLabel(b.status())}.` : 'There’s nothing to restore for this Apple ID.');
+      app.toast(r.subscription || r.credits ? `Restored. ${balanceLabel(b.status())}.` : 'There’s nothing to restore for this Apple ID.', { kind: r.subscription || r.credits ? 'success' : 'info' });
     } catch (e) {
       if (e?.kind === 'appOnly') app.toast('Purchases are made and restored in the Sonmira app for iPhone.');
-      else if (e?.kind !== 'userCancelled') app.toast('We couldn’t reach the App Store to restore. Check your connection and try again.');
+      else if (e?.kind !== 'userCancelled') app.toast('We couldn’t reach the App Store to restore. Check your connection and try again.', { kind: 'error' });
     }
     paint();
   }

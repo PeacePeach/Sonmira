@@ -21,6 +21,7 @@ import { takeOf } from '../drafts/index.js';
 import { withGenerationKey, guardMessage } from '../protect/client.js';
 import { MAX_SECONDS } from '../settings.js';
 import { titleField, journalField } from '../ui/text-field.js';
+import { morph as morphCard } from '../ui/morph.js';
 
 const SINGING_LINES = ['Keep going…', 'Let it out.', 'Softly, softly.', 'That’s it.'];
 const FINDING = 'Finding the shape of your song…';
@@ -52,7 +53,7 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
   // Share appears in the top bar only once a painting exists (result state).
   const shareBtn = h('button', { class: 'icon-btn', 'aria-label': 'Share', hidden: true, onClick: () => {
     player?.stop();
-    sheet = openShareSheet(app, { painting: result, note: noteDraft.trim(), date: dayKey(), audio: take.audio, durationSec: take.durationSec });
+    sheet = openShareSheet(app, { painting: result, note: noteDraft.trim(), date: dayKey(), createdAt: takeCreatedAt ?? Date.now(), audio: take.audio, durationSec: take.durationSec });
   } }, icon('share'));
   const navRight = h('div', { class: 'spacer44' }, shareBtn);
   const phaseHost = h('div', { style: 'flex:1;display:flex;flex-direction:column;min-height:0' });
@@ -78,7 +79,7 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
 
   const later = (fn, ms) => timers.push(setTimeout(fn, ms));
   const show = (node) => { player?.destroy(); player = null; shareBtn.hidden = true; smallCanvas(); phaseHost.replaceChildren(node); };
-  const setProgress = (t) => { fill.style.width = `${Math.min(100, (t / maxSeconds) * 100)}%`; tLabel.textContent = clock(t); };
+  const setProgress = (t) => { fill.style.transform = `scaleX(${Math.min(1, t / maxSeconds).toFixed(4)})`; tLabel.textContent = clock(t); };
 
   // ── ready ────────────────────────────────────────────────────────────────
   function ready() {
@@ -222,7 +223,12 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
   async function generate() {
     if (phase !== 'preview') return;
     // Set a painting aside; it's only counted once the painting exists.
-    if (!app.billing.reserve(take.key)) {
+    // A saved recording (a draft) may already have a painting counted or held
+    // for it on the server that this copy of the wallet can't see: its hold
+    // was handed back at a restart, or the answer never arrived. Where the
+    // server counts paintings it decides, and refuses (no_paintings) only a
+    // take it has neither counted, nor held, nor can pay for.
+    if (!app.billing.reserve(take.key) && !(take.draft && app.billing.serverCounts)) {
       openPaywall(app, { from: 'sing', onContinue: () => { if (phase === 'preview') generate(); } });
       return;
     }
@@ -232,6 +238,7 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
     const run = take, note = noteDraft.trim();
     // The recording is kept before any paid call (a failed write never blocks painting).
     await app.drafts.begin(run, { note, date: takeDate ?? dayKey() });
+    run.draft = true;
     if (phase !== 'generating') return;
     const line = h('div', { class: 'line serif', role: 'status', 'aria-live': 'polite' }, FINDING);
     const track = h('div', { class: 'develop-track', 'aria-hidden': 'true' }, h('div', { class: 'develop-run' }));
@@ -257,6 +264,8 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
       resting();
       if (e?.code === 'analyze_only') analyzed();
       else generationError(e);
+      // Nothing counted or held for this take, and nothing left: the usual offer.
+      if (e?.code === 'no_paintings') openPaywall(app, { from: 'sing', onContinue: () => { if (phase === 'gen-error' && take === run) { phase = 'preview'; generate(); } } });
       return;
     }
     app.dev.onGeneration?.(result.generation);
@@ -291,25 +300,9 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
   }
 
   // ── result ───────────────────────────────────────────────────────────────
-  const reduceMotion = () => !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-
-  // Moves the painting card to its new layout (apply) and animates its size
-  // and place from the old one, so the change reads as the same artwork
-  // growing or shrinking. Width and height are animated rather than scaled,
-  // so the artwork is never stretched: object-fit keeps its own proportions.
-  function morph(apply) {
-    const node = painting.el;
-    const a = node.getBoundingClientRect(), aw = node.offsetWidth, ah = node.offsetHeight;
-    apply();
-    if (reduceMotion() || !node.animate || !aw) return;
-    const b = node.getBoundingClientRect(), bw = node.offsetWidth, bh = node.offsetHeight;
-    const k = bw ? b.width / bw : 1; // the desktop frame may be scaled (fitStage)
-    node.getAnimations?.().forEach((x) => x.cancel());
-    node.animate([
-      { width: `${aw}px`, height: `${ah}px`, transform: `translate(${(a.left - b.left) / k}px, ${(a.top - b.top) / k}px)` },
-      { width: `${bw}px`, height: `${bh}px`, transform: 'translate(0, 0)' },
-    ], { duration: 560, easing: 'cubic-bezier(.2, .7, .2, 1)' });
-  }
+  // The painting card moves between its sizes with the shared artwork morph
+  // (ui/morph.js), the same one the detail page uses.
+  const morph = (apply) => morphCard(painting.el, apply);
 
   // The card's three sizes: the recording/preview card (3:2), the detail
   // page's artwork (expanded, 4:5 at the detail page's margins), and the
@@ -408,7 +401,7 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
       console.warn('[sonmira] save failed', e);
       phase = 'result';
       keep.disabled = false;
-      app.toast('This painting couldn’t be saved on this device. Storage may be full or blocked. Please try again.');
+      app.toast('This painting couldn’t be saved on this device. Storage may be full or blocked. Please try again.', { kind: 'error' });
       return;
     }
     app.ui.view = 'list'; app.ui.selDay = null;
@@ -461,17 +454,13 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
     const d = await app.drafts.get(key).catch(() => null);
     if (phase !== 'resuming') return;
     if (!d) return ready();
-    take = takeOf(d); noteDraft = d.note || ''; journalDraft = d.journal || ''; takeDate = d.date ?? null; takeCreatedAt = d.createdAt ?? null;
+    take = { ...takeOf(d), draft: true }; noteDraft = d.note || ''; journalDraft = d.journal || ''; takeDate = d.date ?? null; takeCreatedAt = d.createdAt ?? null;
     progress.style.display = 'none';
     painting.setStrokes(d.painting?.wash ?? d.analysis?.wash ?? []);
     if (d.status === 'ready' && d.painting) {
-      // Shown now, so counted now by showResult(); once per take, so a
-      // painting already counted on its result screen isn't counted again.
-      if (!app.billing.reserve(take.key)) {
-        preview();
-        openPaywall(app, { from: 'sing', onContinue: () => { if (phase === 'preview') resume(key); } });
-        return;
-      }
+      // This artwork has already been generated (and charged server-side).
+      // Reopening it to save must never require another free painting or credit.
+      // showResult() commits any existing local hold idempotently.
       result = d.painting;
       await painting.setArtwork(result.artwork);
       if (phase !== 'resuming') return;

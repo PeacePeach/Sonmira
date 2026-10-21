@@ -17,6 +17,7 @@
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
 		5A0E1C0000000000000000B1 /* SonmiraStorePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A0E1C0000000000000000A1 /* SonmiraStorePlugin.swift */; };
+		5A0E1C0000000000000000B4 /* SonmiraPhotosPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A0E1C0000000000000000A4 /* SonmiraPhotosPlugin.swift */; };
 		5A0E1C0000000000000000B2 /* SonmiraBridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A0E1C0000000000000000A2 /* SonmiraBridgeViewController.swift */; };
 /* End PBXBuildFile section */
 
@@ -33,6 +34,7 @@
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		5A0E1C0000000000000000A1 /* SonmiraStorePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SonmiraStorePlugin.swift; sourceTree = "<group>"; };
+		5A0E1C0000000000000000A4 /* SonmiraPhotosPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SonmiraPhotosPlugin.swift; sourceTree = "<group>"; };
 		5A0E1C0000000000000000A2 /* SonmiraBridgeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SonmiraBridgeViewController.swift; sourceTree = "<group>"; };
 		5A0E1C0000000000000000A3 /* Sonmira.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Sonmira.storekit; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -72,6 +74,7 @@
 				9582B6822FE993A50072D4E8 /* SceneDelegate.swift */,
 				5A0E1C0000000000000000A2 /* SonmiraBridgeViewController.swift */,
 				5A0E1C0000000000000000A1 /* SonmiraStorePlugin.swift */,
+				5A0E1C0000000000000000A4 /* SonmiraPhotosPlugin.swift */,
 				5A0E1C0000000000000000A3 /* Sonmira.storekit */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
@@ -169,6 +172,7 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
 				5A0E1C0000000000000000B1 /* SonmiraStorePlugin.swift in Sources */,
+				5A0E1C0000000000000000B4 /* SonmiraPhotosPlugin.swift in Sources */,
 				5A0E1C0000000000000000B2 /* SonmiraBridgeViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

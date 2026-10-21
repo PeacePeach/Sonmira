@@ -5,5 +5,6 @@ import Capacitor
 class SonmiraBridgeViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         bridge?.registerPluginInstance(SonmiraStorePlugin())
+        bridge?.registerPluginInstance(SonmiraPhotosPlugin())
     }
 }

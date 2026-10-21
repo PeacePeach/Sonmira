@@ -15,7 +15,8 @@ import { pitchTrack } from './analysis/pitchtrack.js';
 import { singingAnalysis } from './analysis/singing.js';
 import { analyzeSamples } from './analysis/features.js';
 import { measurePerformance } from './analysis/performance-measure.js';
-import { completionGate, decideTier, lyricalFloor, GATE_CALIBRATION } from './interpret/lyrics.js';
+import { completionGate, decideTier, lyricalFloor, imageryFloor, GATE_CALIBRATION } from './interpret/lyrics.js';
+import { groundedImagery, namesMotif } from './interpret/imagery.js';
 
 export const UNDERSTAND_VERSION = 2;
 // Below this much sound there is nothing to transcribe: skip the paid call.
@@ -54,10 +55,12 @@ export function semanticsFor(tier, transcript, lyrics) {
   const asr = transcript?.asrConfidence;
   const reliable = Boolean(transcript && !transcript.hallucination && transcript.lexicalWords > 0
     && (asr == null || asr >= GATE_CALIBRATION.minAsrConfidence) && lyrics && !lyrics.error && lyrics.lexical && lyrics.coherent);
-  const text = reliable ? lyrics.concepts?.[tier] : '';
+  const grounding = reliable && tier === 'gathered' ? groundGathered(lyrics.concepts?.gathered ?? '', lyrics, transcript.text) : null;
+  const text = grounding ? grounding.text : reliable ? lyrics.concepts?.[tier] : '';
   if (!reliable || !text) return { source: 'sound', concept: null, mood: null, motif: null, reason: transcript?.lexicalWords ? 'words not reliable enough to carry meaning' : 'no words' };
   return {
     source: 'lyrics',
+    ...(grounding ? { grounding: { motifs: grounding.motifs, added: grounding.added } } : {}),
     concept: { text, theme: lyrics.theme ?? [], imagery: lyrics.imagery ?? [], figurative: lyrics.figurative ?? [],
       // Resolved only: the lyrics read as one story moment (direct: narrative section).
       ...(tier === 'resolved' && lyrics.scene?.moment ? { scene: lyrics.scene } : {}) },
@@ -65,6 +68,24 @@ export function semanticsFor(tier, transcript, lyrics) {
     motif: lyrics.motif ?? null,
     reason: 'coherent words',
   };
+}
+
+// Gathered grounded in the lyrics (Han, 21 Oct): when the words sing
+// concrete imagery (the reading's `sungImagery`, each quote checked against
+// the transcript in interpret/imagery.js), the Gathered concept must carry
+// at least one of those motifs. The reading's own Gathered concept is kept
+// as it is whenever it already names one (the usual case, so the prompt does
+// not change); otherwise the one or two first motifs are put in front of
+// it, and an empty concept becomes just those motifs. Only sung motifs are
+// named; the Gathered form keeps them semi-abstract.
+export function groundGathered(concept, lyrics, transcriptText) {
+  const sung = groundedImagery(lyrics, transcriptText);
+  if (!sung.length) return null;
+  const shared = sung.filter((f) => namesMotif(concept, f.motif)).map((f) => f.motif);
+  if (shared.length) return { text: concept, motifs: shared, added: false };
+  const motifs = sung.slice(0, 2).map((f) => f.motif);
+  const lead = motifs.join(' and ');
+  return { text: concept ? `${lead}; ${concept}` : lead, motifs, added: true };
 }
 
 // A failed measurement leaves the take on the existing direction.
@@ -93,7 +114,8 @@ export async function understandTake({ samples = null, sampleRate = 0, features 
   const transcript = w?.transcript ?? null, lyrics = w?.lyrics ?? null;
   const gate = completionGate({ transcript, lyrics, singing, features: feats });
   const floor = lyricalFloor({ gate, transcript, lyrics, singing, features: feats });
-  const decision = decideTier({ gate, quality: singing?.quality, floor });
+  const imagery = floor.applied ? null : imageryFloor({ gate, transcript, lyrics, singing });
+  const decision = decideTier({ gate, quality: singing?.quality, floor, imagery });
   const tier = forcedTier ?? decision.tier;
   const semantics = semanticsFor(tier, transcript, lyrics);
   return {
@@ -110,6 +132,8 @@ export async function understandTake({ samples = null, sampleRate = 0, features 
     gate, decision,
     // Whether the sustained-lyrical-singing floor lifted a failed gate to Gathered, and why.
     lyricalFloor: floor,
+    // Whether the concrete imagery floor lifted a failed gate to Gathered, and why.
+    imageryFloor: imagery,
     tier, tierSource: forcedTier ? 'override' : 'decision',
     semantics,
     expression: expressionFor(feats, singing),

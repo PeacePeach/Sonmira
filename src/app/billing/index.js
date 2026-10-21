@@ -43,13 +43,16 @@ export function createBilling({ ask, native, server }) {
     const base = server;
     server = { ...base, send: async (req) => base.send({ ...req, device: await native.deviceId().catch(() => null) }) };
   }
-  const store = native ?? (isReleaseSite() ? createAppOnlyStore() : createSimulatedStore({ ask }));
+  // The simulation's clock can be moved on a day at a time (Development → Start a new day).
+  const now = () => Date.now() + (native ? 0 : (Number(readJSON(DAY_SHIFT)) || 0) * 864e5);
+  const store = native ?? (isReleaseSite() ? createAppOnlyStore() : createSimulatedStore({ ask, now }));
   let account = native ? native.accountId().catch((e) => { console.warn('[sonmira] no account id', e); return null; }) : Promise.resolve(null);
-  const today = () => { const d = new Date(); if (!native) d.setDate(d.getDate() + (Number(readJSON(DAY_SHIFT)) || 0)); return dayKey(d); };
+  const today = () => dayKey(new Date(now()));
   const wallet = createWallet({
     load: () => readJSON(LOCAL) ?? readJSON(ACCOUNT),
     save: (s) => { writeJSON(LOCAL, s); if (!native) writeJSON(ACCOUNT, { ...s, holds: {} }); },
     today,
+    now,
   });
   // Generation runs inside the app, so after a restart nothing is in flight:
   // anything set aside goes back. (With a generation service, ask it first.)
@@ -68,6 +71,10 @@ export function createBilling({ ask, native, server }) {
   // wallet.grant() (and the server) ignore a transaction already counted.
   // In the app the transaction is finished only once the server has it.
   // → { product, fresh } where fresh = something new arrived (worth a toast)
+  // Paid but not yet recorded by the server (no connection, no token yet):
+  // sent again before the server's numbers are next adopted, so they never
+  // hide a purchase the person has just seen arrive.
+  const unrecorded = new Map();
   async function apply(tx) {
     const product = productById(tx.productId);
     if (!product) return { product: null };
@@ -76,15 +83,21 @@ export function createBilling({ ask, native, server }) {
       if (product.kind === 'consumable') fresh = wallet.grant(tx.id, product.credits);
       else {
         fresh = !wallet.status().subscribed && (!tx.originalId || tx.originalId === tx.id);
-        wallet.setSubscription({ productId: tx.productId, expiresAt: tx.expiresAt, willRenew: true });
+        wallet.setSubscription({ productId: tx.productId, expiresAt: tx.expiresAt, from: tx.from, willRenew: true });
       }
     }
     if (server) {
       try { adopt((await server.send({ account: await account, transactions: [tx.jws], day: today() })).status); }
-      catch (e) { console.warn('[sonmira] purchase not recorded yet; StoreKit delivers it again', e); return { product, fresh }; }
+      catch (e) { console.warn('[sonmira] purchase not recorded yet; sent again on the next refresh', e); unrecorded.set(tx.id, tx); return { product, fresh }; }
+      unrecorded.delete(tx.id);
     }
     await store.finish(tx);
     return { product, fresh };
+  }
+  // → true when nothing is left waiting for the server.
+  async function recordPending() {
+    for (const tx of [...unrecorded.values()]) await apply(tx);
+    return unrecorded.size === 0;
   }
 
   store.onTransaction(async (tx) => {
@@ -98,7 +111,7 @@ export function createBilling({ ask, native, server }) {
     try {
       const sub = await store.currentSubscription();
       wallet.setSubscription(sub);
-      if (server) {
+      if (server && await recordPending()) {
         const id = await account;
         adopt(sub?.jws
           ? (await server.send({ account: id, transactions: [sub.jws], renewals: [sub.renewalJws].filter(Boolean), day: today() })).status
@@ -114,12 +127,25 @@ export function createBilling({ ask, native, server }) {
     if (!server || settling) return;
     settling = setTimeout(async () => {
       settling = null;
-      try { adopt(await server.status(await account, today())); emit({ type: 'refresh' }); } catch {}
+      try { if (await recordPending()) { adopt(await server.status(await account, today())); emit({ type: 'refresh' }); } } catch {}
     }, 1500);
   };
 
+  // Back in the app (from Settings, another app, the lock screen): renewals,
+  // expiry and anything not yet recorded are picked up without a relaunch.
+  if (native && typeof document !== 'undefined') {
+    let last = Date.now();
+    document.addEventListener?.('visibilitychange', () => {
+      if (document.visibilityState !== 'visible' || Date.now() - last < 60_000) return;
+      last = Date.now();
+      refresh();
+    });
+  }
+
   const billing = {
     simulated: store.simulated,
+    /** The server's ledger counts paintings (the iOS app, the released site): it, not this copy, has the last word. */
+    serverCounts: !!server || isReleaseSite(),
     products: PRODUCTS,
     /** The account id (iOS app) shared with the generation guard and the ledger; null in a browser. */
     accountId: () => account,

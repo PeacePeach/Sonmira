@@ -104,6 +104,25 @@ test('paid while the server is unreachable: shown at once, finished only once re
   assert.equal(b2.status().credits, 10);
 });
 
+test('paid while the server is unreachable: a refresh records it without a relaunch, and never hides it meanwhile', async () => {
+  const plugin = fakePlugin(), server = fakeServer();
+  const b = make(plugin, server);
+  await b.ready;
+  server.down = true;
+  await b.purchase(PACK);
+  await b.refresh();
+  assert.equal(b.status().credits, 10, 'still shown while the server is away');
+  assert.deepEqual(plugin.finished, []);
+
+  server.down = false;
+  await b.refresh();
+  assert.deepEqual(plugin.finished, ['t1'], 'recorded, then finished');
+  assert.equal(b.status().credits, 10, 'counted once');
+  assert.equal(server.sent.filter((r) => r.transactions.includes(`jws-${PACK}-1`)).length, 3);
+  await b.refresh();
+  assert.deepEqual(plugin.finished, ['t1'], 'not sent again once recorded');
+});
+
 test('cancel, pending, and an Ask to Buy approval arriving later', async () => {
   const plugin = fakePlugin(), server = fakeServer();
   const b = make(plugin, server);
@@ -204,4 +223,18 @@ test('on the released site a browser cannot buy; previews keep the simulator', a
     globalThis.location = { hostname: 'sonmira-git-claude-storekit-iap-18jb4y-zizibittergourd-9441.vercel.app', reload() {} };
     assert.equal(createBilling({ ask: async () => 'success' }).simulated, true);
   } finally { globalThis.location = { reload() {} }; }
+});
+
+test('Daily Ritual bought while the server is away: one credit at once, and StoreKit refreshes add no more', async () => {
+  const plugin = fakePlugin(), server = fakeServer();
+  const b = make(plugin, server);
+  await b.ready;
+  b.dev.useUpFree?.();
+  server.down = true;
+  await b.purchase(SUB);
+  const after = b.status().ritual;
+  assert.equal(after, 1);
+  plugin.sub = { productId: SUB, expiresAt: Date.now() + 30 * 864e5, willRenew: true, jws: `jws-${SUB}-1` };
+  for (let i = 0; i < 3; i++) { await b.refresh(); await plugin.deliver({ id: 't1', originalId: 't1', productId: SUB, jws: `jws-${SUB}-1`, expiresAt: plugin.sub.expiresAt }); }
+  assert.equal(b.status().ritual, 1);
 });

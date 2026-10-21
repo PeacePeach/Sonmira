@@ -2,7 +2,7 @@
 // title and journal → Save, with the mock engine (no network, no paid calls).
 // Covers the preview's unchanged size, the expansion to the detail page's
 // artwork size, no writing fields before the painting, audio carrying on
-// across steps, the 30-character title (typed, pasted, Chinese IME), the
+// across steps, the 45-character title (typed, pasted, Chinese IME), the
 // journal saved, reloaded and edited later, entries from before the journal,
 // Reduce Motion, and a small screen.
 //
@@ -87,28 +87,28 @@ const settled = (page) => page.waitForFunction((s) => !document.querySelector(s)
   assert.ok(Math.abs((playerBox.y + playerBox.h / 2) - (thumb.y + thumb.h / 2)) < 12, 'the player sits beside the thumbnail');
   assert.equal(await page.evaluate(() => window.__gens), 1, 'one generation, none from moving between steps');
 
-  // Step 3: the title, 30 characters, typed and pasted
+  // Step 3: the title, 45 characters, typed and pasted
   await page.click('[data-step=journal] .caption-input');
-  await page.keyboard.type('Rain on the window and the long road home');
-  assert.equal(await page.inputValue('.caption-input'), 'Rain on the window and the lon');
-  assert.equal(await page.textContent('[data-step=journal] .char-count'), '30/30');
+  await page.keyboard.type('Rain on the window and the long road home through the evening');
+  assert.equal(await page.inputValue('.caption-input'), 'Rain on the window and the long road home thr');
+  assert.equal(await page.textContent('[data-step=journal] .char-count'), '45/45');
   await page.waitForFunction(() => getComputedStyle(document.querySelector('[data-step=journal] .char-count')).opacity === '1'); // the counter shows while editing
   const titleStyle = await page.$eval('.caption-input', (i) => { const s = getComputedStyle(i); return [s.borderTopWidth, s.borderBottomWidth, s.borderRadius, s.backgroundColor]; });
   assert.deepEqual(titleStyle, ['0px', '1px', '0px', 'rgba(0, 0, 0, 0)'], 'underline only');
   await page.fill('.caption-input', '');
-  await page.keyboard.insertText('x'.repeat(50));
-  assert.equal(await page.inputValue('.caption-input'), 'x'.repeat(30), 'a paste stops at 30');
-  // Chinese IME: composing isn't cut; the committed text is held to 30
+  await page.keyboard.insertText('x'.repeat(60));
+  assert.equal(await page.inputValue('.caption-input'), 'x'.repeat(45), 'a paste stops at 45');
+  // Chinese IME: composing isn't cut; the committed text is held to 45
   await page.fill('.caption-input', '');
   await page.keyboard.type('雨落在窗上的声音');
   const cdp = await ctx.newCDPSession(page);
-  await page.keyboard.type('一'.repeat(20));
+  await page.keyboard.type('一'.repeat(35));
   await cdp.send('Input.imeSetComposition', { text: 'chuang', selectionStart: 6, selectionEnd: 6 });
   await cdp.send('Input.imeSetComposition', { text: '窗外的雨', selectionStart: 4, selectionEnd: 4 });
   await cdp.send('Input.insertText', { text: '窗外的雨' });
   const zh = await page.inputValue('.caption-input');
-  assert.equal(Array.from(zh).length, 30, 'committed IME text held to 30: ' + zh);
-  assert.ok(zh.startsWith('雨落在窗上的声音' + '一'.repeat(20)) && zh.endsWith('窗外'), 'what fits of the phrase goes in: ' + zh);
+  assert.equal(Array.from(zh).length, 45, 'committed IME text held to 45: ' + zh);
+  assert.ok(zh.startsWith('雨落在窗上的声音' + '一'.repeat(35)) && zh.endsWith('窗外'), 'what fits of the phrase goes in: ' + zh);
   await page.fill('.caption-input', '');
   await cdp.send('Input.imeSetComposition', { text: 'yu', selectionStart: 2, selectionEnd: 2 });
   await cdp.send('Input.insertText', { text: '雨天' });
@@ -136,24 +136,24 @@ const settled = (page) => page.waitForFunction((s) => !document.querySelector(s)
   await page.click('.entry');
   await page.waitForSelector('[data-screen=detail] .journal-text');
   assert.equal(await page.textContent('[data-screen=detail] .journal-text'), 'First line.\n\nA second paragraph.');
-  await page.waitForFunction(() => document.querySelector('[data-screen=detail]').getAnimations().every((a) => a.playState !== 'running')); // the push-in has finished
+  await page.waitForFunction(() => document.querySelector('[data-screen=detail]').getAnimations({ subtree: true }).every((a) => a.playState !== 'running')); // the card has grown into the page
   assert.deepEqual(await box(page, '[data-screen=detail] .painting'), big, 'the expanded artwork was exactly the detail artwork');
   await shot(page, 'j4-detail');
   await page.click('[data-screen=detail] .journal-btn');
   await page.fill('[data-screen=detail] .journal-input', 'Edited later.\nTwo lines.');
-  await page.click('[data-screen=detail] .detail-journal .save');
+  await page.click('[data-screen=detail] .edit-btn'); // Save
   await page.waitForSelector('[data-screen=detail] .journal-text');
-  // the detail title holds 30 characters too
+  // the detail title holds 45 characters too
   await page.click('[data-screen=detail] .title-btn');
   await page.fill('.detail-title .caption-input', '');
-  await page.keyboard.insertText('y'.repeat(40));
-  assert.equal(await page.inputValue('.detail-title .caption-input'), 'y'.repeat(30));
+  await page.keyboard.insertText('y'.repeat(60));
+  assert.equal(await page.inputValue('.detail-title .caption-input'), 'y'.repeat(45));
   await page.press('.detail-title .caption-input', 'Escape');
   await page.reload();
   await page.click('.entry');
   await page.waitForSelector('[data-screen=detail] .journal-text');
   assert.equal(await page.textContent('[data-screen=detail] .journal-text'), 'Edited later.\nTwo lines.');
-  assert.equal(await page.textContent('[data-screen=detail] .caption'), '雨天 Rain', 'Escape kept the title');
+  assert.equal(await page.textContent('[data-screen=detail] .caption'), '雨天 Rain', 'Escape (Cancel) kept the title');
   assert.deepEqual(errors, [], 'no page errors');
   await ctx.close();
 }
@@ -187,7 +187,7 @@ const settled = (page) => page.waitForFunction((s) => !document.querySelector(s)
   await page.press('.detail-title .caption-input', 'Escape');
   await page.click('[data-screen=detail] .journal-empty');
   await page.fill('[data-screen=detail] .journal-input', 'Added to an old painting.');
-  await page.click('[data-screen=detail] .detail-journal .save');
+  await page.click('[data-screen=detail] .edit-btn'); // Save
   await page.waitForSelector('[data-screen=detail] .journal-text');
   const rec = await page.evaluate(() => new Promise((res) => { const r = indexedDB.open('sonmira', 1); r.onsuccess = () => { const g = r.result.transaction('entries').objectStore('entries').get('legacy-1'); g.onsuccess = () => { res({ journal: g.result.journal, note: g.result.note, art: !!g.result.painting.artwork.bytes }); r.result.close(); }; }; }));
   assert.deepEqual(rec, { journal: 'Added to an old painting.', note: long, art: true }, 'only the journal was added');
