@@ -16,7 +16,7 @@ import { singingAnalysis } from './analysis/singing.js';
 import { analyzeSamples } from './analysis/features.js';
 import { measurePerformance } from './analysis/performance-measure.js';
 import { completionGate, decideTier, lyricalFloor, imageryFloor, GATE_CALIBRATION } from './interpret/lyrics.js';
-import { concreteImagery } from './interpret/imagery.js';
+import { groundedImagery, namesMotif } from './interpret/imagery.js';
 
 export const UNDERSTAND_VERSION = 2;
 // Below this much sound there is nothing to transcribe: skip the paid call.
@@ -55,7 +55,7 @@ export function semanticsFor(tier, transcript, lyrics) {
   const asr = transcript?.asrConfidence;
   const reliable = Boolean(transcript && !transcript.hallucination && transcript.lexicalWords > 0
     && (asr == null || asr >= GATE_CALIBRATION.minAsrConfidence) && lyrics && !lyrics.error && lyrics.lexical && lyrics.coherent);
-  const grounding = reliable && tier === 'gathered' ? groundGathered(lyrics.concepts?.gathered ?? '', transcript.text) : null;
+  const grounding = reliable && tier === 'gathered' ? groundGathered(lyrics.concepts?.gathered ?? '', lyrics, transcript.text) : null;
   const text = grounding ? grounding.text : reliable ? lyrics.concepts?.[tier] : '';
   if (!reliable || !text) return { source: 'sound', concept: null, mood: null, motif: null, reason: transcript?.lexicalWords ? 'words not reliable enough to carry meaning' : 'no words' };
   return {
@@ -70,23 +70,21 @@ export function semanticsFor(tier, transcript, lyrics) {
   };
 }
 
-// Gathered grounded in the lyrics (Han, 21 Oct): when the words name
-// concrete imagery (interpret/imagery.js), the Gathered concept must name at
-// least one of those motifs. The reading's own Gathered concept is kept
-// as it is whenever it already does (the usual case, so the prompt does not
-// change); otherwise the one or two first-sung motifs are put in front of
-// it, and an empty concept becomes just those motifs. Nothing is invented:
-// only motifs sung in the transcript are named.
-const MASS = new Set(['sunlight', 'stars', 'clouds', 'rain', 'snow', 'mist', 'flowers', 'trees', 'waves']);
-const named = (m) => (MASS.has(m) ? m : `the ${m}`);
-export function groundGathered(concept, transcriptText) {
-  const sung = [...new Set(concreteImagery(transcriptText).map((f) => f.motif))];
+// Gathered grounded in the lyrics (Han, 21 Oct): when the words sing
+// concrete imagery (the reading's `sungImagery`, each quote checked against
+// the transcript in interpret/imagery.js), the Gathered concept must carry
+// at least one of those motifs. The reading's own Gathered concept is kept
+// as it is whenever it already names one (the usual case, so the prompt does
+// not change); otherwise the one or two first motifs are put in front of
+// it, and an empty concept becomes just those motifs. Only sung motifs are
+// named; the Gathered form keeps them semi-abstract.
+export function groundGathered(concept, lyrics, transcriptText) {
+  const sung = groundedImagery(lyrics, transcriptText);
   if (!sung.length) return null;
-  const inConcept = new Set(concreteImagery(concept).map((f) => f.motif));
-  const shared = sung.filter((m) => inConcept.has(m));
+  const shared = sung.filter((f) => namesMotif(concept, f.motif)).map((f) => f.motif);
   if (shared.length) return { text: concept, motifs: shared, added: false };
-  const motifs = sung.slice(0, 2);
-  const lead = motifs.map(named).join(' and ');
+  const motifs = sung.slice(0, 2).map((f) => f.motif);
+  const lead = motifs.join(' and ');
   return { text: concept ? `${lead}; ${concept}` : lead, motifs, added: true };
 }
 

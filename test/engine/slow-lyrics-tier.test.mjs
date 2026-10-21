@@ -97,14 +97,11 @@ test('lyrics alone lift nothing: humming, speech, fragments and unsure words sta
     oneFragment: await run(slow, { transcript: confident(EN), lyrics: reading({ structure: 'fragment', unfinished: true, linked: false, phraseComplete: false }) }),
   };
   for (const [k, u] of Object.entries(cases)) {
+    assert.equal(u.tier, 'loose', k);
     assert.equal(u.lyricalFloor.applied, false, k);
-    // Han, 21 Oct (Concrete Imagery Floor): reliable words naming a concrete
-    // image (夜空, 月亮) are at least Gathered, also as a short fragment.
-    assert.equal(u.tier, k === 'fragmentZh' ? 'gathered' : 'loose', k);
   }
   assert.match(cases.fragmentEn.lyricalFloor.reason, /lyric_words/);
   assert.match(cases.fragmentZh.lyricalFloor.reason, /lyric_words/);
-  assert.equal(cases.fragmentZh.imageryFloor.applied, true);
 });
 
 test('without the sung phrases the floor cannot be judged and the old decision stands', async () => {

@@ -5,7 +5,7 @@
 //        probabilities, from which the transcript's confidence is measured
 //   interpretLyrics(text)        → { lexical, coherent, structure, unfinished,
 //        linked, missing, phraseComplete,
-//        completionConfidence, theme, imagery, figurative, mood, motif,
+//        completionConfidence, theme, imagery, sungImagery, figurative, mood, motif,
 //        scene: { situation, relationship, tension, moment, figure,
 //                 event, core, options[] },
 //        concepts: { loose, gathered, resolved }, model, ms }
@@ -80,6 +80,7 @@ Completeness: decide from the structure of the words actually sung, in this orde
 
 Meaning (only from the words; never invent meaning that is not there; if not lexical, leave theme, imagery and figurative empty and concepts empty strings):
 - theme: up to 3 short themes. imagery: up to 5 concrete images actually named or clearly implied.
+- sungImagery: every concrete, visually depictable thing the words actually sing: an object, animal, plant, place, building, landscape, weather, light or vehicle, however unusual (a kite, a whale, a lighthouse, an old house, a paper airplane, the sea, rain), also when the words use it as a metaphor. For each: motif, a short English noun phrase naming it; quote, the exact words of the transcript that name it, copied character for character in the transcript's own language. Never feelings or abstract ideas (love, longing, sadness, time, dreams, memories, freedom), never people, never anything only implied or that you would add. Empty when the words name no such thing.
 - figurative: metaphors and idioms with what they mean. Never paint a metaphor literally: "drowning in memories" is being overwhelmed by the past, not a person drowning; "my heart is on fire" is passion, not flames.
 - mood: the closest of ${EMOTIONS.join(', ')}.
 - motif: the closest setting for the imagery among ${MOTIFS.join(', ')} (abstract if none fits).
@@ -108,7 +109,7 @@ Meaning (only from the words; never invent meaning that is not there; if not lex
   - figure: usually an empty string. Only when a person's presence is what the words' story turns on, and traces alone would not tell it, one short phrase for small, distant, faceless figures (one, a few or many, as the words call for) and what they do in this scene. Never a portrait, a face, a close-up or a large or foreground figure; never added just to fill the scene. When set, the moment may include that figure, small and distant.
 - concepts, in English, one sentence each, for a watercolor whose style comes from a separate reference image (so say nothing about colour palette or technique):
   - loose: no depicted objects at all; only movement, weight, rhythm, temperature and density of marks that carry the feeling.
-  - gathered: the one or two strongest visual motifs from the words, named plainly so they can be painted recognisably (a kite, clouds over the sea, the moon, rain on a street), loosely and partly dissolved but identifiable; the rest left as atmosphere, mood first, no storyline. Choose from what the words name; when they name feelings rather than things, invent one emotionally grounded symbolic object or quiet moment that holds this song's feeling, specific to these words and never a stock motif reused from song to song.
+  - gathered: the one or two strongest visual motifs from the words, named plainly so they can be painted recognisably (a kite, clouds over the sea, the moon, rain on a street), loosely and partly dissolved but identifiable; the rest left as atmosphere, mood first, no storyline. When sungImagery is not empty, at least one of its motifs must be among them. Choose from what the words name; when they name feelings rather than things, invent one emotionally grounded symbolic object or quiet moment that holds this song's feeling, specific to these words and never a stock motif reused from song to song.
   - resolved: the scene's moment as one clear, recognisable scene with a focal subject and visible spatial logic, something happening or just happened; for figurative or abstract words, a quiet, concrete visual equivalent of the meaning, never a mood wash. No lettering, no distress or violence shown literally.
   - every tier, and the scene: no people at all, no human figures, silhouettes, faces or body parts, except the scene's own figure and an option's own figure (in the scene's moment, its options and the resolved concept only). When the words are about people (I, you, a mother, lovers, a crowd), carry them through the place, the light, the weather and the things they touch or leave behind.`;
 
@@ -134,7 +135,7 @@ const SCHEMA = {
   schema: {
     type: 'object', additionalProperties: false,
     // Order matters: the model writes the structure analysis before the verdict.
-    required: ['language', 'lexical', 'coherent', 'structure', 'unfinished', 'linked', 'missing', 'phraseComplete', 'completionConfidence', 'completionReason', 'theme', 'imagery', 'figurative', 'mood', 'motif', 'scene', 'concepts'],
+    required: ['language', 'lexical', 'coherent', 'structure', 'unfinished', 'linked', 'missing', 'phraseComplete', 'completionConfidence', 'completionReason', 'theme', 'imagery', 'sungImagery', 'figurative', 'mood', 'motif', 'scene', 'concepts'],
     properties: {
       language: { type: 'string' },
       lexical: { type: 'boolean' },
@@ -148,6 +149,7 @@ const SCHEMA = {
       completionReason: { type: 'string' },
       theme: { type: 'array', items: { type: 'string' } },
       imagery: { type: 'array', items: { type: 'string' } },
+      sungImagery: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['motif', 'quote'], properties: { motif: { type: 'string' }, quote: { type: 'string' } } } },
       figurative: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['phrase', 'meaning'], properties: { phrase: { type: 'string' }, meaning: { type: 'string' } } } },
       mood: { type: 'string', enum: EMOTIONS },
       motif: { type: 'string', enum: MOTIFS },
@@ -176,6 +178,7 @@ export function cleanReading(r) {
     completionReason: short(r.completionReason, 240),
     theme: list(r.theme, 3, 60),
     imagery: list(r.imagery, 5, 60),
+    sungImagery: (Array.isArray(r.sungImagery) ? r.sungImagery : []).slice(0, 6).map((x) => ({ motif: short(x?.motif, 60), quote: short(x?.quote, 60) })).filter((x) => x.motif && x.quote),
     figurative: (Array.isArray(r.figurative) ? r.figurative : []).slice(0, 4).map((f) => ({ phrase: short(f?.phrase, 80), meaning: short(f?.meaning, 120) })).filter((f) => f.phrase),
     mood: EMOTIONS.includes(r.mood) ? r.mood : null,
     motif: MOTIFS.includes(r.motif) ? r.motif : null,
