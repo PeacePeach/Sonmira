@@ -210,7 +210,14 @@ async function run() {
   await page.click('[data-paywall-done] .quiet-btn');
   await settle(page);
   await shot(page, 'p11-settings-paintings');
-  assert.match(await page.textContent('[data-available]'), /^Available10 paintings\+1 Daily Ritual credit tomorrow\sat\s/);
+  assert.equal(await page.textContent('[data-available]'), 'Available10 paintings', 'the row shows only the total');
+  await page.click('[data-available]');
+  await page.waitForSelector('[data-available-sheet]');
+  assert.match(await page.textContent('[data-available-sheet]'), /10 paintings\+1 Daily Ritual credit tomorrow\sat\s/);
+  await settle(page, 500);
+  await shot(page, 'p11b-available-sheet');
+  await page.click('[data-available-sheet] [aria-label=Close]');
+  await settle(page, 300);
   assert.equal(await page.textContent('[data-sub-state]'), 'Active');
   assert.equal(await page.locator('[data-ritual-credits]').count(), 0, 'no separate Daily Ritual credits row');
   assert.equal(await page.locator('[data-pack-credits]').count(), 0, 'no separate Little Moments row');
@@ -231,7 +238,7 @@ async function run() {
   await page.click('text=Start a new day');
   await page.click('text=Start a new day');
   assert.equal((await status(page)).ritual, 2);
-  assert.match(await page.textContent('[data-available]'), /^Available11 paintings/);
+  assert.match(await page.textContent('[data-available]'), /^Available11 paintings$/);
   await page.click('[aria-label="Back to diary"]');
 
   // E. the subscription ends: diary, pack credits and Daily Ritual credits all stay
@@ -242,7 +249,11 @@ async function run() {
   s = await status(page);
   assert.deepEqual([s.subscribed, s.credits, s.ritual], [false, 9, 2]);
   assert.match(await page.textContent('[data-sub-state]'), /^Ended /);
+  await page.click('[data-available]');
+  await page.waitForSelector('[data-available-sheet]');
   assert.equal(await page.locator('[data-next-credit]').count(), 0, 'ended: no next credit');
+  await page.click('[data-available-sheet] [aria-label=Close]');
+  await settle(page, 300);
   for (let i = 0; i < 30; i++) await page.evaluate(() => window.sonmira.billing.dev.nextDay());
   assert.equal((await status(page)).ritual, 2, 'still there 30 days after the end');
   assert.match(await page.textContent('[data-available]'), /^Available11 paintings$/);

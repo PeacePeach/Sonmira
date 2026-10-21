@@ -4,6 +4,7 @@
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { openPaywall } from '../paywall/paywall.js';
+import { openLayer } from '../paywall/layer.js';
 import { balanceLabel, availableLabel, nextCreditLabel, subscriptionLabel } from '../paywall/copy.js';
 
 export function mountSettings(app) {
@@ -57,12 +58,17 @@ export function mountSettings(app) {
   }
 
   // Available: the total, and when Daily Ritual's next painting comes, if one is on its way.
-  const available = (st) => {
+  // Available: just the total; the next Daily Ritual credit is one tap away, in a sheet.
+  const available = (st) => h('button', { class: 'row action', 'data-available': '', onClick: () => openAvailable() },
+    lead('Available', 'paintings'), h('span', { class: 'row-end' }, h('span', { class: 'val' }, availableLabel(st)), icon('forward', { size: 'sm', tone: 'subtle' })));
+  const openAvailable = () => {
+    const st = b.status();
     const next = nextCreditLabel(st);
-    return h('div', { class: next ? 'row has-note' : 'row', 'data-available': '' },
-      lead('Available', 'paintings'),
-      h('span', { class: 'row-end-stack' }, h('span', { class: 'val' }, availableLabel(st)),
-        next ? h('span', { class: 'row-note', 'data-next-credit': '' }, next) : null));
+    const layer = openLayer(app, { label: 'Available paintings', cls: 'acct-sheet' });
+    layer.panel.dataset.availableSheet = '';
+    layer.body.append(
+      h('h2', { class: 'serif pw-title' }, availableLabel(st)),
+      next ? h('p', { class: 'pw-lede', 'data-next-credit': '' }, next) : null);
   };
 
   // A row's label, with its leading icon (muted, or faint while the row is Coming soon).
