@@ -29,11 +29,11 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
   if (!referenceViewAllowed(env)) return fail(404, 'not available here');
   if (!store) return fail(503, 'no reference store configured');
   const q = req.query ?? Object.fromEntries(new URL(req.url ?? '/', 'http://x').searchParams);
-  if (q.check === '1') return res.status(200).json(await checkAll(store, await registryFor(store)));
+  if (q.check === '1') return res.status(200).json(await checkAll(store, await registryFor(store, { env })));
   const id = q.id;
   if (!ID.test(String(id ?? ''))) return fail(400, 'invalid id');
   try {
-    const ref = (await registryFor(store)).find((e) => e.id === id && e.active);
+    const ref = (await registryFor(store, { env })).find((e) => e.id === id && e.active);
     if (!ref) return fail(404, 'unknown reference');
     const img = await store.loadImage(ref);
     res.setHeader('content-type', img.mime);
