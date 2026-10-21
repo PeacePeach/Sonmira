@@ -111,7 +111,9 @@ export function cleanConcept(c) {
 }
 
 
-const RECENT_COUNT = 3;
+// Reference variety (Han, 21 Oct): a person's last five paintings, any tier,
+// do not reuse a reference while the tier has another one to offer.
+export const RECENT_COUNT = 5;
 const RECENT_TTL = 365 * 86400;
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -140,7 +142,8 @@ async function mutateRecent(kv, account, edit) {
 export function eligibleRecentReferences(pool, history, count = RECENT_COUNT) {
   let blocked = history.slice(-count).map((e) => e.id);
   // When a tier has too few references, allow the oldest reference back
-  // first rather than preventing the person from painting altogether.
+  // first (the least recently used one) rather than preventing the person
+  // from painting altogether.
   let eligible = pool.filter((e) => !blocked.includes(e.id));
   while (!eligible.length && blocked.length) {
     blocked = blocked.slice(1);
@@ -192,6 +195,17 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
   if (!spec) { res.status(400).json({ ok: false, error: 'invalid spec' }); return; }
   if ((body.provider || 'openai') !== 'openai') { res.status(400).json({ ok: false, error: 'unknown provider' }); return; }
   let reservedReference = null;
+  // A painting that is not made gives its reference back: the history holds
+  // only paintings that succeeded (or are still being painted).
+  const release = async () => {
+    if (!reservedReference) return;
+    const { account, key } = reservedReference;
+    reservedReference = null;
+    try { await mutateRecent(kv, account, (history) => {
+      const index = history.findIndex((e) => e.key === key);
+      if (index >= 0) history.splice(index, 1);
+    }); } catch { /* the history expires; never mask the generation error */ }
+  };
   try {
     // References are selected from the bundled, version-controlled registry
     // (direct/references.js: tested, shipped and rolled back with the deploy)
@@ -207,10 +221,12 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
     // The decided tier is authoritative: never paint a family of another tier.
     // (A reference with no family has direction.family null; its tier is the level.)
     if (direction.level !== spec.completeness) {
+      await release();
       res.status(409).json({ ok: false, error: `family ${direction.family} is not a ${spec.completeness} family`, code: 'tier_mismatch' });
       return;
     }
     if (!store || !direction.reference) {
+      await release();
       res.status(503).json({ ok: false, error: store ? `no active reference for ${direction.family}` : 'no reference store configured', code: 'no_reference' });
       return;
     }
@@ -218,12 +234,7 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
     if (direction.resolvedLook?.applied) await rememberLook(kv, account, direction.resolvedLook.signature);
     res.status(200).json({ ok: true, provider: g.provider, model: g.model, quality: g.quality, size: g.size, ms: g.ms, usage: g.usage, prompt: direction.prompt, family: direction.family, familyLabel: direction.familyLabel, familyRefs: direction.refs, subjectSource: direction.subjectSource, subject: direction.subject, reference: direction.reference?.id ?? null, composition: direction.composition, performance: direction.performance, performanceTrace: direction.performanceTrace, resolvedFinish: direction.resolvedFinish ?? null, narrative: direction.narrative ?? null, resolvedLook: direction.resolvedLook ?? null, settings: { tier: direction.level, emotion: spec.emotion, motif: spec.motif, energy: spec.energy.value, expression: spec.expression ?? null }, promptCheck: checkPrompt(direction, { library }), referenceSent: Boolean(g.reference), seed: direction.seed, libraryVersion: direction.libraryVersion, swatches: direction.swatches, image: `data:${g.mime};base64,${g.b64}` });
   } catch (e) {
-    if (reservedReference) {
-      try { await mutateRecent(kv, reservedReference.account, (history) => {
-        const index = history.findIndex((e) => e.key === reservedReference.key);
-        if (index >= 0) history.splice(index, 1);
-      }); } catch { /* the history expires; never mask the generation error */ }
-    }
+    await release();
     // A reference image missing or unreadable in the store happens before any
     // provider call: 503 no_reference, like a missing store.
     if (e.code === 'reference_missing' || e.code === 'reference_store') { res.status(503).json({ ok: false, error: 'reference image unavailable', code: e.code === 'reference_store' ? 'reference_store' : 'no_reference' }); return; }

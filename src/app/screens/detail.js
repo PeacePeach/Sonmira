@@ -48,7 +48,7 @@ export function mountDetail(app, { id }) {
     }
     clearTimeout(confirmT);
     try { await app.deleteEntry(e.id); app.navigate('diary'); }
-    catch { app.toast('Couldn’t delete it just now. Please try again.'); }
+    catch { app.toast('Couldn’t delete it just now. Please try again.', { kind: 'error' }); }
   }
   // While editing the top bar reads Cancel · Delete · Save: Cancel takes
   // Back's place, Share steps aside, and Edit becomes Save in the same place.
@@ -250,7 +250,7 @@ export function mountDetail(app, { id }) {
       leave();
     } catch {
       busy(false);
-      app.toast('Couldn’t save just now. Please try again.');
+      app.toast('Couldn’t save just now. Please try again.', { kind: 'error' });
     }
   }
 

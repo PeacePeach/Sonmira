@@ -57,9 +57,9 @@ export function mountAccountDelete(app) {
       if (r.status === 'cancelled') { busy = false; paint(); return; }
       if (eraseDiary) {
         try { await clearEntries(); app.entries = []; }
-        catch { app.toast('Your account was deleted, but the diary couldn’t be erased. You can delete paintings one by one.'); app.navigate('settings'); return; }
+        catch { app.toast('Your account was deleted, but the diary couldn’t be erased. You can delete paintings one by one.', { kind: 'warning' }); app.navigate('settings'); return; }
       }
-      app.toast(eraseDiary ? 'Your account and this iPhone’s diary have been deleted.' : 'Your account has been deleted. Your diary is still here.');
+      app.toast(eraseDiary ? 'Your account and this iPhone’s diary have been deleted.' : 'Your account has been deleted. Your diary is still here.', { kind: 'success' });
       app.navigate('settings');
     } catch (e) {
       busy = false; paint();

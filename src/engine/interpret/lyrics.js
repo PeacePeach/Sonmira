@@ -7,7 +7,10 @@
 //   lyricalFloor({ gate, transcript, lyrics, singing, features }) → minimum
 //        Gathered for a meaningful sung phrase whose only failed check is
 //        phrase_complete (never a route to Resolved)
-//   decideTier({ gate, quality, floor }) → stage 2: Loose | Gathered | Resolved
+//   imageryFloor({ gate, transcript, lyrics, singing, features }) → minimum
+//        Gathered for reliable words that name concrete imagery, even when
+//        the phrase is unfinished, slow or weakly sung (never Resolved)
+//   decideTier({ gate, quality, floor, imagery }) → stage 2: Loose | Gathered | Resolved
 //
 // Stage 1 never looks at singing quality and stage 2 never looks at the
 // words: a beautiful hum cannot pass the gate, and a complete phrase sung
@@ -15,6 +18,8 @@
 // lyrical phrase in the transcript; it is not a claim that a known song was
 // sung correctly or completely (nothing here recognises songs).
 // Every threshold is provisional and needs calibration on real recordings.
+
+import { concreteImagery } from './imagery.js';
 
 export const LYRICS_VERSION = 6;
 
@@ -204,15 +209,67 @@ export function lyricalFloor({ gate = null, transcript = null, lyrics = null, si
   return { applied: true, tier: 'gathered', reason: 'meaningful sung lyrics: sung throughout with recognisable words; only phrase_complete failed', evidence };
 }
 
+// Concrete Imagery Floor (Han, 21 Oct): reliable words that name a concrete
+// visual image (the moon, the sea, the sky, sunlight, rain) are at least
+// Gathered, also when the phrase is unfinished or a single fragment, the
+// song is slow, or the singing is weak, which the meaningful-lyrics floor
+// above does not forgive. Regression: "我多么爱那澄蓝的天，那是浸透着阳光的海".
+// Feelings alone (love, longing, sadness) never trigger it.
+// Against hallucinated or unreliable words, everything that says the words
+// are real stays required: a transcript that is not a known hallucination,
+// a measured ASR confidence (not merely absent), real and mostly lexical
+// words, no more words than a voice sings, and a coherent, lexical reading.
+// The image must be named in the transcript itself (imagery.js) and the
+// reading must list imagery too, so neither the transcriber nor the
+// language model alone can trigger it. Speech and humming stay Loose: the
+// voice must hold some pitched notes (half the gate's sung bar). Gathered
+// only; Resolved still needs the full gate. Provisional, like the gate.
+export const IMAGERY_CALIBRATION = {
+  // Gate checks that may fail: whether the phrase is complete, whether it
+  // met the full sung bar (weak singing), and the lowest word rate (slow
+  // songs). Everything else must pass.
+  waivable: ['phrase_complete', 'sung', 'word_rate'],
+  minLexicalWords: 4,      // a line, not a word or two (the lyrical floor's minimum)
+  minPitchedSec: 1,        // some pitched voice, not a syllable
+  minSustainedRatio: 0.15, // held notes: half the gate's sung bar; speech holds almost none
+  structures: ['clause', 'image_phrase', 'noun_list', 'fragment', 'multiple_fragments'],
+};
+
+export function imageryFloor({ gate = null, transcript = null, lyrics = null, singing = null } = {}, cal = IMAGERY_CALIBRATION, gateCal = GATE_CALIBRATION) {
+  const no = (reason, evidence = null) => ({ applied: false, tier: null, reason, evidence });
+  if (!gate) return no('no lyrics gate result');
+  if (gate.pass) return no('not needed: the lyrics gate passed');
+  const vocal = singing?.vocal;
+  if (!transcript || !lyrics || lyrics.error || !vocal || vocal.voicedSec == null) {
+    return no('insufficient evidence: needs a transcript, a reading of the words and the singing analysis');
+  }
+  const found = transcript.hallucination ? [] : concreteImagery(transcript.text);
+  const rate = gate.checks.find((c) => c.id === 'word_rate')?.value;
+  const asr = transcript.asrConfidence;
+  const checks = [
+    { id: 'only_waivable_failed', ok: gate.failed.every((id) => cal.waivable.includes(id)), value: gate.failed.join(', '), need: `only ${cal.waivable.join(', ')} failed` },
+    { id: 'asr_measured', ok: asr != null && asr >= gateCal.minAsrConfidence, value: asr ?? 'unavailable', need: `a measured ASR confidence ≥ ${gateCal.minAsrConfidence}` },
+    { id: 'not_too_many_words', ok: typeof rate === 'number' && rate <= gateCal.maxWordsPerSec, value: rate ?? '—', need: `≤ ${gateCal.maxWordsPerSec} words per sounding second (not background speech)` },
+    { id: 'some_held_notes', ok: vocal.voicedSec >= cal.minPitchedSec && (vocal.sustainedRatio ?? 0) >= cal.minSustainedRatio, value: `pitched ${vocal.voicedSec} s, held ${vocal.sustainedRatio}`, need: `≥ ${cal.minPitchedSec} s pitched, ≥ ${cal.minSustainedRatio} on held notes (sung, however weakly; not speech)` },
+    { id: 'lyric_words', ok: transcript.lexicalWords >= cal.minLexicalWords, value: transcript.lexicalWords, need: `≥ ${cal.minLexicalWords} real words` },
+    { id: 'words_read', ok: lyrics.lexical === true && lyrics.coherent === true && cal.structures.includes(lyrics.structure), value: `lexical ${Boolean(lyrics.lexical)}, coherent ${Boolean(lyrics.coherent)}, structure ${lyrics.structure ?? '—'}`, need: `lexical, coherent; one of ${cal.structures.join(', ')}` },
+    { id: 'concrete_imagery', ok: found.length > 0 && (lyrics.imagery?.length ?? 0) > 0, value: `sung: ${found.map((f) => f.term).join(', ') || 'none'}; reading: ${(lyrics.imagery ?? []).join(', ') || 'none'}`, need: 'a concrete image named in the transcript, and imagery in the reading' },
+  ];
+  const evidence = { checks, transcript: transcript.text, motifs: found.map((f) => f.motif), terms: found.map((f) => f.term) };
+  if (!checks.every((c) => c.ok)) return no(`no reliable concrete imagery: ${checks.filter((c) => !c.ok).map((c) => c.id).join(', ')}`, evidence);
+  return { applied: true, tier: 'gathered', reason: `reliable words naming concrete imagery (${found.map((f) => f.term).join(', ')})`, evidence };
+}
+
 // Stage 2 (only after the gate): how well it was sung decides Gathered or
 // Resolved. Resolved needs confidently strong singing; anything uncertain
 // stays Gathered.
-// A failed gate is Loose unless the meaningful-lyrics floor applies,
-// which gives Gathered and nothing more.
-export function decideTier({ gate, quality, floor = null }) {
+// A failed gate is Loose unless the meaningful-lyrics floor or the
+// concrete imagery floor applies, which give Gathered and nothing more.
+export function decideTier({ gate, quality, floor = null, imagery = null }) {
   if (!gate?.pass) {
     if (floor?.applied) return { tier: 'gathered', stage: 'lyrical_floor', reason: `${floor.reason} (minimum Gathered; ${gate.reason})`, lyricalFloor: floor };
-    return { tier: 'loose', stage: 1, reason: gate?.reason ?? 'no lyrics gate result', lyricalFloor: floor };
+    if (imagery?.applied) return { tier: 'gathered', stage: 'imagery_floor', reason: `${imagery.reason} (minimum Gathered; ${gate.reason})`, lyricalFloor: floor, imageryFloor: imagery };
+    return { tier: 'loose', stage: 1, reason: gate?.reason ?? 'no lyrics gate result', lyricalFloor: floor, ...(imagery ? { imageryFloor: imagery } : {}) };
   }
   if (quality?.strong) return { tier: 'resolved', stage: 2, reason: `complete phrase, confidently strong singing (score ${quality.score}, confidence ${quality.confidence})` };
   const why = quality?.score == null ? 'singing quality could not be measured'
