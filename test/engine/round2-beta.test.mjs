@@ -180,6 +180,8 @@ test('a Gathered concept that already names a sung motif is kept byte for byte',
   assert.equal(s.concept.text, 'a clear blue sky above a sea soaked in sunlight');
   assert.deepEqual(s.grounding, { motifs: ['clear blue sky', 'sunlight', 'sea'], added: false });
   assert.ok(namesMotif('two whales drifting', 'whale') && namesMotif('an old house by the shore', 'old house') && !namesMotif('the seasons', 'sea'));
+  assert.ok(namesMotif('a solitary kite with a frayed thread', 'kite with broken string'), 'any content word, not only the last');
+  assert.ok(!namesMotif('an old road at dusk', 'old house'), 'short modifiers alone do not count');
 });
 
 test('a Gathered concept with no sung motif gets the first one or two sung motifs, nothing invented', () => {

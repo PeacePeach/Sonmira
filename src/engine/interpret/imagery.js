@@ -46,11 +46,18 @@ export function groundedImagery(reading, transcriptText) {
   return out;
 }
 
-// Whether a concept already names a motif: its head noun (last word), as a
-// whole word, singular or plural.
+// Whether a concept already names a motif: its head noun (last word), or
+// any other content word of four letters or more ("kite with a broken
+// string" is named by "a kite…"), as a whole word, singular or plural.
+const FUNCTION_WORDS = new Set(['with', 'from', 'into', 'over', 'under', 'onto', 'upon', 'that', 'this', 'their', 'your', 'some', 'very']);
+const wordIn = (text, w) => {
+  const stem = /[^s]s$/.test(w) && w.length > 3 ? w.slice(0, -1) : w;
+  return new RegExp(`(^|[^\\p{L}])${stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:s|es)?(?![\\p{L}])`, 'iu').test(text);
+};
 export function namesMotif(concept, motif) {
-  const head = String(motif ?? '').toLowerCase().match(/[\p{L}\p{N}]+/gu)?.pop();
-  if (!head) return false;
-  const stem = /[^s]s$/.test(head) && head.length > 3 ? head.slice(0, -1) : head;
-  return new RegExp(`(^|[^\\p{L}])${stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:s|es)?(?![\\p{L}])`, 'iu').test(String(concept ?? ''));
+  const words = String(motif ?? '').toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+  if (!words.length) return false;
+  const text = String(concept ?? '');
+  const head = words[words.length - 1];
+  return [head, ...words.filter((w) => w.length >= 4 && !FUNCTION_WORDS.has(w))].some((w) => wordIn(text, w));
 }
