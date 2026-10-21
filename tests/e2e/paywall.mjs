@@ -210,7 +210,7 @@ async function run() {
   await page.click('[data-paywall-done] .quiet-btn');
   await settle(page);
   await shot(page, 'p11-settings-paintings');
-  assert.match(await page.textContent('[data-available]'), /^Available\+1 Daily Ritual credit tomorrow\sat\s.*10 paintings$/);
+  assert.match(await page.textContent('[data-available]'), /^Available10 paintings\+1 Daily Ritual credit tomorrow\sat\s/);
   assert.equal(await page.textContent('[data-sub-state]'), 'Active');
   assert.equal(await page.locator('[data-ritual-credits]').count(), 0, 'no separate Daily Ritual credits row');
   assert.equal(await page.locator('[data-pack-credits]').count(), 0, 'no separate Little Moments row');
@@ -231,7 +231,7 @@ async function run() {
   await page.click('text=Start a new day');
   await page.click('text=Start a new day');
   assert.equal((await status(page)).ritual, 2);
-  assert.match(await page.textContent('[data-available]'), /11 paintings$/);
+  assert.match(await page.textContent('[data-available]'), /^Available11 paintings/);
   await page.click('[aria-label="Back to diary"]');
 
   // E. the subscription ends: diary, pack credits and Daily Ritual credits all stay

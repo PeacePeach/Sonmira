@@ -60,9 +60,9 @@ export function mountSettings(app) {
   const available = (st) => {
     const next = nextCreditLabel(st);
     return h('div', { class: next ? 'row has-note' : 'row', 'data-available': '' },
-      h('span', { class: 'row-label' }, icon('paintings', { tone: 'muted' }),
-        h('span', { class: 'row-text' }, 'Available', next ? h('span', { class: 'row-note', 'data-next-credit': '' }, next) : null)),
-      h('span', { class: 'val' }, availableLabel(st)));
+      lead('Available', 'paintings'),
+      h('span', { class: 'row-end-stack' }, h('span', { class: 'val' }, availableLabel(st)),
+        next ? h('span', { class: 'row-note', 'data-next-credit': '' }, next) : null));
   };
 
   // A row's label, with its leading icon (muted, or faint while the row is Coming soon).
