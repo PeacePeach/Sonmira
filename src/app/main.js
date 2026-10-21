@@ -3,6 +3,7 @@
 
 import { getEngine } from '../engine/engines/index.js';
 import { h } from './ui/dom.js';
+import { showBanner } from './ui/banner.js';
 import { initStorage, listEntries, putEntry, removeEntry } from './storage.js';
 import { loadSettings, saveSettings } from './settings.js';
 import { mountDiary } from './screens/diary.js';
@@ -73,7 +74,7 @@ export const app = {
 
   setSettings(patch) {
     this.settings = { ...this.settings, ...patch };
-    if (!saveSettings(this.settings)) this.toast('Settings can’t be saved in this browser mode. They’ll reset when you leave.');
+    if (!saveSettings(this.settings)) this.toast('Settings can’t be saved in this browser mode. They’ll reset when you leave.', { kind: 'warning' });
   },
 
   sortedEntries() {
@@ -96,10 +97,9 @@ export const app = {
     this.entries = this.entries.filter((e) => e.id !== id);
   },
 
-  toast(msg, ms = 4200) {
-    const t = h('div', { class: 'toast', role: 'status' }, msg);
-    root.append(t);
-    setTimeout(() => t.remove(), ms);
+  // A banner (ui/banner.js). opts: { kind: 'success' | 'info' | 'warning' | 'error', ms }.
+  toast(msg, opts = {}) {
+    return showBanner(root, msg, typeof opts === 'number' ? { ms: opts } : opts);
   },
 };
 
@@ -127,7 +127,7 @@ async function boot() {
   // A purchase that finishes while no paywall is open (an Ask to Buy approval).
   app.billing.onChange((ev) => {
     if (ev.type !== 'transaction' || !ev.product || app.paywallOpen) return;
-    app.toast(ev.product.kind === 'subscription' ? 'Approved. Your Daily Ritual has begun.' : `Approved. ${ev.product.credits} paintings were added.`);
+    app.toast(ev.product.kind === 'subscription' ? 'Approved. Your Daily Ritual has begun.' : `Approved. ${ev.product.credits} paintings were added.`, { kind: 'success' });
   });
   try { app.entries = await listEntries(); }
   catch (e) { console.warn(e); app.storage = { persistent: false, loadFailed: true }; }

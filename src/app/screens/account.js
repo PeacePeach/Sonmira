@@ -47,8 +47,8 @@ export function mountAccount(app) {
       busy = true; btn.disabled = true; label.textContent = 'Signing in…'; message.textContent = '';
       try {
         const r = await acc.signIn();
-        if (r.status === 'linked') app.toast('Signed in. Your paintings and purchases now stay with your Apple ID.');
-        if (r.status === 'returning') app.toast('Welcome back. Your paintings and purchases are with you again.');
+        if (r.status === 'linked') app.toast('Signed in. Your paintings and purchases now stay with your Apple ID.', { kind: 'success' });
+        if (r.status === 'returning') app.toast('Welcome back. Your paintings and purchases are with you again.', { kind: 'success' });
         busy = false;
         if (r.status !== 'cancelled') return paint();
         // Cancelled: back as it was, without a word.
@@ -98,7 +98,7 @@ export function mountAccount(app) {
       h('h2', { class: 'serif pw-title' }, 'Sign out?'),
       h('p', { class: 'pw-lede' }, 'Your diary stays on this iPhone. Your paintings and purchases stay with your Apple ID, ready when you sign in again.'),
       h('div', { class: 'actions' },
-        h('button', { class: 'pill', 'data-confirm-sign-out': '', onClick: () => { layer.close(); acc.signOut(); app.toast('Signed out. Your diary is still here.'); paint(); } }, 'Sign out'),
+        h('button', { class: 'pill', 'data-confirm-sign-out': '', onClick: () => { layer.close(); acc.signOut(); app.toast('Signed out. Your diary is still here.', { kind: 'success' }); paint(); } }, 'Sign out'),
         h('button', { class: 'quiet-btn', onClick: () => layer.close() }, 'Stay signed in')));
   }
 

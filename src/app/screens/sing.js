@@ -401,7 +401,7 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
       console.warn('[sonmira] save failed', e);
       phase = 'result';
       keep.disabled = false;
-      app.toast('This painting couldn’t be saved on this device. Storage may be full or blocked. Please try again.');
+      app.toast('This painting couldn’t be saved on this device. Storage may be full or blocked. Please try again.', { kind: 'error' });
       return;
     }
     app.ui.view = 'list'; app.ui.selDay = null;

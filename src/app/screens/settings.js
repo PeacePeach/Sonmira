@@ -29,16 +29,16 @@ export function mountSettings(app) {
 
   // In the app this opens Apple's subscription settings (AppStore.showManageSubscriptions).
   const manage = () => (b.manageSubscriptions
-    ? b.manageSubscriptions().then(() => b.refresh()).then(paint).catch(() => app.toast('We couldn’t open your subscription settings. You’ll also find them in Settings, under your name.'))
+    ? b.manageSubscriptions().then(() => b.refresh()).then(paint).catch(() => app.toast('We couldn’t open your subscription settings. You’ll also find them in Settings, under your name.', { kind: 'error' }))
     : app.toast('In the app, this opens Apple’s subscription settings. In this simulation, use Development below.'));
 
   async function restore() {
     try {
       const r = await b.restore();
-      app.toast(r.subscription || r.credits ? `Restored. ${balanceLabel(b.status())}.` : 'There’s nothing to restore for this Apple ID.');
+      app.toast(r.subscription || r.credits ? `Restored. ${balanceLabel(b.status())}.` : 'There’s nothing to restore for this Apple ID.', { kind: r.subscription || r.credits ? 'success' : 'info' });
     } catch (e) {
       if (e?.kind === 'appOnly') app.toast('Purchases are made and restored in the Sonmira app for iPhone.');
-      else if (e?.kind !== 'userCancelled') app.toast('We couldn’t reach the App Store to restore. Check your connection and try again.');
+      else if (e?.kind !== 'userCancelled') app.toast('We couldn’t reach the App Store to restore. Check your connection and try again.', { kind: 'error' });
     }
     paint();
   }

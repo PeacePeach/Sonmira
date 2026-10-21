@@ -18,6 +18,12 @@
   --disabled: #CFC9BF;
   --track: #E4DDD1;
   --underline: #DDD6CA;
+  /* banners: muted, paper-friendly kinds (only the icon is coloured) */
+  --success: #6F8A64;
+  --warning: #B08540;
+  --error: #A9574C;
+  --error-line: #E3CFC8;
+  --banner-shadow: 0 4px 16px rgba(60,45,30,.08);
 
   /* icons (src/app/ui/icons.js, docs/icons.md) */
   --icon: var(--ink);            /* navigation and actions */
@@ -384,7 +390,8 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .share-progress .rec-track { margin-top: 10px; }
 .share-message { font-family: var(--serif); font-weight: 600; font-style: italic; font-size: 16px; color: var(--secondary); line-height: 1.35; text-align: center; min-height: 0; }
 .share-message:empty { display: none; }
-.share-toast { position: absolute; left: 50%; top: calc(var(--top) + 12px); transform: translateX(-50%); z-index: 2; display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; font-size: 13px; color: var(--body); background: var(--tile); border: 1px solid var(--tile-line); box-shadow: 0 4px 16px rgba(0,0,0,.08); pointer-events: none; white-space: nowrap; animation: shareToast 2s ease-in-out both; }
+.share-toast { position: absolute; left: 50%; top: calc(var(--top) + 12px); transform: translateX(-50%); z-index: 2; display: flex; align-items: center; gap: 8px; padding: 10px 16px 10px 13px; border-radius: 18px; font-size: 13px; line-height: 1.45; color: var(--body); background: var(--tile); border: 1px solid var(--tile-line); box-shadow: var(--banner-shadow); pointer-events: none; white-space: nowrap; animation: shareToast 2s ease-in-out both; }
+.share-toast .icon { color: var(--success); }
 .share-toast[hidden] { display: none; }
 @keyframes shareToast { 0% { opacity: 0; transform: translate(-50%, -4px); } 10%, 82% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
 .nav-actions { display: flex; align-items: center; }
@@ -479,8 +486,23 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .acct-sheet .pw-lede { max-width: 330px; }
 .acct-sheet .actions { padding-top: 26px; }
 
-/* ── toast (quiet, bottom) ───────────────────────────────────────────────── */
-.toast { position: absolute; left: 24px; right: 24px; bottom: calc(var(--bottom) + 84px); z-index: 20; text-align: center; font-size: 13px; color: var(--body); background: var(--tile); border: 1px solid var(--tile-line); border-radius: 14px; padding: 12px 16px; line-height: 1.45; animation: fadeIn .25s ease-out both; }
+/* ── banners (ui/banner.js): success, info, warning, error ─────────────────
+   Below the top bar, so they never cover a screen's actions or hide behind
+   the keyboard. Quiet paper tones; only the icon carries the kind. */
+.banner { position: absolute; left: 50%; top: calc(var(--top) + 60px); z-index: 20; width: max-content; max-width: min(354px, calc(100% - 48px)); transform: translateX(-50%);
+  display: flex; align-items: flex-start; gap: 8px; padding: 10px 16px 10px 13px; border-radius: 18px;
+  font-size: 13px; line-height: 1.45; color: var(--body); text-wrap: pretty; background: var(--tile); border: 1px solid var(--tile-line); box-shadow: var(--banner-shadow);
+  cursor: default; animation: bannerIn .24s cubic-bezier(.2,.7,.2,1) both; }
+.banner .banner-icon { margin-top: 1.5px; color: var(--banner-icon); }
+.banner-success { --banner-icon: var(--success); }
+.banner-info { --banner-icon: var(--secondary); }
+.banner-warning { --banner-icon: var(--warning); }
+.banner-error { --banner-icon: var(--error); border-color: var(--error-line); }
+.banner.out { animation: bannerOut .18s ease-in both; }
+@keyframes bannerIn { from { opacity: 0; transform: translate(-50%, -6px); } }
+@keyframes bannerOut { to { opacity: 0; transform: translate(-50%, -4px); } }
+@media (prefers-reduced-motion: reduce) { .banner { animation-name: fadeIn; animation-duration: .2s; } .banner.out { animation-name: fadeOut; } }
+@keyframes fadeOut { to { opacity: 0 } }
 
 /* ── developer panel (only with ?dev) ────────────────────────────────────── */
 .devpanel { position: fixed; left: 12px; top: 12px; z-index: 1000; font: 11px/1.4 ui-monospace, Menlo, monospace; background: rgba(31,29,26,.92); color: #eee; border-radius: 10px; padding: 8px 10px; max-width: 220px; box-sizing: border-box; max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; }
