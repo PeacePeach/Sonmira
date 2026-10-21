@@ -21,16 +21,30 @@ export function availableLabel(s) {
   return plural(total(s), 'painting', 'paintings');
 }
 
-/** Available credits sheet: "You have 4 credits to create paintings. Here’s when you’ll get more." */
-export function creditsLede(s) {
-  const more = s.subscribed && s.ritualNextAt ? ' Here’s when you’ll get more.' : '';
-  return `You have ${plural(total(s), 'credit', 'credits')} to create paintings.${more}`;
-}
-
 /** Available credits sheet → Next credit, while a Daily Ritual credit is on its way:
  *  "You’ll get 1 more credit tomorrow at 9:00 AM." */
 export function nextCreditLabel(s, now = s.now ?? Date.now()) {
   return s.subscribed && s.ritualNextAt ? `You’ll get 1 more credit ${whenLabel(s.ritualNextAt, now)}.` : '';
+}
+
+/**
+ * The Available credits sheet (Settings → Available): a lede, a Next credit
+ * card while Daily Ritual has something to say about the next credit, and
+ * Credits never expire. → { lede, next: { title, text } | null, keep: { title, text } }
+ */
+export function creditsSheet(s, now = s.now ?? Date.now()) {
+  const n = total(s);
+  const when = nextCreditLabel(s, now);
+  const full = s.subscribed && !when && s.ritual >= (s.ritualCap ?? 30);
+  const ending = s.sub && !s.sub.willRenew;
+  return {
+    lede: n ? `You have ${plural(n, 'credit', 'credits')} to create paintings.${when ? ' Here’s when you’ll get more.' : ''}`
+      : when ? 'You don’t have any credits right now. Here’s when you’ll get more.' : 'You’ve used all your credits.',
+    next: when ? { title: 'Next credit', text: `${when} ${ending ? `Daily Ritual adds 1 credit every day until it ends on ${shortDate(s.sub.expiresAt)}.` : 'Daily Ritual adds 1 credit every day, up to 30.'}` }
+      : full ? { title: 'Next credit', text: 'You’ve saved 30 Daily Ritual credits, the most you can hold. Use one and your daily credits start again.' }
+      : null,
+    keep: { title: 'Credits never expire', text: 'All your credits, whether free, daily or purchased, stay in your account until you use them.' },
+  };
 }
 
 /** Settings → Daily Ritual: "Active", "Ends November 16" (auto-renew off), "Ended October 2". */

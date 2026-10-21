@@ -365,7 +365,7 @@ test('StoreKit’s subscription without its start (the app’s refresh) neither 
 });
 
 test('what the paywall, Sing and Settings say: one total, never which kind', async () => {
-  const { balanceLabel, usesLabel, availableLabel, creditsLede, nextCreditLabel, subscriptionLabel } = await import('../src/app/paywall/copy.js');
+  const { balanceLabel, usesLabel, availableLabel, creditsSheet, nextCreditLabel, subscriptionLabel } = await import('../src/app/paywall/copy.js');
   const base = { free: 0, credits: 0, ritual: 0, ritualCap: 30, ritualNextAt: null, subscribed: true };
   const now = new Date(2027, 0, 15, 20, 0).getTime();
   const tomorrow9 = new Date(2027, 0, 16, 9, 0).getTime();
@@ -384,8 +384,24 @@ test('what the paywall, Sing and Settings say: one total, never which kind', asy
     assert.match(nextCreditLabel({ ...st, ritualNextAt: tomorrow9 }, now), /^You’ll get 1 more credit tomorrow\sat\s9:00.*\.$/);
   }
   assert.equal(nextCreditLabel({ ...base, ritual: 30 }, now), '', 'at the cap: nothing scheduled, nothing said');
-  assert.equal(creditsLede({ ...base, ritual: 3, credits: 1, ritualNextAt: tomorrow9 }), 'You have 4 credits to create paintings. Here’s when you’ll get more.');
-  assert.equal(creditsLede({ ...base, subscribed: false, credits: 1 }), 'You have 1 credit to create paintings.');
+  // The Available credits sheet, in every kind of balance.
+  const active = { productId: 'app.sonmira.daily_ritual.monthly', expiresAt: new Date(2027, 1, 14).getTime(), willRenew: true };
+  const sheet = (o) => creditsSheet({ ...base, sub: active, ...o }, now);
+  const keep = 'All your credits, whether free, daily or purchased, stay in your account until you use them.';
+  const free = sheet({ subscribed: false, sub: null, free: 3 });
+  assert.deepEqual([free.lede, free.next, free.keep.text], ['You have 3 credits to create paintings.', null, keep], 'a new user: free paintings only');
+  assert.equal(sheet({ subscribed: false, sub: null, credits: 1 }).lede, 'You have 1 credit to create paintings.');
+  assert.deepEqual([sheet({ subscribed: false, sub: null }).lede, sheet({ subscribed: false, sub: null }).next], ['You’ve used all your credits.', null], 'nothing left, nothing coming');
+  const used = sheet({ ritualNextAt: tomorrow9 });
+  assert.equal(used.lede, 'You don’t have any credits right now. Here’s when you’ll get more.');
+  assert.match(used.next.text, /^You’ll get 1 more credit tomorrow at 9:00.* Daily Ritual adds 1 credit every day, up to 30\.$/);
+  assert.equal(sheet({ ritual: 3, credits: 1, ritualNextAt: tomorrow9 }).lede, 'You have 4 credits to create paintings. Here’s when you’ll get more.');
+  assert.match(sheet({ ritual: 3, ritualNextAt: tomorrow9, sub: { ...active, willRenew: false } }).next.text, /Daily Ritual adds 1 credit every day until it ends on February 14\.$/, 'auto-renew off');
+  const full = sheet({ ritual: 30, credits: 10 });
+  assert.deepEqual([full.lede, full.next.text], ['You have 40 credits to create paintings.', 'You’ve saved 30 Daily Ritual credits, the most you can hold. Use one and your daily credits start again.'], 'at the cap');
+  const ended = sheet({ subscribed: false, ritual: 5, sub: { ...active, expiresAt: new Date(2027, 0, 2).getTime(), willRenew: false } });
+  assert.deepEqual([ended.lede, ended.next], ['You have 5 credits to create paintings.', null], 'ended: what is left stays, nothing new');
+  assert.equal(sheet({ ritual: 2, subscribed: true }).next, null, 'last day of a period that won’t renew: no promise');
   assert.equal(nextCreditLabel({ ...base, subscribed: false, ritual: 4, ritualNextAt: tomorrow9 }, now), '', 'not subscribed: nothing coming');
   const sub = (o) => ({ productId: 'app.sonmira.daily_ritual.monthly', expiresAt: new Date(2027, 1, 14).getTime(), willRenew: true, ...o });
   assert.equal(subscriptionLabel(sub(), now), 'Active');

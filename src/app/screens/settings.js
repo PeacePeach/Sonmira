@@ -5,7 +5,7 @@ import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { openPaywall } from '../paywall/paywall.js';
 import { openLayer } from '../paywall/layer.js';
-import { balanceLabel, availableLabel, creditsLede, nextCreditLabel, subscriptionLabel } from '../paywall/copy.js';
+import { balanceLabel, availableLabel, creditsSheet, subscriptionLabel } from '../paywall/copy.js';
 
 export function mountSettings(app) {
   const b = app.billing;
@@ -62,17 +62,16 @@ export function mountSettings(app) {
   const available = (st) => h('button', { class: 'row action', 'data-available': '', onClick: () => openAvailable() },
     lead('Available', 'paintings'), h('span', { class: 'row-end' }, h('span', { class: 'val' }, availableLabel(st)), icon('forward', { size: 'sm', tone: 'subtle' })));
   const openAvailable = () => {
-    const st = b.status();
-    const next = nextCreditLabel(st);
+    const c = creditsSheet(b.status());
     const layer = openLayer(app, { label: 'Available credits', cls: 'credits-sheet' });
     layer.panel.dataset.availableSheet = '';
     const card = (ic, title, text) => h('div', { class: 'credits-card', ...(ic === 'nextCredit' ? { 'data-next-credit': '' } : {}) },
       icon(ic, { size: 'lg' }), h('div', {}, h('div', { class: 'serif credits-card-title' }, title), h('p', { class: 'credits-card-text' }, text)));
     layer.body.append(
       h('h2', { class: 'serif pw-title' }, 'Available credits'),
-      h('p', { class: 'pw-lede' }, creditsLede(st)),
-      next ? card('nextCredit', 'Next credit', `${next} Daily Ritual adds 1 credit every day, up to 30.`) : null,
-      card('aboutCredits', 'Credits never expire', 'All your credits, including daily credits and purchased credits, stay in your account until you use them.'));
+      h('p', { class: 'pw-lede' }, c.lede),
+      c.next ? card('nextCredit', c.next.title, c.next.text) : null,
+      card('aboutCredits', c.keep.title, c.keep.text));
   };
 
   // A row's label, with its leading icon (muted, or faint while the row is Coming soon).
