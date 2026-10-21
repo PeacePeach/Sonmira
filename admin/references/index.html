@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>Sonmira · References</title>
+<style>
+  :root { --paper: #f7f3ea; --card: #fffdf8; --ink: #2b2723; --muted: #7a7166; --line: #e4ddcf; --accent: #3d6f8f; --bad: #a8432f; --ok: #3f7a4a; --warn: #9a6b12; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--paper); color: var(--ink); }
+  button, select, input, textarea { font: inherit; }
+  button { cursor: pointer; border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 7px 12px; color: var(--ink); }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button.danger { color: var(--bad); border-color: #e2c1b8; }
+  button:disabled { opacity: .5; cursor: default; }
+  header { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--card); position: sticky; top: 0; z-index: 2; }
+  header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  .badge { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #e8eef2; color: var(--accent); }
+  .badge.prod { background: #f6e3dc; color: var(--bad); }
+  .spacer { flex: 1; }
+  main { display: grid; grid-template-columns: 230px 1fr; min-height: calc(100vh - 54px); }
+  nav { border-right: 1px solid var(--line); padding: 14px; background: var(--card); }
+  nav h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 16px 0 6px; }
+  nav a { display: flex; justify-content: space-between; padding: 5px 8px; border-radius: 6px; color: var(--ink); text-decoration: none; font-size: 14px; }
+  nav a.sub { padding-left: 20px; font-size: 13px; color: var(--muted); }
+  nav a.on { background: #ece5d6; color: var(--ink); }
+  nav a span { color: var(--muted); }
+  section.content { padding: 16px 20px 40px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; cursor: pointer; }
+  .card img { width: 100%; aspect-ratio: 4/5; object-fit: cover; display: block; background: #eee8dc; }
+  .card .meta { padding: 8px 10px; font-size: 12.5px; }
+  .card .id { font-weight: 600; font-size: 13.5px; }
+  .card.archived img { filter: grayscale(1); opacity: .55; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: #efe9dd; color: var(--muted); margin: 3px 3px 0 0; }
+  .tag.archived { background: #f3dcd5; color: var(--bad); }
+  .tag.pool { background: #dcebdf; color: var(--ok); }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
+  .panel h2 { font-size: 15px; margin: 0 0 10px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--muted); }
+  select, input[type=text], input[type=password], textarea { border: 1px solid var(--line); border-radius: 7px; padding: 7px 9px; background: #fff; color: var(--ink); }
+  .status { font-size: 13px; margin-top: 10px; }
+  .status div { padding: 3px 0; }
+  .ok { color: var(--ok); } .err { color: var(--bad); } .warn { color: var(--warn); }
+  dialog { border: 0; border-radius: 12px; padding: 0; max-width: min(960px, 95vw); width: 100%; }
+  dialog::backdrop { background: rgba(30, 26, 20, .55); }
+  .detail { display: grid; grid-template-columns: 1.3fr 1fr; }
+  .detail img { width: 100%; max-height: 80vh; object-fit: contain; background: #222; display: block; }
+  .detail .info { padding: 16px 18px; font-size: 13.5px; }
+  .detail table { border-collapse: collapse; width: 100%; margin: 8px 0 14px; }
+  .detail td { padding: 3px 0; vertical-align: top; } .detail td:first-child { color: var(--muted); width: 42%; }
+  #login { max-width: 340px; margin: 12vh auto; }
+  .log { font-size: 12.5px; max-height: 260px; overflow: auto; }
+  .log div { padding: 3px 0; border-bottom: 1px dashed var(--line); }
+  .muted { color: var(--muted); font-size: 12.5px; }
+  @media (max-width: 760px) { header { flex-wrap: wrap; padding: 10px 16px; } #version { display: none; } section.content { padding: 14px 16px 40px; } main { grid-template-columns: 1fr; } nav { border-right: 0; border-bottom: 1px solid var(--line); } .detail { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div id="login" class="panel" hidden>
+  <h2>Sonmira reference admin</h2>
+  <form id="loginForm" class="row" style="flex-direction:column;align-items:stretch">
+    <label>Password <input type="password" id="password" autocomplete="current-password" required></label>
+    <button class="primary" type="submit">Sign in</button>
+    <div id="loginMsg" class="status err"></div>
+  </form>
+</div>
+
+<div id="app" hidden>
+  <header>
+    <h1>References</h1>
+    <span id="ns" class="badge"></span>
+    <span class="spacer"></span>
+    <span id="version" class="muted"></span>
+    <button id="refresh">Refresh</button>
+    <button id="logout">Sign out</button>
+  </header>
+  <main>
+    <nav id="nav"></nav>
+    <section class="content">
+      <div class="panel">
+        <h2>Upload references</h2>
+        <form id="uploadForm" class="row">
+          <label>Category <select id="upTier" required></select></label>
+          <label>Family <select id="upFamily"></select></label>
+          <label style="flex:1;min-width:180px">Note (optional) <input type="text" id="upNote" maxlength="300"></label>
+          <label>Images <input type="file" id="upFiles" accept="image/jpeg,image/png,image/webp" multiple required></label>
+          <button class="primary" type="submit" id="upBtn">Upload</button>
+        </form>
+        <div class="muted" style="margin-top:6px">JPEG, PNG or WebP, up to 4 MB, short side at least 256 px. The id and file name are assigned automatically (e.g. resolved_15). New references are eligible for new paintings within about 30 seconds.</div>
+        <div id="upStatus" class="status"></div>
+      </div>
+      <div class="bar">
+        <strong id="title">All references</strong>
+        <span id="countLine" class="muted"></span>
+        <span class="spacer"></span>
+        <label style="flex-direction:row;align-items:center;gap:6px;color:var(--ink)"><input type="checkbox" id="showArchived"> Show archived</label>
+      </div>
+      <div id="grid" class="grid"></div>
+      <div class="panel" style="margin-top:22px">
+        <h2>Generation pools (what new paintings draw from now)</h2>
+        <div id="pools" class="muted"></div>
+      </div>
+      <div class="panel">
+        <h2>Audit log</h2>
+        <div id="audit" class="log"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<dialog id="detail">
+  <div class="detail">
+    <img id="dImg" alt="">
+    <div class="info">
+      <div style="display:flex;justify-content:space-between;align-items:center"><strong id="dId" style="font-size:17px"></strong><button id="dClose">Close</button></div>
+      <table id="dTable"></table>
+      <div id="dAction"></div>
+      <div id="dMsg" class="status"></div>
+    </div>
+  </div>
+</dialog>
+
+<script type="module">
+const API = '/api/reference';
+const TIERS = [['loose', 'Loose'], ['gathered', 'Gathered'], ['resolved', 'Resolved']];
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+let data = null, filter = { tier: null, family: null };
+
+async function call(action, { method = 'GET', body, query = {}, raw } = {}) {
+  const qs = new URLSearchParams({ admin: '1', action, ...query });
+  const init = { method, credentials: 'same-origin', headers: {} };
+  if (method === 'POST') init.headers['x-sonmira-admin'] = '1';
+  if (raw) { init.body = raw; init.headers['content-type'] = 'application/octet-stream'; }
+  else if (body) { init.body = JSON.stringify(body); init.headers['content-type'] = 'application/json'; }
+  const r = await fetch(`${API}?${qs}`, init);
+  let j = {};
+  try { j = await r.json(); } catch { j = { ok: false, error: `HTTP ${r.status}` }; }
+  if (r.status === 401 && j.code === 'signed_out') showLogin();
+  return { status: r.status, ...j };
+}
+
+function showLogin(msg = '') { $('app').hidden = true; $('login').hidden = false; $('loginMsg').textContent = msg; }
+
+$('loginForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const r = await call('login', { method: 'POST', body: { password: $('password').value } });
+  if (!r.ok) { $('loginMsg').textContent = r.error; return; }
+  $('password').value = '';
+  start();
+};
+$('logout').onclick = async () => { await call('logout', { method: 'POST' }); showLogin(); };
+$('refresh').onclick = () => load();
+$('showArchived').onchange = () => render();
+
+async function start() {
+  const s = await call('status');
+  if (!s.ok) { showLogin(s.error); return; }
+  if (!s.authed) { showLogin(); return; }
+  $('login').hidden = true; $('app').hidden = false;
+  $('ns').textContent = `${s.namespace} data`;
+  $('ns').className = `badge${s.namespace === 'production' ? ' prod' : ''}`;
+  await load();
+}
+
+async function load() {
+  const r = await call('list');
+  if (!r.ok) { $('grid').innerHTML = `<div class="err">${esc(r.error)}</div>`; return; }
+  data = r;
+  fillUploadSelects();
+  render();
+  loadAudit();
+}
+
+function fillUploadSelects() {
+  const tierSel = $('upTier'), cur = tierSel.value || filter.tier || 'resolved', curFamily = $('upFamily').value;
+  tierSel.innerHTML = TIERS.map(([t, l]) => `<option value="${t}">${l}</option>`).join('');
+  tierSel.value = cur;
+  const famFill = () => {
+    $('upFamily').innerHTML = `<option value="">No family (style follows the drawn family)</option>` +
+      data.families.filter((f) => f.tier === tierSel.value).map((f) => `<option value="${esc(f.id)}">${esc(f.id)} · ${esc(f.label)}</option>`).join('');
+  };
+  tierSel.onchange = famFill;
+  famFill();
+  if ([...$('upFamily').options].some((o) => o.value === curFamily)) $('upFamily').value = curFamily;
+}
+
+function render() {
+  const showArch = $('showArchived').checked;
+  const rows = data.rows;
+  const nav = [`<a href="#" data-t="" class="${!filter.tier ? 'on' : ''}">All <span>${rows.filter((r) => r.active).length}</span></a>`];
+  for (const [t, label] of TIERS) {
+    const c = data.counts[t];
+    nav.push(`<h3>${label}</h3><a href="#" data-t="${t}" class="${filter.tier === t && !filter.family ? 'on' : ''}">All ${label} <span>${c.active}${c.archived ? ` (+${c.archived} archived)` : ''}</span></a>`);
+    for (const f of data.families.filter((x) => x.tier === t)) nav.push(`<a href="#" class="sub ${filter.family === f.id ? 'on' : ''}" data-t="${t}" data-f="${esc(f.id)}">${esc(f.id.split('-')[0])} ${esc(f.label)} <span>${f.active}</span></a>`);
+    const none = rows.filter((r) => r.tier === t && !r.family && r.active).length;
+    nav.push(`<a href="#" class="sub ${filter.family === '-' && filter.tier === t ? 'on' : ''}" data-t="${t}" data-f="-">No family <span>${none}</span></a>`);
+  }
+  $('nav').innerHTML = nav.join('');
+  $('nav').querySelectorAll('a').forEach((a) => a.onclick = (e) => { e.preventDefault(); filter = { tier: a.dataset.t || null, family: a.dataset.f || null }; if (filter.tier) $('upTier').value = filter.tier; $('upTier').onchange(); if (filter.family && filter.family !== '-') $('upFamily').value = filter.family; render(); });
+
+  const shown = rows.filter((r) => (!filter.tier || r.tier === filter.tier) && (!filter.family || (filter.family === '-' ? !r.family : r.family === filter.family)) && (showArch || r.active));
+  $('title').textContent = filter.family && filter.family !== '-' ? filter.family : filter.tier ? `${filter.tier[0].toUpperCase()}${filter.tier.slice(1)}${filter.family === '-' ? ' · no family' : ''}` : 'All references';
+  $('countLine').textContent = `${shown.filter((r) => r.active).length} active${showArch ? `, ${shown.filter((r) => r.archived).length} archived` : ''}`;
+  const pools = data.pools;
+  $('grid').innerHTML = shown.map((r) => `
+    <div class="card ${r.archived ? 'archived' : ''}" data-id="${esc(r.id)}">
+      <img loading="lazy" src="${API}?admin=1&action=image&id=${encodeURIComponent(r.id)}" alt="${esc(r.id)}">
+      <div class="meta"><div class="id">${esc(r.id)}</div>
+        <div>${esc(r.family ? r.family : `${r.tier} · no family`)}</div>
+        ${r.archived ? '<span class="tag archived">archived</span>' : pools[r.tier]?.pool.includes(r.id) ? '<span class="tag pool">in pool</span>' : ''}
+        <span class="tag">${esc(r.source)}</span>
+      </div>
+    </div>`).join('') || '<div class="muted">No references here.</div>';
+  $('grid').querySelectorAll('.card').forEach((c) => c.onclick = () => openDetail(c.dataset.id));
+  $('version').textContent = `library ${pools.libraryVersion}`;
+  $('pools').innerHTML = TIERS.map(([t, l]) => `<div style="margin-bottom:6px"><strong style="color:var(--ink)">${l}</strong> · ${pools[t].pool.length} references, each drawn about ${pools[t].pool.length ? (100 / pools[t].pool.length).toFixed(1) : 0}% (simulated over ${pools[t].draws} seeds: ${Object.entries(pools[t].share).map(([id, p]) => `${esc(id)} ${p}%`).join(', ')})</div>`).join('') +
+    '<div>The person\'s last five references are then skipped, as before.</div>';
+}
+
+const SOURCE = { original: 'Original (bundled with the app code)', storage: 'Uploaded to Blob references/ folder', portal: 'Uploaded in this portal' };
+function openDetail(id) {
+  const r = data.rows.find((x) => x.id === id);
+  $('dImg').src = `${API}?admin=1&action=image&id=${encodeURIComponent(id)}`;
+  $('dId').textContent = r.id;
+  const kb = r.bytes ? `${Math.round(r.bytes / 1024)} KB` : null;
+  const lines = [['Category', r.tier], ['Family', r.family ? `${r.family} (${r.familyLabel})` : 'none (style follows the drawn family)'], ['File name', r.fileName], ['Source', SOURCE[r.source]],
+    ['Status', r.archived ? `Archived ${r.archivedAt ? new Date(r.archivedAt).toLocaleString() : ''}` : 'Active, eligible for new paintings'],
+    ['Archive reason', r.archiveReason], ['Measured palette', r.palette ? 'yes' : 'no (colour comes from the family)'], ['Original name', r.originalName], ['Size', r.width ? `${r.width}×${r.height}${kb ? `, ${kb}` : ''}` : null],
+    ['Added', r.addedAt ? new Date(r.addedAt).toLocaleString() : null], ['Note', r.note]].filter(([, v]) => v);
+  $('dTable').innerHTML = lines.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('');
+  $('dMsg').textContent = '';
+  $('dAction').innerHTML = r.archived
+    ? '<button class="primary" id="dRestore">Restore</button><div class="muted" style="margin-top:6px">Puts it back into selection for new paintings.</div>'
+    : '<label>Reason (optional) <input type="text" id="dReason" maxlength="300"></label><button class="danger" id="dArchive" style="margin-top:8px">Archive (remove from new paintings)</button><div class="muted" style="margin-top:6px">The image is kept and can be restored at any time. Existing paintings are not affected.</div>';
+  if (r.archived) $('dRestore').onclick = () => act('restore', { id }, `Restore ${id}?`);
+  else $('dArchive').onclick = () => act('archive', { id, reason: $('dReason').value }, `Archive ${id}? New paintings will no longer use it.`);
+  $('detail').showModal();
+}
+$('dClose').onclick = () => $('detail').close();
+
+async function act(action, body, question) {
+  if (!confirm(question)) return;
+  const r = await call(action, { method: 'POST', body });
+  $('dMsg').className = `status ${r.ok ? 'ok' : 'err'}`;
+  $('dMsg').textContent = r.ok ? `${action === 'archive' ? 'Archived' : 'Restored'} ${body.id}.` : r.error;
+  if (r.ok) { await load(); setTimeout(() => $('detail').close(), 700); }
+}
+
+$('uploadForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const files = [...$('upFiles').files];
+  const tier = $('upTier').value, family = $('upFamily').value, note = $('upNote').value;
+  if (!files.length) return;
+  $('upBtn').disabled = true;
+  const out = $('upStatus');
+  out.innerHTML = '';
+  for (const f of files) {
+    const line = document.createElement('div');
+    line.textContent = `${f.name}: uploading…`;
+    out.append(line);
+    if (f.size > 4 * 1024 * 1024) { line.className = 'err'; line.textContent = `${f.name}: failed, larger than 4 MB.`; continue; }
+    const query = { tier, name: f.name };
+    if (family) query.family = family;
+    if (note) query.note = note;
+    const r = await call('upload', { method: 'POST', raw: f, query });
+    line.className = r.ok ? 'ok' : 'err';
+    line.textContent = r.ok ? `${f.name}: added as ${r.reference.id} (${r.reference.tier}${r.reference.family ? ` · ${r.reference.family}` : ''}).` : `${f.name}: failed, ${r.error}`;
+  }
+  $('upBtn').disabled = false;
+  $('upFiles').value = '';
+  await load();
+};
+
+async function loadAudit() {
+  const r = await call('audit');
+  if (!r.ok) { $('audit').innerHTML = `<div class="err">${esc(r.error)}</div>`; return; }
+  $('audit').innerHTML = r.entries.map((a) => `<div>${esc(new Date(a.at).toLocaleString())} · <strong>${esc(a.action)}</strong> ${esc(a.id)} ${esc(a.family || a.tier || '')}${a.originalName ? ` · from ${esc(a.originalName)}` : ''}${a.reason ? ` · “${esc(a.reason)}”` : ''}</div>`).join('') || '<div class="muted">No changes yet.</div>';
+}
+
+start();
+</script>
+</body>
+</html>
