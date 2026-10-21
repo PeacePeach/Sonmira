@@ -7,7 +7,7 @@ import { illustration } from '../ui/illustration.js';
 import { DEFAULT_PRODUCT } from '../billing/products.js';
 import { openLayer } from './layer.js';
 import { openLegalSheet } from './legal-sheet.js';
-import { balanceLabel, renewalLabel, whenLabel } from './copy.js';
+import { balanceLabel, whenLabel } from './copy.js';
 
 // The Daily Ritual rules, beside its price wherever it is offered.
 const RITUAL_RULES = 'Unused credits roll over, up to 30, and never expire.';
@@ -33,10 +33,11 @@ const ERRORS = {
 export function openPaywall(app, { from = 'diary', onContinue } = {}) {
   const b = app.billing;
   const start = b.status();
-  // A subscriber who has used every credit so far can only add a pack today.
-  const extraToday = start.subscribed && !start.ritual;
+  // Someone who already has Daily Ritual is only ever offered the pack.
+  const subscriber = start.subscribed;
+  const extraToday = subscriber && !start.canCreate;
   const next = start.ritualNextAt ? whenLabel(start.ritualNextAt, start.now) : null;
-  const plans = b.products.filter((p) => !extraToday || p.kind === 'consumable');
+  const plans = b.products.filter((p) => !subscriber || p.kind === 'consumable');
   let selected = plans.some((p) => p.id === DEFAULT_PRODUCT) ? DEFAULT_PRODUCT : plans[0].id;
   let busy = false, done = false, waiting = false;
 
@@ -62,7 +63,9 @@ export function openPaywall(app, { from = 'diary', onContinue } = {}) {
 
   const lede = extraToday
     ? `${next ? `Daily Ritual brings your next credit ${next}.` : 'Your Daily Ritual credits are used.'} If today asks for more, you can add a few paintings.`
-    : start.purchased
+    : subscriber
+      ? 'Your Daily Ritual is active. If you’d like more, you can add a few paintings anytime.'
+      : start.purchased
       ? 'Your diary is just as you left it. Choose how you’d like to keep creating.'
       : 'Your first three paintings are on us. Choose how you’d like to keep creating.';
 
@@ -70,7 +73,6 @@ export function openPaywall(app, { from = 'diary', onContinue } = {}) {
     h('h2', { class: 'serif pw-title' }, extraToday ? 'Your credits are used for now.' : 'More moments to keep.'),
     h('p', { class: 'pw-lede' }, lede),
     h('div', { class: 'pw-plans', role: 'radiogroup', 'aria-label': 'Ways to keep creating' }, planEls.map((x) => x.el)),
-    extraToday ? h('p', { class: 'pw-plan-note' }, `Your Daily Ritual · ${renewalLabel(start.sub, start.now)}`) : null,
     h('div', { class: 'pw-cta' }, cta, message),
     fine,
     h('div', { class: 'pw-links' },

@@ -221,6 +221,16 @@ async function run() {
   await shot(page, 'p11b-available-sheet');
   await page.click('[data-available-sheet] [aria-label=Close]');
   await settle(page, 300);
+  // A subscriber is never offered Daily Ritual again: More paintings shows the pack only.
+  await page.click('text=More paintings');
+  await page.waitForSelector(paywall);
+  assert.deepEqual(await page.locator('[data-plan]').evaluateAll((els) => els.map((e) => e.dataset.plan)), ['app.sonmira.little_moments.10']);
+  assert.match(await page.textContent(paywall), /Your Daily Ritual is active\..*Add 10 paintings/s);
+  assert.doesNotMatch(await page.textContent(`${paywall} .pill`), /Start Daily Ritual/);
+  await settle(page, 600);
+  await shot(page, 'p11c-paywall-subscriber');
+  await page.click(`${paywall} [aria-label=Close]`);
+  await settle(page, 300);
   assert.equal(await page.textContent('[data-sub-state]'), 'Active');
   assert.equal(await page.locator('[data-ritual-credits]').count(), 0, 'no separate Daily Ritual credits row');
   assert.equal(await page.locator('[data-pack-credits]').count(), 0, 'no separate Little Moments row');
