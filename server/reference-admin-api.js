@@ -86,7 +86,11 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
   const q = req.query ?? Object.fromEntries(new URL(req.url ?? '/', 'http://x').searchParams);
   const action = String(q.action ?? '');
   const configured = typeof password === 'string' && password.length >= 12;
-  if (!configured) return fail(404, 'The reference admin is not enabled on this deployment.', { code: 'not_enabled' });
+  if (!configured) {
+    // Says which, never the value: missing on this environment, or too short.
+    const why = typeof password === 'string' && password.length ? `SONMIRA_ADMIN_PASSWORD is set on this deployment but has ${password.length} characters; it needs at least 12.` : `SONMIRA_ADMIN_PASSWORD is not set for this deployment's environment (${env.VERCEL_ENV || 'local'}).`;
+    return fail(404, `The reference admin is not enabled on this deployment. ${why}`, { code: 'not_enabled' });
+  }
   let ns;
   try { ns = adminNamespace(env); } catch { return fail(500, 'Invalid admin namespace.'); }
   const post = req.method === 'POST';
