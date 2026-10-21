@@ -1,5 +1,5 @@
 // SERVER ONLY: the reference admin portal's overlay on the reference
-// registry (api/admin/references.js, admin/references/).
+// registry (server/reference-admin-api.js, admin/references/).
 //
 // The bundled registry (direct/references.js) and the images discovered in
 // references/ stay exactly as they are. The portal writes only under its own

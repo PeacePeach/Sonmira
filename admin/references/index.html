@@ -125,14 +125,14 @@
 </dialog>
 
 <script type="module">
-const API = '/api/admin/references';
+const API = '/api/reference';
 const TIERS = [['loose', 'Loose'], ['gathered', 'Gathered'], ['resolved', 'Resolved']];
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 let data = null, filter = { tier: null, family: null };
 
 async function call(action, { method = 'GET', body, query = {}, raw } = {}) {
-  const qs = new URLSearchParams({ action, ...query });
+  const qs = new URLSearchParams({ admin: '1', action, ...query });
   const init = { method, credentials: 'same-origin', headers: {} };
   if (method === 'POST') init.headers['x-sonmira-admin'] = '1';
   if (raw) { init.body = raw; init.headers['content-type'] = 'application/octet-stream'; }
@@ -209,7 +209,7 @@ function render() {
   const pools = data.pools;
   $('grid').innerHTML = shown.map((r) => `
     <div class="card ${r.archived ? 'archived' : ''}" data-id="${esc(r.id)}">
-      <img loading="lazy" src="${API}?action=image&id=${encodeURIComponent(r.id)}" alt="${esc(r.id)}">
+      <img loading="lazy" src="${API}?admin=1&action=image&id=${encodeURIComponent(r.id)}" alt="${esc(r.id)}">
       <div class="meta"><div class="id">${esc(r.id)}</div>
         <div>${esc(r.family ? r.family : `${r.tier} · no family`)}</div>
         ${r.archived ? '<span class="tag archived">archived</span>' : pools[r.tier]?.pool.includes(r.id) ? '<span class="tag pool">in pool</span>' : ''}
@@ -225,7 +225,7 @@ function render() {
 const SOURCE = { original: 'Original (bundled with the app code)', storage: 'Uploaded to Blob references/ folder', portal: 'Uploaded in this portal' };
 function openDetail(id) {
   const r = data.rows.find((x) => x.id === id);
-  $('dImg').src = `${API}?action=image&id=${encodeURIComponent(id)}`;
+  $('dImg').src = `${API}?admin=1&action=image&id=${encodeURIComponent(id)}`;
   $('dId').textContent = r.id;
   const kb = r.bytes ? `${Math.round(r.bytes / 1024)} KB` : null;
   const lines = [['Category', r.tier], ['Family', r.family ? `${r.family} (${r.familyLabel})` : 'none (style follows the drawn family)'], ['File name', r.fileName], ['Source', SOURCE[r.source]],

@@ -1,4 +1,4 @@
-// The reference admin portal (api/admin/references.js, reference-admin.js):
+// The reference admin portal (server/reference-admin-api.js via /api/reference?admin=1, reference-admin.js):
 // upload, naming, category assignment, archive/restore, permissions, audit,
 // and that its references go through the existing engine unchanged.
 // In-memory @vercel/blob and a mocked OpenAI: no network, no paid calls.
@@ -9,7 +9,11 @@ import { REFERENCE_LIBRARY } from '../../src/engine/direct/references.js';
 import { direct, REFERENCE_ONLY_STYLE } from '../../src/engine/direct/index.js';
 import { blobStore, libraryFor, registryFor } from '../../src/engine/providers/reference-store.js';
 import { adminNamespace, applyOverlay, archiveBlocker, sniffImage, uploadReference, archiveReference, restoreReference } from '../../src/engine/providers/reference-admin.js';
-import { createHandler as adminHandler, sessionToken } from '../../api/admin/references.js';
+import { sessionToken } from '../../server/reference-admin-api.js';
+import { createHandler as referenceHandler } from '../../api/reference.js';
+
+// The portal's API is served by /api/reference with admin=1.
+const adminHandler = (o) => referenceHandler(o);
 import { createHandler as generateHandler, eligibleRecentReferences } from '../../api/generate.js';
 
 const PASSWORD = 'correct horse battery staple';
@@ -79,7 +83,7 @@ function call(handler, { method = 'GET', action, query = {}, body, cookie, csrf 
       json(j) { resolve({ code: this.code, json: j, headers: this.headers }); },
       end(b) { resolve({ code: this.code, bytes: b, headers: this.headers }); },
     };
-    handler({ method, headers, query: { action, ...query }, body, socket: { remoteAddress: '1.2.3.4' } }, res);
+    handler({ method, headers, query: { admin: '1', action, ...query }, body, socket: { remoteAddress: '1.2.3.4' } }, res);
   });
 }
 async function signIn(handler) {
@@ -304,7 +308,7 @@ test('the session cookie is HttpOnly, Strict, Secure and scoped to the admin API
   const { store, env } = setup();
   const r = await call(adminHandler({ store, env }), { method: 'POST', action: 'login', body: { password: PASSWORD } });
   const c = r.headers['set-cookie'];
-  for (const part of ['HttpOnly', 'SameSite=Strict', 'Secure', 'Path=/api/admin/references']) assert.ok(c.includes(part), part);
+  for (const part of ['HttpOnly', 'SameSite=Strict', 'Secure', 'Path=/api/reference']) assert.ok(c.includes(part), part);
   assert.ok(!c.includes(PASSWORD));
 });
 

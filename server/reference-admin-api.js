@@ -1,7 +1,8 @@
-// Vercel Serverless Function: the reference admin portal's API
-// (admin/references/index.html). Owner only.
+// The reference admin portal's API (admin/references/index.html), served by
+// api/reference.js for requests with admin=1: the Hobby plan allows 12
+// functions per deployment and Sonmira already has 12. Owner only.
 //
-//   GET  ?action=status           { configured, authed, namespace }
+//   GET  /api/reference?admin=1&action=status           { configured, authed, namespace }
 //   POST ?action=login            { password } → session cookie
 //   POST ?action=logout
 //   GET  ?action=list             every reference + counts + selection pools
@@ -20,9 +21,9 @@
 // back by reference id.
 
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
-import { referenceStoreFromEnv, registryFor } from '../../src/engine/providers/reference-store.js';
-import { createLibrary } from '../../src/engine/direct/library.js';
-import { adminNamespace, archiveReference, auditLog, listReferences, restoreReference, uploadReference, TIERS, MAX_BYTES } from '../../src/engine/providers/reference-admin.js';
+import { referenceStoreFromEnv, registryFor } from '../src/engine/providers/reference-store.js';
+import { createLibrary } from '../src/engine/direct/library.js';
+import { adminNamespace, archiveReference, auditLog, listReferences, restoreReference, uploadReference, TIERS, MAX_BYTES } from '../src/engine/providers/reference-admin.js';
 
 const COOKIE = 'sonmira_ref_admin';
 const SESSION_S = 12 * 3600;
@@ -94,7 +95,7 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
   if (post && req.headers?.['x-sonmira-admin'] !== '1') return fail(403, 'Forbidden', { code: 'csrf' });
   const authed = validSession(cookieOf(req), password, ns, now);
   const secure = !/^(localhost|127\.0\.0\.1)(:\d+)?$/.test(String(req.headers?.host ?? '')) ? '; Secure' : '';
-  const cookie = (value, maxAge) => `${COOKIE}=${value}; Path=/api/admin/references; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${secure}`;
+  const cookie = (value, maxAge) => `${COOKIE}=${value}; Path=/api/reference; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${secure}`;
 
   if (action === 'status' && !post) return send(200, { ok: true, authed, namespace: ns, writable: Boolean(store?.raw) });
   if (action === 'login' && post) {
@@ -148,4 +149,3 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
   }
 };
 
-export default createHandler();

@@ -4,7 +4,7 @@ A password-protected page for adding and archiving watercolor reference
 images without code changes, PRs or redeploys.
 
 - Page: `/admin/references/` (static, `admin/references/index.html`)
-- API: `/api/admin/references` (`api/admin/references.js`)
+- API: `/api/reference?admin=1&action=…` (`server/reference-admin-api.js`, served by `api/reference.js`, because the Hobby plan allows 12 functions and Sonmira already has 12)
 - Storage logic: `src/engine/providers/reference-admin.js`
 
 ## Turning it on
@@ -65,7 +65,7 @@ changes what Production paints.
 ## Security
 
 Server-side password check (constant time, throttled), HttpOnly +
-SameSite=Strict + Secure session cookie scoped to `/api/admin/references`,
+SameSite=Strict + Secure session cookie scoped to `/api/reference`,
 signed with a key derived from the password (changing it signs every session
 out). Every POST needs the `x-sonmira-admin` header, which a cross-site form
 cannot send. Images are streamed by id; no Blob URL, path or token reaches
