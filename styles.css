@@ -485,6 +485,12 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .acct-link { font-family: var(--serif); font-weight: 600; font-style: italic; font-size: 16px; color: var(--secondary); text-decoration: underline; text-decoration-color: var(--underline); text-underline-offset: 4px; }
 .acct-sheet .pw-lede { max-width: 330px; }
 .acct-sheet .actions { padding-top: 26px; }
+.credits-sheet .pw-lede { font-size: 16px; margin-top: 12px; }
+.credits-card { display: flex; gap: 18px; align-items: flex-start; margin-top: 20px; padding: 22px 20px; border-radius: 20px; background: var(--tile); border: 1px solid var(--tile-line); }
+.credits-card + .credits-card { margin-top: 14px; }
+.credits-card .icon { flex-shrink: 0; margin-top: 2px; }
+.credits-card-title { font-size: 21px; font-weight: 600; line-height: 1.25; }
+.credits-card-text { margin: 6px 0 0; font-size: 15px; color: var(--secondary); line-height: 1.5; text-wrap: pretty; }
 
 /* ── banners (ui/banner.js): success, info, warning, error ─────────────────
    Below the top bar, so they never cover a screen's actions or hide behind

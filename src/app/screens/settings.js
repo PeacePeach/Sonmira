@@ -4,7 +4,8 @@
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { openPaywall } from '../paywall/paywall.js';
-import { balanceLabel, renewalLabel, ritualLabel } from '../paywall/copy.js';
+import { openLayer } from '../paywall/layer.js';
+import { balanceLabel, availableLabel, creditsSheet, subscriptionLabel } from '../paywall/copy.js';
 
 export function mountSettings(app) {
   const b = app.billing;
@@ -17,10 +18,8 @@ export function mountSettings(app) {
     accountVal.textContent = app.account?.status().signedIn ? 'Signed in with Apple' : 'On this iPhone';
     const st = b.status();
     paintings.replaceChildren(...[
-      h('div', { class: 'row' }, lead('Available', 'paintings'), h('span', { class: 'val' }, balanceLabel(st))),
-      st.sub ? action('Daily Ritual', h('span', { class: 'val' }, renewalLabel(st.sub, st.now)), manage, 'dailyRitual') : null,
-      st.subscribed || st.ritual ? h('div', { class: 'row', 'data-ritual-credits': '' }, lead('Daily Ritual credits'), h('span', { class: 'val' }, ritualLabel(st))) : null,
-      st.credits ? h('div', { class: 'row', 'data-pack-credits': '' }, lead('Little Moments'), h('span', { class: 'val' }, `${st.credits} · never expire`)) : null,
+      available(st),
+      st.sub ? action('Daily Ritual', h('span', { class: 'val', 'data-sub-state': '' }, subscriptionLabel(st.sub, st.now)), manage, 'dailyRitual') : null,
       link('More paintings', () => openPaywall(app, { from: 'settings', onContinue: () => app.navigate('sing') }), 'morePaintings'),
       action('Restore purchases', null, restore, 'restore'),
     ].filter(Boolean));
@@ -57,6 +56,23 @@ export function mountSettings(app) {
       dev('Start over as a new person', () => b.dev.reset()),
     ].filter(Boolean);
   }
+
+  // Available: the total, and when Daily Ritual's next painting comes, if one is on its way.
+  // Available: just the total; the next Daily Ritual credit is one tap away, in a sheet.
+  const available = (st) => h('button', { class: 'row action', 'data-available': '', onClick: () => openAvailable() },
+    lead('Available', 'paintings'), h('span', { class: 'row-end' }, h('span', { class: 'val' }, availableLabel(st)), icon('forward', { size: 'sm', tone: 'subtle' })));
+  const openAvailable = () => {
+    const c = creditsSheet(b.status());
+    const layer = openLayer(app, { label: 'Available credits', cls: 'credits-sheet' });
+    layer.panel.dataset.availableSheet = '';
+    const card = (ic, title, text) => h('div', { class: 'credits-card', ...(ic === 'nextCredit' ? { 'data-next-credit': '' } : {}) },
+      icon(ic, { size: 'lg' }), h('div', {}, h('div', { class: 'serif credits-card-title' }, title), h('p', { class: 'credits-card-text' }, text)));
+    layer.body.append(
+      h('h2', { class: 'serif pw-title' }, 'Available credits'),
+      h('p', { class: 'pw-lede' }, c.lede),
+      c.next ? card('nextCredit', c.next.title, c.next.text) : null,
+      card('aboutCredits', c.keep.title, c.keep.text));
+  };
 
   // A row's label, with its leading icon (muted, or faint while the row is Coming soon).
   const lead = (label, name, tone = 'muted') => h('span', { class: 'row-label' }, name ? icon(name, { tone }) : null, label);

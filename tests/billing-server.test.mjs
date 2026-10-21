@@ -149,7 +149,7 @@ test('every install is counted alike when billing is on; nobody when it is off',
   assert.equal(understand.counted, false, 'only paintings are counted');
 });
 
-test('Daily Ritual: a credit per paid day, saved up, renewals extend, expiry keeps them 30 days', async () => {
+test('Daily Ritual: a credit per paid day, saved up, renewals extend, earned credits outlive the subscription', async () => {
   const s = setup();
   for (const k of ['f1', 'f2', 'f3']) await s.paint(A, `${k}.generate`);
   const first = s.tx({ productId: SUB });
@@ -175,20 +175,21 @@ test('Daily Ritual: a credit per paid day, saved up, renewals extend, expiry kee
   assert.equal(st.subscribed, true);
   assert.equal(st.sub.expiresAt, renewal.expiresDate);
 
-  // Turned off: credits keep coming to the end of the period, then stay 30 days.
+  // Turned off: credits keep coming to the end of the period, then stop; what's earned stays.
   await s.notify(s.note('DID_CHANGE_RENEWAL_STATUS', { subtype: 'AUTO_RENEW_DISABLED', renewal: { originalTransactionId: first.originalTransactionId, autoRenewProductId: SUB, productId: SUB, autoRenewStatus: 0, signedDate: s.clock.now, environment: 'Sandbox' } }));
   const off = await s.status(A);
   assert.equal(off.sub.willRenew, false);
-  assert.equal(off.ritualExpiresAt, renewal.expiresDate + 30 * DAY);
+  assert.equal('ritualExpiresAt' in off, false);
   s.clock.now = renewal.expiresDate + DAY;
   const ended = await s.status(A);
   assert.equal(ended.subscribed, false);
   assert.equal(ended.ritual, 30, 'saved up to 30');
   assert.equal((await s.paint(A, 'e1.generate')).source, 'daily', 'still usable after the end');
-  s.clock.now = renewal.expiresDate + 30 * DAY;
-  const gone = await s.status(A);
-  assert.equal(gone.ritual, 0, '30 days after the end, gone');
-  assert.equal((await s.paint(A, 'e2.generate')).code, 'no_paintings');
+  s.clock.now = renewal.expiresDate + 365 * DAY;
+  const later = await s.status(A);
+  assert.equal(later.ritual, 29, 'a year after the end, still there');
+  assert.equal(later.ritualNextAt, null);
+  assert.equal((await s.paint(A, 'e2.generate')).source, 'daily');
 });
 
 test('Daily Ritual credits: a failed painting uses none, a repeated take pays once, packs are separate', async () => {

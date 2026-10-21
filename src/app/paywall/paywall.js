@@ -10,7 +10,7 @@ import { openLegalSheet } from './legal-sheet.js';
 import { balanceLabel, renewalLabel, whenLabel } from './copy.js';
 
 // The Daily Ritual rules, beside its price wherever it is offered.
-const RITUAL_RULES = 'Unused credits roll over, up to 30. Remaining credits expire 30 days after your subscription ends.';
+const RITUAL_RULES = 'Unused credits roll over, up to 30, and never expire.';
 
 const WHY = [
   'Each painting is made just for you, using AI that costs something to run. Your support helps us cover creation costs, care for Sonmira, and keep making it better.',
