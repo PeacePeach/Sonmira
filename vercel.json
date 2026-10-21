@@ -10,12 +10,6 @@
       "permanent": false
     }
   ],
-  "rewrites": [
-    {
-      "source": "/api/feedback",
-      "destination": "/api/session?route=feedback"
-    }
-  ],
   "headers": [
     {
       "source": "/(.*)",

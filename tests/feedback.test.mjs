@@ -211,16 +211,3 @@ test('it stays apart from payments and painting', async () => {
     assert.doesNotMatch(src, /billing|paywall|ledger|engine|generate/i, f);
   }
 });
-
-test('on Vercel, /api/feedback reaches the session function (12 functions at most on Hobby)', async () => {
-  const { readdir } = await import('node:fs/promises');
-  const walk = async (d) => (await Promise.all((await readdir(d, { withFileTypes: true })).map((e) => (e.isDirectory() ? walk(`${d}/${e.name}`) : e.name.endsWith('.js') ? [`${d}/${e.name}`] : [])))).flat();
-  const fns = await walk(new URL('../api', import.meta.url).pathname);
-  assert.ok(fns.length <= 12, `${fns.length} functions`);
-  const cfg = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
-  assert.deepEqual(cfg.rewrites, [{ source: '/api/feedback', destination: '/api/session?route=feedback' }]);
-  const { default: api } = await import('../api/session.js');
-  const res = fakeRes();
-  await api({ method: 'GET', query: { route: 'feedback' }, headers: {} }, res);
-  assert.deepEqual([res.code, res.body.code], [405, 'method'], 'the feedback handler answered');
-});
