@@ -351,6 +351,16 @@ input::placeholder { color: var(--placeholder); opacity: 1; }
 .row.soon .val { color: var(--chevron); font-style: italic; font-size: 16px; }
 .row.soon .row-label { color: var(--muted); } /* the label quiets with its faint icon */
 .settings .foot { text-align: center; font-size: 15px; font-style: italic; color: var(--muted); padding: 36px 24px 0; }
+.feedback-lede { margin: 0; padding: 12px 28px 0; font-family: var(--sans); font-weight: 450; font-size: 15px; line-height: 1.55; color: var(--secondary); text-wrap: pretty; }
+.feedback-form { padding: 22px 18px 0; }
+.feedback-input, .feedback-email { display: block; width: 100%; background: var(--tile); border: 1px solid var(--tile-line); border-radius: 20px; font-family: var(--sans); font-weight: 450; font-size: 16px; line-height: 1.55; color: var(--ink); outline: none; -webkit-appearance: none; appearance: none; }
+.feedback-input { min-height: 180px; padding: 16px 20px; resize: none; }
+.feedback-email { height: 52px; padding: 0 20px; }
+.feedback-input::placeholder, .feedback-email::placeholder { color: var(--placeholder); opacity: 1; }
+.feedback-input:focus, .feedback-email:focus { border-color: var(--muted); }
+.feedback-label { display: block; padding: 24px 12px 10px; font-size: 16px; font-style: italic; color: var(--muted); }
+.feedback-optional { font-style: italic; }
+.feedback .actions { padding: 26px 10px 0; }
 .legal .prose { padding: 18px 28px 0; font-family: var(--sans); font-weight: 450; font-size: 15px; line-height: 1.6; color: var(--body); }
 .legal .prose p { margin: 0 0 14px; }
 .legal .draft { padding: 22px 28px 0; font-family: var(--sans); }

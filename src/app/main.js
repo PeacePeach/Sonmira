@@ -20,6 +20,7 @@ import { createDrafts } from './drafts/index.js';
 import { installApiFetch } from './native/fetch.js';
 import { mountAccount } from './screens/account.js';
 import { mountAccountDelete } from './screens/account-delete.js';
+import { mountFeedback } from './screens/feedback.js';
 import { createAccountForDevice } from './account/setup.js';
 import { localStorageBox } from './account/index.js';
 import { wantsUxPreview, previewBilling, previewBadge } from './ux-preview.js';
@@ -27,8 +28,8 @@ import { isNativeIOS } from './native/platform.js';
 import { releaseArtwork } from './ui/painting.js';
 import { bakeGrain } from './ui/wash.js';
 
-const SCREENS = { diary: mountDiary, sing: mountSing, detail: mountDetail, settings: mountSettings, legal: mountLegal, account: mountAccount, accountDelete: mountAccountDelete };
-const ENTER = { diary: 'enter-fade', sing: 'enter-modal', detail: 'enter-push', settings: 'enter-push', legal: 'enter-push', account: 'enter-push', accountDelete: 'enter-push' };
+const SCREENS = { diary: mountDiary, sing: mountSing, detail: mountDetail, settings: mountSettings, legal: mountLegal, account: mountAccount, accountDelete: mountAccountDelete, feedback: mountFeedback };
+const ENTER = { diary: 'enter-fade', sing: 'enter-modal', detail: 'enter-push', settings: 'enter-push', legal: 'enter-push', account: 'enter-push', accountDelete: 'enter-push', feedback: 'enter-push' };
 
 const root = document.getElementById('app');
 const now = new Date();
