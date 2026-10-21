@@ -10,6 +10,12 @@
       "permanent": false
     }
   ],
+  "rewrites": [
+    {
+      "source": "/support",
+      "destination": "/support/index.html"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
