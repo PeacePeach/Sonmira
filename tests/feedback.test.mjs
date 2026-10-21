@@ -45,9 +45,9 @@ test('the subject is exactly "Sonmira — Feedback"', () => {
   assert.equal(FEEDBACK_SUBJECT, 'Sonmira — Feedback');
 });
 
-test('the support address is one constant, and never invented', () => {
-  assert.equal(typeof SUPPORT_EMAIL, 'string');
-  if (SUPPORT_EMAIL) assert.match(SUPPORT_EMAIL, /^[^@\s]+@[^@\s]+\.[^@\s]+$/);
+test('the email goes to Sonmira support', () => {
+  assert.equal(SUPPORT_EMAIL, 'sonmirasupport@gmail.com');
+  assert.ok(feedbackMailto({ device: 'd' }).startsWith('mailto:sonmirasupport@gmail.com?subject=Sonmira%20%E2%80%94%20Feedback&body='));
 });
 
 test('the iOS version comes from the user agent, when it says', () => {

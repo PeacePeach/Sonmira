@@ -12,11 +12,8 @@ import { h } from '../ui/dom.js';
 import { openLayer } from '../paywall/layer.js';
 import { isNativeIOS } from '../native/platform.js';
 
-// Sonmira's support address. The one place it is set.
-// TODO(Han): fill in the official address before release; while it is empty
-// the email app opens with the To line blank, and the fallback sheet has no
-// address to offer.
-export const SUPPORT_EMAIL = '';
+// Sonmira's official support address (Han, 21 Oct). The one place it is set.
+export const SUPPORT_EMAIL = 'sonmirasupport@gmail.com';
 export const FEEDBACK_SUBJECT = 'Sonmira — Feedback';
 const FALLBACK_MS = 1500;
 
