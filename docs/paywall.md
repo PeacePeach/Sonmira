@@ -45,8 +45,10 @@ under its cap of 30). The UI never names the order.
 Before *Create painting*, a quiet line says what the painting will use
 ("Uses 1 of your 12 paintings", "Uses your last painting").
 
-A subscriber who has used every credit so far sees *Your credits are used for
-now.*, when the next credit comes, and only Little Moments.
+Someone who already has Daily Ritual is never offered it again: every paywall
+they open shows Little Moments only. With nothing left they see *Your credits
+are used for now.* and when the next credit comes; otherwise *Your Daily Ritual
+is active.*
 
 Settings → Paintings shows *Available* with the total (*12 paintings*) and a
 chevron; tapping it opens *Available credits* (`creditsSheet` in
