@@ -4,6 +4,7 @@
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { openPaywall } from '../paywall/paywall.js';
+import { openFeedback } from '../support/feedback.js';
 import { openLayer } from '../paywall/layer.js';
 import { balanceLabel, availableLabel, creditsSheet, subscriptionLabel } from '../paywall/copy.js';
 
@@ -96,7 +97,7 @@ export function mountSettings(app) {
       h('button', { class: 'row action', 'data-account-row': '', onClick: () => app.navigate('account') }, lead('Account', 'account'), h('span', { class: 'row-end' }, accountVal, icon('forward', { size: 'sm', tone: 'subtle' })))),
     h('div', { class: 'section' }, 'About'),
     h('div', { class: 'group' },
-      link('Contact & Feedback', () => app.navigate('feedback'), 'contact'),
+      link('Contact & Feedback', () => openFeedback(app), 'contact'),
       soon('Rate Sonmira', 'rate'),
       link('Privacy policy', () => app.navigate('legal', { doc: 'privacy' }), 'privacy'),
       link('Terms', () => app.navigate('legal', { doc: 'terms' }), 'terms')),
