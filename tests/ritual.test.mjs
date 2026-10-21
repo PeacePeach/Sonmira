@@ -1,5 +1,5 @@
-// Daily Ritual credits: one per subscription day, saved up to 30, kept for
-// 30 days after the paid subscription ends, never lent ahead of their day.
+// Daily Ritual credits: one per subscription day, saved up to 30, never
+// lent ahead of their day, and never expiring once earned.
 // The wallet's rules, which the server's ledger runs too. Run: npm test
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -94,33 +94,48 @@ test('Little Moments credits are separate: no cap, no expiry, spent after Daily 
   pay(clock.now, 1, { willRenew: false });
   clock.now += 40 * DAY;
   assert.equal(w.status().credits, 50);
-  assert.equal(w.status().ritual, 0);
+  assert.equal(w.status().ritual, 1, 'the one day it was paid for, kept');
   pay(clock.now, 30);
-  assert.deepEqual(['a', 'b', 'c', 'd', 'e'].map((k) => paint(w, k)), ['daily', 'free', 'free', 'free', 'credits']);
+  assert.deepEqual(['a', 'b', 'c', 'd', 'e', 'f'].map((k) => paint(w, k)), ['daily', 'daily', 'free', 'free', 'free', 'credits']);
 });
 
-test('auto-renew turned off: credits keep coming until the paid month ends, then stay 30 days', () => {
+test('auto-renew turned off: credits keep coming until the paid month ends, then stop; earned ones stay for good', () => {
   const { w, clock, pay } = setup();
   useFree(w);
   pay(clock.now, 30, { willRenew: false });
   clock.now += 10 * DAY;
   assert.equal(w.status().subscribed, true);
-  assert.equal(w.status().ritual, 11);
-  assert.equal(w.status().ritualExpiresAt, T0 + 60 * DAY, 'shown while it is ending');
+  assert.equal(w.status().ritual, 11, 'turning auto-renew off changes nothing before the end');
+  assert.equal(w.status().ritualNextAt, T0 + 11 * DAY);
+  assert.equal('ritualExpiresAt' in w.status(), false, 'nothing expires, so no date to show');
+  clock.now = T0 + 29 * DAY + HOUR;
+  assert.equal(w.status().ritual, 30);
+  paint(w, 'a');
+  assert.equal(w.status().ritualNextAt, null, 'the next day would fall after the paid month');
   clock.now = T0 + 30 * DAY + HOUR; // the month is over
   assert.equal(w.status().subscribed, false);
-  assert.equal(w.status().ritual, 30, 'all 30 days of the month, none after it');
-  clock.now += 5 * DAY;
-  assert.equal(w.status().ritual, 30);
+  assert.equal(w.status().ritual, 29, 'no day after the paid month');
   assert.equal(w.status().ritualNextAt, null);
-  clock.now = T0 + 60 * DAY - 1;
-  assert.equal(w.status().ritual, 30, 'still there on the last moment');
-  clock.now = T0 + 60 * DAY;
-  assert.equal(w.status().ritual, 0, 'gone 30 days after the end');
-  assert.equal(w.status().ritualExpiresAt, null);
+  for (const days of [31, 60, 61, 400, 2000]) {
+    clock.now = T0 + days * DAY;
+    assert.equal(w.status().ritual, 29, `still there ${days} days on`);
+  }
 });
 
-test('subscribing again within 30 days keeps the balance and starts the days again, still capped', () => {
+test('an auto-renewing subscription shows its next credit even when it falls after the current period', () => {
+  const { w, clock, pay } = setup();
+  useFree(w);
+  pay(clock.now, 30);
+  clock.now = T0 + 29 * DAY + HOUR;
+  paint(w, 'a');
+  assert.equal(w.status().ritual, 29);
+  assert.equal(w.status().ritualNextAt, T0 + 30 * DAY, 'the renewal continues the same rhythm');
+  clock.now = T0 + 30 * DAY + 10_000; // renewal not in yet: nothing given ahead of it
+  assert.equal(w.status().ritual, 29);
+  assert.equal(w.status().ritualNextAt, null, 'nothing paid for now: nothing promised');
+});
+
+test('subscribing again keeps the balance and starts the days again, still capped', () => {
   const { w, clock, pay } = setup();
   useFree(w);
   pay(clock.now, 30, { willRenew: false });
@@ -135,16 +150,24 @@ test('subscribing again within 30 days keeps the balance and starts the days aga
   assert.equal(w.status().ritual, 29);
 });
 
-test('subscribing again after the 30 days starts from one', () => {
+test('subscribing again after a long gap keeps every earned credit and adds the new day', () => {
   const { w, clock, pay } = setup();
   useFree(w);
   pay(clock.now, 30, { willRenew: false });
-  clock.now = T0 + 75 * DAY;
+  clock.now += 9 * DAY;
+  for (const k of ['a', 'b', 'c', 'd']) paint(w, k);
+  clock.now = T0 + 500 * DAY;
+  assert.equal(w.status().ritual, 26);
+  assert.equal(w.status().canCreate, true);
   pay(clock.now, 30);
-  assert.equal(w.status().ritual, 1);
+  assert.equal(w.status().ritual, 27, '26 kept + the first day of the new subscription');
+  clock.now += 2 * DAY + HOUR;
+  assert.equal(w.status().ritual, 29);
+  clock.now += 5 * DAY;
+  assert.equal(w.status().ritual, 30, 'capped');
 });
 
-test('a lapse the app never saw still clears the old balance before new days count', () => {
+test('a gap the app never saw keeps the old balance; the new subscription’s days are added once', () => {
   const { w, clock, pay, make } = setup();
   useFree(w);
   pay(clock.now, 30, { willRenew: false });
@@ -153,8 +176,55 @@ test('a lapse the app never saw still clears the old balance before new days cou
   // Away for months; meanwhile Apple says they subscribed again on day 70.
   clock.now = T0 + 72 * DAY;
   pay(T0 + 70 * DAY, 30);
-  assert.equal(w.status().ritual, 3, 'only the new days: 70, 71 and 72');
-  assert.equal(make().status().ritual, 3, 'as saved');
+  assert.equal(w.status().ritual, 30, '30 from the first month (capped), the new days add nothing over the cap');
+  assert.equal(make().status().ritual, 30, 'as saved');
+});
+
+test('a wallet saved under the old 30-day rule loses nothing, even past those 30 days', () => {
+  // Counted up to day 20 of a month that ended (auto-renew off) on day 30.
+  const saved = { v: 1, free: 0, credits: 2, sub: { productId: SUB, expiresAt: T0 + 30 * DAY, willRenew: false }, dailyUsed: null, holds: {}, spent: {}, granted: { p: 10 }, revoked: {}, purchased: true,
+    ritual: 17, periods: [[T0, T0 + 30 * DAY]], ritualAt: T0 + 20 * DAY + HOUR, ritualFloor: T0, ritualRevoked: {} };
+  const { w, clock } = setup(saved);
+  clock.now = T0 + 90 * DAY; // past the old “gone 30 days after the end”
+  assert.equal(w.status().ritual, 26, '17 + the 9 days left in the month, none taken away');
+  assert.equal(w.status().credits, 2);
+  assert.equal(w.status().subscribed, false);
+});
+
+test('Sandbox’s accelerated renewals (a month in 5 minutes) never add credits early or twice', () => {
+  const { w, clock, pay } = setup();
+  useFree(w);
+  const MIN = 60e3;
+  for (let i = 0; i < 6; i++) {
+    clock.now = T0 + i * 5 * MIN + 1000;
+    pay(T0 + i * 5 * MIN + 2000 * (i > 0), 5 * MIN / DAY); // each renewal signed a moment after the last ended
+    pay(T0 + i * 5 * MIN + 2000 * (i > 0), 5 * MIN / DAY); // and delivered again (notification, restore)
+    assert.equal(w.status().ritual, 1, `renewal ${i}: still the first day`);
+  }
+  clock.now = T0 + 31 * MIN; // the 6 renewals are over: it ends
+  assert.equal(w.status().subscribed, false);
+  assert.equal(w.status().ritual, 1, 'the credit stays');
+  clock.now = T0 + 40 * DAY;
+  assert.equal(w.status().ritual, 1);
+});
+
+test('one balance: Little Moments and Daily Ritual add up, and spending never shows which was used', () => {
+  const { w, clock, pay } = setup();
+  useFree(w);
+  pay(clock.now, 30);
+  paint(w, 'today');
+  assert.equal(w.status().canCreate, false);
+  w.grant('lm1', 10);
+  w.grant('lm1', 10); // the same transaction again
+  const total = (st) => st.ritual + st.free + st.credits;
+  assert.equal(total(w.status()), 10);
+  paint(w, 'x'); paint(w, 'y');
+  assert.equal(total(w.status()), 8);
+  clock.now += DAY;
+  assert.equal(total(w.status()), 9, '+1 Daily Ritual credit');
+  assert.equal(paint(w, 'z'), 'daily', 'the credit that could be lost to the cap goes first');
+  assert.equal(total(w.status()), 8);
+  assert.equal(w.status().credits, 8, 'Little Moments kept');
 });
 
 test('renewals continue the same rhythm; the same period sent again adds nothing', () => {
@@ -294,18 +364,30 @@ test('StoreKit’s subscription without its start (the app’s refresh) neither 
   assert.equal(w.status().ritual, 2);
 });
 
-test('what the paywall, Sing and Settings say about Daily Ritual credits', async () => {
-  const { balanceLabel, usesLabel, ritualLabel } = await import('../src/app/paywall/copy.js');
-  const base = { free: 0, credits: 0, ritual: 0, ritualCap: 30, ritualNextAt: null, ritualExpiresAt: null, subscribed: true };
+test('what the paywall, Sing and Settings say: one total, never which kind', async () => {
+  const { balanceLabel, usesLabel, availableLabel, nextCreditLabel, subscriptionLabel } = await import('../src/app/paywall/copy.js');
+  const base = { free: 0, credits: 0, ritual: 0, ritualCap: 30, ritualNextAt: null, subscribed: true };
   const now = new Date(2027, 0, 15, 20, 0).getTime();
   const tomorrow9 = new Date(2027, 0, 16, 9, 0).getTime();
-  assert.equal(balanceLabel({ ...base, ritual: 3, credits: 4 }), '3 Daily Ritual credits + 4');
-  assert.equal(balanceLabel({ ...base, ritual: 1 }), '1 Daily Ritual credit');
-  assert.match(balanceLabel({ ...base, ritualNextAt: tomorrow9 }, now), /^Next credit tomorrow at 9:00/);
-  assert.equal(balanceLabel({ ...base, subscribed: false }), 'None left');
-  assert.equal(usesLabel({ ...base, source: 'daily', ritual: 4 }), 'Uses 1 of your 4 Daily Ritual credits');
-  assert.equal(usesLabel({ ...base, source: 'daily', ritual: 1 }), 'Uses your last Daily Ritual credit');
-  assert.match(ritualLabel({ ...base, ritual: 12, ritualNextAt: tomorrow9 }, now), /^12 of 30 · next tomorrow at 9:00/);
-  assert.equal(ritualLabel({ ...base, ritual: 30 }), '30 of 30');
-  assert.equal(ritualLabel({ ...base, ritual: 4, subscribed: false, ritualExpiresAt: new Date(2027, 10, 16).getTime() }), '4 · kept until November 16');
+  assert.equal(balanceLabel({ ...base, ritual: 3, credits: 4 }), '7 paintings available');
+  assert.equal(balanceLabel({ ...base, ritual: 1 }), '1 painting available');
+  assert.equal(balanceLabel({ ...base }), 'None left');
+  assert.equal(usesLabel({ ...base, source: 'daily', ritual: 4, credits: 10 }), 'Uses 1 of your 14 paintings');
+  assert.equal(usesLabel({ ...base, source: 'credits', credits: 1 }), 'Uses your last painting');
+  assert.equal(usesLabel({ ...base, source: null }), '');
+  // Settings → Paintings: one total, the next Daily Ritual credit under it, the subscription's state.
+  assert.equal(availableLabel({ ...base }), '0 paintings');
+  assert.equal(availableLabel({ ...base, ritual: 1 }), '1 painting');
+  assert.equal(availableLabel({ ...base, ritual: 3, free: 2, credits: 7 }), '12 paintings');
+  // Scenarios A, B, C: the same line whatever the balance.
+  for (const st of [{ ...base }, { ...base, credits: 10 }, { ...base, ritual: 5 }]) {
+    assert.match(nextCreditLabel({ ...st, ritualNextAt: tomorrow9 }, now), /^\+1 Daily Ritual credit tomorrow\sat\s9:00/);
+  }
+  assert.equal(nextCreditLabel({ ...base, ritual: 30 }, now), '', 'at the cap: nothing scheduled, nothing said');
+  assert.equal(nextCreditLabel({ ...base, subscribed: false, ritual: 4, ritualNextAt: tomorrow9 }, now), '', 'not subscribed: nothing coming');
+  const sub = (o) => ({ productId: 'app.sonmira.daily_ritual.monthly', expiresAt: new Date(2027, 1, 14).getTime(), willRenew: true, ...o });
+  assert.equal(subscriptionLabel(sub(), now), 'Active');
+  assert.equal(subscriptionLabel(sub({ willRenew: false }), now), 'Ends February 14', 'cancelled: active until it ends');
+  assert.equal(subscriptionLabel(sub({ expiresAt: new Date(2027, 0, 2).getTime(), willRenew: false }), now), 'Ended January 2');
+  assert.equal(subscriptionLabel(null, now), '');
 });

@@ -1,11 +1,12 @@
 // The painting wallet: how many new paintings someone can make right now, and
 // the bookkeeping that makes sure only a successful painting is ever counted.
 //
-// Sources, spent in this order (the credits that expire first go first):
-//   daily   — Daily Ritual credits: one per subscription day, saved up to 30,
-//             kept for 30 days after the paid subscription ends
+// Sources (none of them expire; people see only their total):
+//   daily   — Daily Ritual credits: one per subscription day, saved up to 30
 //   free    — the first three paintings
-//   credits — Little Moments credits (never expire, no cap)
+//   credits — Little Moments credits (no cap)
+// They are spent in that order: a Daily Ritual credit spent makes room under
+// the cap, so a day is never lost to a full balance while other paintings wait.
 //
 // Daily Ritual days are counted from the moment a subscription starts: a
 // credit then, and one every 24 hours while it is paid for (renewals, a
@@ -13,9 +14,8 @@
 // count). A credit is never given ahead of its day, so the balance can't go
 // below zero or borrow from days to come, and spending doesn't bring the next
 // one sooner. A day lands only while the balance is under 30. When the paid
-// subscription ends, what's left stays for 30 days, then goes; subscribing
-// again within those 30 days keeps it. Being 24-hour steps from a moment
-// Apple signs, the days don't depend on the phone's clock or time zone.
+// subscription ends no new days come, and what's left stays, whenever (or
+// whether) they subscribe again. Being 24-hour steps from a moment Apple signs, the days don't depend on the phone's clock or time zone.
 //
 // Every generation has a key (one per take). reserve(key) sets a source
 // aside before the engine runs, commit(key) counts it once the painting
@@ -24,11 +24,10 @@
 //
 // Pure logic: storage and the clock are injected, so it runs in Node tests.
 
-import { FREE_PAINTINGS, RITUAL_CAP, RITUAL_KEEP_DAYS } from './products.js';
+import { FREE_PAINTINGS, RITUAL_CAP } from './products.js';
 
 const KEEP_SPENT = 60; // recent committed keys kept for de-duplication
 const DAY = 24 * 3600_000;
-const KEEP = RITUAL_KEEP_DAYS * DAY;
 // A renewal that starts within this of the previous period's end continues the
 // same run of days (Apple's renewal can be signed a little after the expiry).
 const JOIN = 3600_000;
@@ -77,8 +76,7 @@ export function createWallet({ load = () => null, save = () => {}, today, now = 
   const subscribed = () => !!(s.sub && s.sub.expiresAt > now());
 
   // Bring the Daily Ritual balance up to now: credits for the days that have
-  // begun since last time (capped), after a lapse of 30 days without a paid
-  // subscription, nothing.
+  // begun since last time (capped).
   function accrue() {
     const t = now();
     if (s.ritual == null) {
@@ -92,17 +90,11 @@ export function createWallet({ load = () => null, save = () => {}, today, now = 
       return;
     }
     if (s.ritualAt != null && t <= s.ritualAt) return;
-    const runs = ritualRuns(s.periods);
-    let from = s.ritualAt ?? -Infinity;
-    let changed = false;
-    for (let i = 0; i < runs.length; i++) {
-      const lapse = runs[i][1] + KEEP;
-      if (lapse > from && lapse <= t && !(runs[i + 1] && runs[i + 1][0] <= lapse)) { from = lapse; if (s.ritual) { s.ritual = 0; changed = true; } }
-    }
-    const n = between(runs, from, t);
-    if (n) { const was = s.ritual; s.ritual = Math.min(RITUAL_CAP, s.ritual + n); changed ||= s.ritual !== was; }
+    const n = between(ritualRuns(s.periods), s.ritualAt ?? -Infinity, t);
+    const was = s.ritual;
+    if (n) s.ritual = Math.min(RITUAL_CAP, s.ritual + n);
     s.ritualAt = t;
-    if (changed) persist();
+    if (s.ritual !== was) persist();
   }
 
   // New paid time that began before the balance was last brought up to date
@@ -111,9 +103,7 @@ export function createWallet({ load = () => null, save = () => {}, today, now = 
     if (s.ritualAt == null) return;
     const runs = ritualRuns(after);
     const had = ritualRuns(before);
-    // Credits from before a lapse of 30 days would already have gone.
-    const lapsed = runs.map(([, b], i) => b + KEEP).filter((l, i) => l <= s.ritualAt && !(runs[i + 1] && runs[i + 1][0] <= l));
-    const floor = Math.max(s.ritualFloor ?? -Infinity, ...lapsed);
+    const floor = s.ritualFloor ?? -Infinity;
     let n = 0;
     for (const [a, b] of runs) {
       const first = Math.max(a, a + Math.ceil((Math.max(floor, s.ritualAt - 400 * DAY) - a) / DAY) * DAY);
@@ -131,19 +121,14 @@ export function createWallet({ load = () => null, save = () => {}, today, now = 
     return null;
   }
 
-  // When the next credit lands (while subscribed and under the cap), and when
-  // a balance left after the subscription ended goes.
-  function ritualTimes() {
+  // When the next credit lands, while subscribed: within the paid period, or
+  // past its end when it renews (the renewal continues the same rhythm).
+  function ritualNext() {
     const t = now();
-    const runs = ritualRuns(s.periods);
-    const run = runs.find(([a, b]) => a <= t && t < b);
-    let next = null;
-    if (run && subscribed()) { const at = run[0] + Math.ceil((t - run[0] + 1) / DAY) * DAY; if (at < run[1]) next = at; }
-    const last = runs.filter(([a]) => a <= t).at(-1);
-    // Gone 30 days after the paid time ends: already over, or turned off and ending.
-    const end = run && s.sub && !s.sub.willRenew ? run[1] : !run && last ? last[1] : null;
-    const expiresAt = end != null && s.ritual > 0 ? end + KEEP : null;
-    return { next, expiresAt };
+    const run = ritualRuns(s.periods).find(([a, b]) => a <= t && t < b);
+    if (!run || !subscribed()) return null;
+    const at = run[0] + Math.ceil((t - run[0] + 1) / DAY) * DAY;
+    return at < run[1] || s.sub.willRenew ? at : null;
   }
 
   return {
@@ -151,7 +136,6 @@ export function createWallet({ load = () => null, save = () => {}, today, now = 
     status() {
       accrue();
       const source = nextSource();
-      const { next, expiresAt } = ritualTimes();
       return {
         canCreate: !!source,
         source,
@@ -159,8 +143,7 @@ export function createWallet({ load = () => null, save = () => {}, today, now = 
         credits: Math.max(0, s.credits - held('credits')),
         ritual: ritualLeft(),
         ritualCap: RITUAL_CAP,
-        ritualNextAt: s.ritual < RITUAL_CAP ? next : null,
-        ritualExpiresAt: expiresAt,
+        ritualNextAt: s.ritual < RITUAL_CAP ? ritualNext() : null,
         subscribed: subscribed(),
         sub: s.sub ? { ...s.sub } : null,
         purchased: s.purchased,

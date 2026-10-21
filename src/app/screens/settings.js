@@ -4,7 +4,7 @@
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { openPaywall } from '../paywall/paywall.js';
-import { balanceLabel, renewalLabel, ritualLabel } from '../paywall/copy.js';
+import { balanceLabel, availableLabel, nextCreditLabel, subscriptionLabel } from '../paywall/copy.js';
 
 export function mountSettings(app) {
   const b = app.billing;
@@ -17,10 +17,8 @@ export function mountSettings(app) {
     accountVal.textContent = app.account?.status().signedIn ? 'Signed in with Apple' : 'On this iPhone';
     const st = b.status();
     paintings.replaceChildren(...[
-      h('div', { class: 'row' }, lead('Available', 'paintings'), h('span', { class: 'val' }, balanceLabel(st))),
-      st.sub ? action('Daily Ritual', h('span', { class: 'val' }, renewalLabel(st.sub, st.now)), manage, 'dailyRitual') : null,
-      st.subscribed || st.ritual ? h('div', { class: 'row', 'data-ritual-credits': '' }, lead('Daily Ritual credits'), h('span', { class: 'val' }, ritualLabel(st))) : null,
-      st.credits ? h('div', { class: 'row', 'data-pack-credits': '' }, lead('Little Moments'), h('span', { class: 'val' }, `${st.credits} · never expire`)) : null,
+      available(st),
+      st.sub ? action('Daily Ritual', h('span', { class: 'val', 'data-sub-state': '' }, subscriptionLabel(st.sub, st.now)), manage, 'dailyRitual') : null,
       link('More paintings', () => openPaywall(app, { from: 'settings', onContinue: () => app.navigate('sing') }), 'morePaintings'),
       action('Restore purchases', null, restore, 'restore'),
     ].filter(Boolean));
@@ -57,6 +55,15 @@ export function mountSettings(app) {
       dev('Start over as a new person', () => b.dev.reset()),
     ].filter(Boolean);
   }
+
+  // Available: the total, and when Daily Ritual's next painting comes, if one is on its way.
+  const available = (st) => {
+    const next = nextCreditLabel(st);
+    return h('div', { class: next ? 'row has-note' : 'row', 'data-available': '' },
+      h('span', { class: 'row-label' }, icon('paintings', { tone: 'muted' }),
+        h('span', { class: 'row-text' }, 'Available', next ? h('span', { class: 'row-note', 'data-next-credit': '' }, next) : null)),
+      h('span', { class: 'val' }, availableLabel(st)));
+  };
 
   // A row's label, with its leading icon (muted, or faint while the row is Coming soon).
   const lead = (label, name, tone = 'muted') => h('span', { class: 'row-label' }, name ? icon(name, { tone }) : null, label);

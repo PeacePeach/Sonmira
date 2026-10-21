@@ -107,7 +107,7 @@ test('Daily Ritual credits are used before free paintings and packs', () => {
   assert.equal(paint(w, 'b'), 'free');
 });
 
-test('an ended subscription keeps pack credits; Daily Ritual credits stay for 30 days', () => {
+test('an ended subscription keeps pack credits and its Daily Ritual credits', () => {
   const { w, clock } = setup();
   ['a', 'b', 'c'].forEach((k) => paint(w, k));
   w.grant('tx1', 10);
@@ -118,9 +118,9 @@ test('an ended subscription keeps pack credits; Daily Ritual credits stay for 30
   assert.equal(s.credits, 10);
   assert.equal(s.ritual, 1, 'the one day paid for');
   assert.equal(s.source, 'daily');
-  clock.now += 30 * 864e5;
-  assert.equal(w.status().ritual, 0);
-  assert.equal(w.status().source, 'credits');
+  clock.now += 365 * 864e5;
+  assert.equal(w.status().ritual, 1, 'never expires');
+  assert.equal(w.status().source, 'daily');
 });
 
 test('the ledger survives a reinstall when adopted', () => {

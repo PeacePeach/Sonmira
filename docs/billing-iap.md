@@ -35,19 +35,22 @@ truth) and by the app's copy of it:
   balance can't go below zero, and spending doesn't bring the next one sooner.
 - **Saved up to 30.** A credit arriving while the balance is 30 is not kept.
   Several can be used on the same day.
-- **30 days after the end.** When paid time ends, what's left stays usable
-  for 30 × 24 hours after the end of the last paid period, then goes.
-  Subscribing again before then keeps the balance and starts a new rhythm
-  from the new purchase, still capped at 30. A lapse the server only learns
-  about later is applied in the same order (expiry first, then new days).
+- **Earned credits never expire.** When paid time ends, no new credits come,
+  and what's left stays for good. Subscribing again, after any gap, keeps the
+  balance and starts a new rhythm from the new purchase, still capped at 30.
+  (Until 21 Oct 2026 the rule was 30 days after the end; no balance had
+  reached that point, and balances saved under it carry over unchanged.)
 - **Late news, counted once.** A renewal that reaches the server after its
   start (no notification, phone offline) pays the days it covered, once;
   the same transaction from StoreKit, Apple's notification and Restore adds
   nothing again.
 - **Refunds** take back the unused credits that refunded period earned (never
   below zero); Apple reversing the refund gives back exactly what was taken.
-- **Order of spending:** Daily Ritual credits (the only ones that expire),
-  then free paintings, then Little Moments (no expiry, no cap, usable at once).
+- **One balance.** People see only the total (1 credit = 1 painting). Behind
+  it, the wallet spends Daily Ritual credits first (spending one makes room
+  under the cap, so no day is lost to a full balance), then free paintings,
+  then Little Moments (no cap, usable at once). The sources stay separate in
+  the ledger because refunds treat them differently.
 - **Migration** (ledgers saved before this rule): a subscriber whose painting
   for today wasn't used gets 1 credit, otherwise 0, and days start counting
   from that moment; nothing is paid out for earlier days, and packs and free
@@ -193,8 +196,8 @@ In TestFlight, with a Sandbox account:
 3. Kill the app during the purchase sheet, reopen: the purchase is applied once.
 4. Buy Daily Ritual: one credit at once; when it's used, the paywall offers
    Little Moments only and says when the next credit comes. Wait 5 minutes: it
-   renews; after 6 renewals it ends, and Settings shows the credit kept for 30
-   days.
+   renews; after 6 renewals it ends, Settings shows Daily Ritual as Ended, and
+   the credit stays in Available.
 5. Settings → Daily Ritual opens Apple's subscription settings; cancel there:
    it stays until the period ends, then stops; the balance stays.
 6. Delete and reinstall, Restore Purchases: the remaining paintings and Daily
