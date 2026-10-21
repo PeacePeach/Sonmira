@@ -215,7 +215,7 @@ async function run() {
   await page.waitForSelector('[data-available-sheet]');
   const sheetText = await page.textContent('[data-available-sheet]');
   assert.match(sheetText, /Available creditsYou have 10 credits to create paintings\. Here’s when you’ll get more\./);
-  assert.match(sheetText, /Next creditYou’ll get 1 more credit tomorrow\sat\s.*\. Daily Ritual adds 1 credit every day, up to 30\./);
+  assert.match(sheetText, /Next creditYou’ll get 1 more credit tomorrow\sat\s.*. Daily Ritual adds 1 credit every day while you’re subscribed, up to 30\./);
   assert.match(sheetText, /Credits never expireAll your credits/);
   await settle(page, 500);
   await shot(page, 'p11b-available-sheet');

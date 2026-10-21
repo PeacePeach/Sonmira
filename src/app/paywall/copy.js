@@ -28,20 +28,22 @@ export function nextCreditLabel(s, now = s.now ?? Date.now()) {
 }
 
 /**
- * The Available credits sheet (Settings → Available): a lede, a Next credit
- * card while Daily Ritual has something to say about the next credit, and
- * Credits never expire. → { lede, next: { title, text } | null, keep: { title, text } }
+ * The Available credits sheet (Settings → Available), in three states:
+ *   coming — a Daily Ritual credit is on its way: when, and how Daily Ritual works
+ *   full   — subscribed, but Daily Ritual is at its cap of 30
+ *   none   — no Daily Ritual credit to come (never subscribed, ended, or its last day)
+ * The balance is only a number in the lede; every state ends with Credits never expire.
+ * → { state, lede, next: { title, text } | null, keep: { title, text } }
  */
 export function creditsSheet(s, now = s.now ?? Date.now()) {
-  const n = total(s);
   const when = nextCreditLabel(s, now);
-  const full = s.subscribed && !when && s.ritual >= (s.ritualCap ?? 30);
-  const ending = s.sub && !s.sub.willRenew;
+  const state = when ? 'coming' : s.subscribed && s.ritual >= (s.ritualCap ?? 30) ? 'full' : 'none';
+  const have = `You have ${plural(total(s), 'credit', 'credits')} to create paintings.`;
   return {
-    lede: n ? `You have ${plural(n, 'credit', 'credits')} to create paintings.${when ? ' Here’s when you’ll get more.' : ''}`
-      : when ? 'You don’t have any credits right now. Here’s when you’ll get more.' : 'You’ve used all your credits.',
-    next: when ? { title: 'Next credit', text: `${when} ${ending ? `Daily Ritual adds 1 credit every day until it ends on ${shortDate(s.sub.expiresAt)}.` : 'Daily Ritual adds 1 credit every day, up to 30.'}` }
-      : full ? { title: 'Next credit', text: 'You’ve saved 30 Daily Ritual credits, the most you can hold. Use one and your daily credits start again.' }
+    state,
+    lede: state === 'coming' ? `${have} Here’s when you’ll get more.` : have,
+    next: state === 'coming' ? { title: 'Next credit', text: `${when} Daily Ritual adds 1 credit every day while you’re subscribed, up to 30.` }
+      : state === 'full' ? { title: 'Next credit', text: 'You’ve saved 30 Daily Ritual credits, the most you can hold. Use one and your daily credits start again.' }
       : null,
     keep: { title: 'Credits never expire', text: 'All your credits, whether free, daily or purchased, stay in your account until you use them.' },
   };
