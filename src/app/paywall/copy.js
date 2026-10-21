@@ -28,9 +28,9 @@ export function creditsLede(s) {
 }
 
 /** Available credits sheet → Next credit, while a Daily Ritual credit is on its way:
- *  "You’ll get 1 more credit tomorrow at 9:00 AM." The "when" part is held together. */
+ *  "You’ll get 1 more credit tomorrow at 9:00 AM." */
 export function nextCreditLabel(s, now = s.now ?? Date.now()) {
-  return s.subscribed && s.ritualNextAt ? `You’ll get 1 more credit ${whenLabel(s.ritualNextAt, now).replace(/ /g, '\u00a0')}.` : '';
+  return s.subscribed && s.ritualNextAt ? `You’ll get 1 more credit ${whenLabel(s.ritualNextAt, now)}.` : '';
 }
 
 /** Settings → Daily Ritual: "Active", "Ends November 16" (auto-renew off), "Ended October 2". */
