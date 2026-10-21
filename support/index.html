@@ -36,7 +36,8 @@
   .card { background: var(--tile); border: 1px solid var(--tile-line); border-radius: 16px; padding: 20px; margin: 32px 0; }
   .label { font-size: 13px; color: var(--secondary); margin-bottom: 4px; }
   .email { font-size: 18px; font-weight: 500; color: var(--ink); text-decoration: underline; text-decoration-color: var(--underline); text-underline-offset: 4px; word-break: break-all; }
-  footer { width: 100%; max-width: 520px; margin: 48px auto 0; font-size: 13px; color: var(--secondary); }
+  footer { width: 100%; max-width: 520px; margin: 48px auto 0; font-size: 13px; color: var(--secondary); display: flex; gap: 16px; flex-wrap: wrap; }
+  footer a { color: var(--secondary); text-decoration: underline; text-decoration-color: var(--underline); text-underline-offset: 3px; }
 </style>
 </head>
 <body>
@@ -49,6 +50,6 @@
     <a class="email" href="mailto:sonmirasupport@gmail.com">sonmirasupport@gmail.com</a>
   </div>
 </main>
-<footer>&copy; Sonmira</footer>
+<footer><span>&copy; Sonmira</span><a href="/privacy">Privacy Policy</a></footer>
 </body>
 </html>
