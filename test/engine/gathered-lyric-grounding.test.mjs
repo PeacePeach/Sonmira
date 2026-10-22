@@ -109,11 +109,12 @@ test('unreliable transcription: no invented subject, even when Gathered', async 
   assert.equal(d.sections.form, PERFORMANCE_FORM.gathered);
 });
 
-test('speech and severe fragments stay Loose', async () => {
+test('speech stays Loose; a reliable fragment is Gathered (Han, 22 Oct: reliable lyrics = minimum Gathered)', async () => {
   const speech = await run(join(spokenLyrics(), spokenLyrics({ seed: 21 })), { transcript: confident(SEA), lyrics: reading({ phraseComplete: false }) });
   assert.equal(speech.tier, 'loose');
   const frag = await run(short, { transcript: confident('the sea and'), lyrics: reading({ structure: 'fragment', phraseComplete: false, unfinished: true }) });
-  assert.equal(frag.tier, 'loose');
+  assert.equal(frag.tier, 'gathered', frag.decision.reason);
+  assert.equal(frag.lyricalFloor.applied, false);
 });
 
 test('tier boundaries: the floor never reaches Resolved; Resolved keeps its scene rules', async () => {

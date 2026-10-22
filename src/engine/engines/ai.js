@@ -16,7 +16,7 @@
 import { CONTRACT_VERSION, COMPLETENESS, MOTIFS } from '../contract.js';
 import { createRealEngine } from './real.js';
 import { planPainting } from '../plan.js';
-import { understandTake } from '../understand.js';
+import { understandTake, audibleSec, MIN_SOUND_FOR_WORDS_SEC } from '../understand.js';
 import { tintWash, groundWash } from '../render/index.js';
 import { encodeWav } from '../analysis/wav.js';
 
@@ -103,11 +103,18 @@ export function createAIEngine({ fetchImpl = (...a) => globalThis.fetch(...a), d
   async function understand({ analysis, audioBlob, forcedTier }) {
     await nextFrame();
     let audio = null;
-    if (audioBlob && !analysis?.flags?.silent) {
+    const silent = Boolean(analysis?.flags?.silent);
+    if (audioBlob) {
       try { audio = await decode(audioBlob); } catch (e) {
-        throw new GenerationError('This recording couldn’t be read. Please sing again.', { code: 'audio_decode', cause: e });
+        // A take the live analysis heard as silent keeps its old path.
+        if (!silent) throw new GenerationError('This recording couldn’t be read. Please sing again.', { code: 'audio_decode', cause: e });
       }
     }
+    // The live "silent" flag uses an absolute level, which a quiet singer
+    // never reaches (Han, 22 Oct, Beta 46.mp4). Such a take is still listened
+    // to when it stands out from its own noise floor (understand.js
+    // audibleSec); real silence keeps the old path, unchanged.
+    if (silent && audio && audibleSec(audio.samples, audio.sampleRate) < MIN_SOUND_FOR_WORDS_SEC) audio = null;
     const words = audioBlob ? async () => {
       let sent = audioBlob;
       try { sent = await toWordsAudio(audioBlob); } catch { /* send the recording as it is */ }
@@ -121,7 +128,7 @@ export function createAIEngine({ fetchImpl = (...a) => globalThis.fetch(...a), d
     // With the decoded recording, the frame features are measured from it, as
     // the Playground's singing test does, so the app decides exactly as the
     // validated test did; the live features are only a fallback.
-    return understandTake({ samples: audio?.samples ?? null, sampleRate: audio?.sampleRate ?? 0, features: audio || analysis?.flags?.silent ? null : analysis?.features ?? null, words, forcedTier });
+    return understandTake({ samples: audio?.samples ?? null, sampleRate: audio?.sampleRate ?? 0, features: audio || silent ? null : analysis?.features ?? null, words, forcedTier });
   }
 
   return {
