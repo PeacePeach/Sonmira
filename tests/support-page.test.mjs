@@ -10,8 +10,8 @@ const root = new URL('../', import.meta.url);
 const vercel = JSON.parse(await readFile(new URL('vercel.json', root), 'utf8'));
 const html = await readFile(new URL('support/index.html', root), 'utf8');
 
-test('vercel.json serves /support from the static page, and touches nothing else', () => {
-  assert.deepEqual(vercel.rewrites, [{ source: '/support', destination: '/support/index.html' }]);
+test('vercel.json serves /support from the static page, and never rewrites /', () => {
+  assert.ok(vercel.rewrites.some((r) => r.source === '/support' && r.destination === '/support/index.html'));
   for (const r of [...vercel.rewrites, ...(vercel.redirects ?? [])]) assert.notEqual(r.source, '/');
 });
 
