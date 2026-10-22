@@ -10,6 +10,6 @@ export async function hideLaunch() {
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   el.classList.add('done');
   const remove = () => el.remove();
-  el.addEventListener('transitionend', remove, { once: true });
-  setTimeout(remove, 600);
+  el.addEventListener('transitionend', (e) => { if (e.target === el) remove(); });
+  setTimeout(remove, 800);
 }

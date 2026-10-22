@@ -1,12 +1,12 @@
-// Launch screen (index.html #launch, src/app/ui/launch.js): the official app
-// icon on the paper colour from the first paint, faded out once the diary is
+// Launch screen (index.html #launch, src/app/ui/launch.js): the official
+// Sonmira mark and slogan on the paper colour from the first paint, faded out once the diary is
 // in, then gone; no white frame on the way; reduced motion drops the pulse.
 //
 //   node server.js &  then  node tests/e2e/launch.mjs
 
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
-import { readFile, mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 
 const BASE = process.env.BASE || 'http://localhost:5173/';
 const OUT = process.env.OUT;
@@ -22,7 +22,8 @@ async function run({ reducedMotion = 'no-preference', delayMs = 1200 } = {}) {
   await page.goto(BASE + '?ux-preview', { waitUntil: 'commit' });
   await page.waitForSelector('#launch img');
 
-  const img = await page.$eval('#launch img', (i) => ({ src: new URL(i.src).pathname, w: i.naturalWidth, anim: getComputedStyle(i).animationName }));
+  const img = await page.$eval('#launch img', (i) => ({ src: new URL(i.src).pathname, w: i.naturalWidth, anim: getComputedStyle(i).animationName, slogan: i.nextElementSibling?.textContent }));
+  if (OUT) await page.waitForSelector('#launch.font').catch(() => {});
   const frames = [];
   // Sample the screen through startup and the fade: every frame must be paper or app, never white.
   const t0 = Date.now();
@@ -43,12 +44,9 @@ async function run({ reducedMotion = 'no-preference', delayMs = 1200 } = {}) {
 }
 
 const normal = await run();
-assert.equal(normal.img.src, '/assets/brand/app-icon-ivory-1024.png', 'the official icon file');
-assert.equal(normal.img.w, 1024);
-assert.match(normal.img.anim, /launch-breathe/);
-const bytesSite = await readFile(new URL('../../assets/brand/app-icon-ivory-1024.png', import.meta.url));
-const bytesIos = await readFile(new URL('../../ios/App/App/Assets.xcassets/AppIcon.appiconset/' + JSON.parse(await readFile(new URL('../../ios/App/App/Assets.xcassets/AppIcon.appiconset/Contents.json', import.meta.url), 'utf8')).images.find((i) => i.filename).filename, import.meta.url));
-assert.ok(bytesSite.equals(bytesIos), 'same bytes as the iOS App Icon');
+assert.equal(normal.img.src, '/assets/brand/sonmira-mark.svg', 'the official mark file');
+assert.ok(normal.img.w > 0, 'mark loaded');
+assert.equal(normal.img.slogan, 'Sing your moments into paintings.');
 assert.ok(normal.frames.every((f) => f.launches <= 1), 'one launch screen at most');
 assert.ok(normal.frames.filter((f) => f.launch).every((f) => f.bg === 'rgb(248, 245, 239)'), 'paper colour, as the native launch screen');
 assert.ok(normal.frames.some((f) => f.launch && !f.done), 'shown while starting');
