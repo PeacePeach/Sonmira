@@ -79,18 +79,20 @@ test('short fragments stay Loose; a short meaningful phrase is Gathered', async 
   const meaningful = await run(short, { transcript: confident(LINES), lyrics: UNFINISHED });
   assert.equal(meaningful.tier, 'gathered');
   assert.equal(meaningful.lyricalFloor.applied, true);
-  // A syllable or two of sound is still too little.
+  // A syllable or two of sound, a single cut-off fragment, or one short
+  // fragment in a long take: not this floor, but reliable words are still
+  // at least Gathered through the reliable lyrics floor (Han, 22 Oct).
   const tiny = await run(singers.strong().slice(0, 2 * SR), { transcript: confident(LINES), lyrics: UNFINISHED });
-  assert.equal(tiny.tier, 'loose');
-  // A single cut-off fragment is not a meaningful phrase.
+  assert.equal(tiny.lyricalFloor.applied, false);
+  assert.equal(tiny.tier, 'gathered');
   const a = await run(short, { transcript: confident(LINES), lyrics: reading({ structure: 'fragment', unfinished: true, linked: false, phraseComplete: false }) });
-  assert.equal(a.tier, 'loose');
   assert.equal(a.lyricalFloor.applied, false);
   assert.match(a.lyricalFloor.reason, /meaningful_phrase/);
-  // A long take with only one short fragment of words in it.
+  assert.equal(a.tier, 'gathered');
+  assert.equal(a.decision.stage, 'words_floor');
   const b = await run(strong19, { transcript: confident('遥远的夜空月亮月亮下面'), lyrics: UNFINISHED });
-  assert.equal(b.tier, 'loose');
   assert.match(b.lyricalFloor.reason, /lyric_words/);
+  assert.equal(b.tier, 'gathered');
 });
 
 test('speech stays Loose, even with many words', async () => {
