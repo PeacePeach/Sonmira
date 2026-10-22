@@ -9,6 +9,25 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Sonmira">
 <title>Sonmira</title>
+<link rel="preload" href="assets/brand/sonmira-mark.svg" as="image" fetchpriority="high">
+<style>
+  /* Launch screen (startup only): the Sonmira mark and slogan on the app's paper
+     colour, the same colour as the native launch screen and the web view behind it.
+     Inline so it paints before styles.css; src/app/ui/launch.js fades it out. */
+  #launch { position: fixed; inset: 0; z-index: 2147483647; display: flex; align-items: center; justify-content: center; background: #F8F5EF; transition: opacity .3s ease-out .18s; }
+  #launch img { width: 76px; height: auto; animation: launch-in .4s ease-out both, launch-breathe 2.4s ease-in-out .4s infinite; }
+  #launch p { margin: 0; font: italic 500 19px/1.2 'Cormorant Garamond', 'Iowan Old Style', Georgia, serif; letter-spacing: .01em; color: #1F1D1A; opacity: 0; }
+  #launch.font p { opacity: .62; transition: opacity .3s ease-out; }
+  #launch > div { display: flex; flex-direction: column; align-items: center; gap: 22px; transition: opacity .18s ease-in; }
+  /* Mark and slogan go first, then the paper, so they never sit over the diary. */
+  #launch.done { opacity: 0; pointer-events: none; }
+  #launch.done > div { opacity: 0; }
+  @keyframes launch-in { from { opacity: 0; } }
+  @keyframes launch-breathe { 50% { opacity: .7; } }
+  @media (prefers-reduced-motion: reduce) {
+    #launch img { animation: launch-in .2s ease-out both; }
+  }
+</style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="assets/icon-180.png">
 <link rel="icon" href="assets/icon-180.png">
@@ -18,6 +37,11 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<div id="launch" aria-hidden="true"><div><img src="assets/brand/sonmira-mark.svg" alt="" decoding="sync"><p>Sing your moments into paintings.</p></div></div>
+<script>
+  // The slogan appears in its own face, never a fallback that swaps.
+  document.fonts && document.fonts.load('italic 500 19px "Cormorant Garamond"').then(function () { var l = document.getElementById('launch'); if (l) l.classList.add('font'); }, function () {});
+</script>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <filter id="wc" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
     <!-- pigment carried through wet paper -->
