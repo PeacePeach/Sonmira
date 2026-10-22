@@ -79,6 +79,19 @@ export function createRecorder(opts) {
   // be exercised without a microphone. Never offered in the user UI.
   function synth(t) {
     const sr = ctx.sampleRate, n = Math.round(sr * TICK_MS / 1000);
+    // Dev only (test Preview): replay a recording file as the voice, so a
+    // Beta take goes through the app's exact pipeline. The file itself is
+    // the take's audio (stop() below).
+    const vf = opts.voiceFile;
+    if (vf) {
+      const out = new Float32Array(n);
+      for (let i = 0; i < n; i++, sim.t += 1 / sr) out[i] = vf.samples[Math.floor(sim.t * vf.sampleRate)] ?? 0;
+      sim.chunks.push(out);
+      const all = sim.chunks.length * n;
+      for (let i = 0; i < FRAME; i++) { const k = all - FRAME + i, c = Math.floor(k / n); frame[i] = k >= 0 ? sim.chunks[c][k - c * n] : 0; }
+      if (sim.t >= vf.samples.length / vf.sampleRate) setTimeout(() => opts.onLimit(), 0);
+      return;
+    }
     const notes = [220, 247, 262, 247, 220, 196, 220, 262, 294, 262];
     const out = new Float32Array(n);
     for (let i = 0; i < n; i++) {
@@ -114,7 +127,7 @@ export function createRecorder(opts) {
       await new Promise((res) => { mr.addEventListener('stop', res, { once: true }); try { mr.stop(); } catch { res(); } });
     }
     if (chunks.length) blob = new Blob(chunks, { type: mr?.mimeType || chunks[0].type || 'audio/mp4' });
-    if (sim) blob = encodeWav(sim.chunks, ctx.sampleRate);
+    if (sim) blob = opts.voiceFile ? opts.voiceFile.blob : encodeWav(sim.chunks, ctx.sampleRate);
     cleanup();
     return { blob, durationSec };
   }

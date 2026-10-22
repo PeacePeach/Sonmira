@@ -114,7 +114,8 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
 
     recorder = createRecorder({
       maxSeconds,
-      simulate: app.dev.simulate || app.dev.preview,
+      simulate: app.dev.simulate || app.dev.preview || Boolean(app.dev.voiceFile),
+      voiceFile: app.dev.voiceFile ?? null,
       onReady: (sampleRate) => {
         session = app.engine.createLiveSession({ sampleRate, maxSeconds });
         phase = 'singing';

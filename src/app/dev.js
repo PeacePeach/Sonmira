@@ -83,6 +83,13 @@ export function mountDevPanel(app) {
     h('summary', {}, `dev · ${app.engine.id}`),
     h('label', {}, 'completeness ', sel),
     h('label', {}, sim, ' sample voice (no mic)'),
+    h('label', {}, 'voice from file ', h('input', { type: 'file', accept: 'audio/*,video/mp4', onChange: async (e) => {
+      const file = e.target.files?.[0];
+      app.dev.voiceFile = null;
+      if (!file) return;
+      try { const { decodeAudioBlob } = await import('../engine/engines/ai.js'); app.dev.voiceFile = { ...(await decodeAudioBlob(file)), blob: file }; }
+      catch (err) { alert(`could not read ${file.name}: ${err.message}`); }
+    } })),
     h('label', {}, only, ' analyze only (no image call)'),
     h('button', { onClick: async () => { await seed(app); refresh(); } }, 'add sample entries'),
     evalBtn, evalOut,
