@@ -15,12 +15,36 @@ import { pitchTrack } from './analysis/pitchtrack.js';
 import { singingAnalysis } from './analysis/singing.js';
 import { analyzeSamples } from './analysis/features.js';
 import { measurePerformance } from './analysis/performance-measure.js';
-import { completionGate, decideTier, lyricalFloor, imageryFloor, GATE_CALIBRATION } from './interpret/lyrics.js';
+import { rms } from './analysis/frame.js';
+import { completionGate, decideTier, lyricalFloor, imageryFloor, wordsFloor, GATE_CALIBRATION } from './interpret/lyrics.js';
 import { groundedImagery, namesMotif } from './interpret/imagery.js';
 
 export const UNDERSTAND_VERSION = 2;
 // Below this much sound there is nothing to transcribe: skip the paid call.
 export const MIN_SOUND_FOR_WORDS_SEC = 1.0;
+
+// Quiet singers (Han, 22 Oct, Beta 46.mp4): the frame features count a frame
+// as sounding only above an absolute floor (rms 0.008, about −42 dBFS), so a
+// soft voice measured 0 s of sound and was never transcribed. Whether to
+// LISTEN is now also asked relative to the recording's own quiet: time that
+// stands clearly above its noise floor (≥ 6 dB over its quietest 2 %) and
+// above a near-digital-silence floor counts as something to transcribe.
+// Silence and steady room noise never stand out from themselves, so they
+// still skip the call; noise that does (a door, a street) costs one
+// transcription and stays Loose on its words. This decides only whether to
+// listen: the frame features, the singing analysis and the recording itself
+// are unchanged.
+export const AUDIBLE = { hopSec: 0.1, overNoise: 2, minRms: 0.0007, noiseQuantile: 0.02 };
+export function audibleSec(samples, sampleRate, cal = AUDIBLE) {
+  const hop = Math.round(sampleRate * cal.hopSec);
+  if (!samples || !(hop > 0)) return 0;
+  const levels = [];
+  for (let end = hop; end <= samples.length; end += hop) levels.push(rms(samples.subarray(end - hop, end)));
+  if (!levels.length) return 0;
+  const noise = [...levels].sort((a, b) => a - b)[Math.floor((levels.length - 1) * cal.noiseQuantile)];
+  const floor = Math.max(cal.minRms, cal.overNoise * noise);
+  return Math.round(levels.filter((r) => r >= floor).length * cal.hopSec * 100) / 100;
+}
 
 // How the voice moved → gesture words (never a quality judgement). The
 // Loose plan (direct/sound.js) also turns them into colour character.
@@ -56,7 +80,10 @@ export function semanticsFor(tier, transcript, lyrics) {
   const reliable = Boolean(transcript && !transcript.hallucination && transcript.lexicalWords > 0
     && (asr == null || asr >= GATE_CALIBRATION.minAsrConfidence) && lyrics && !lyrics.error && lyrics.lexical && lyrics.coherent);
   const grounding = reliable && tier === 'gathered' ? groundGathered(lyrics.concepts?.gathered ?? '', lyrics, transcript.text) : null;
-  const text = grounding ? grounding.text : reliable ? lyrics.concepts?.[tier] : '';
+  // Gathered always shows what the words mean (Han, 22 Oct): when the reading
+  // left its Gathered concept empty, its Resolved one (a concrete visual
+  // equivalent of the words) stands in, still painted in the Gathered form.
+  const text = grounding ? grounding.text : reliable ? (lyrics.concepts?.[tier] || (tier === 'gathered' ? lyrics.concepts?.resolved : '')) : '';
   if (!reliable || !text) return { source: 'sound', concept: null, mood: null, motif: null, reason: transcript?.lexicalWords ? 'words not reliable enough to carry meaning' : 'no words' };
   return {
     source: 'lyrics',
@@ -102,7 +129,8 @@ export async function understandTake({ samples = null, sampleRate = 0, features 
   const feats = features ?? (samples ? analyzeSamples(samples, sampleRate) : null);
   const singing = samples ? singingAnalysis(pitchTrack(samples, sampleRate), feats) : null;
   const sounding = feats?.activity?.soundingSec ?? 0;
-  const ask = Boolean(words) && sounding >= MIN_SOUND_FOR_WORDS_SEC;
+  const audible = samples && sounding < MIN_SOUND_FOR_WORDS_SEC ? audibleSec(samples, sampleRate) : null;
+  const ask = Boolean(words) && (sounding >= MIN_SOUND_FOR_WORDS_SEC || audible >= MIN_SOUND_FOR_WORDS_SEC);
   // The transcription request goes out first; the performance is measured
   // while it is in flight, so it adds no waiting when there are words.
   // A yield first lets the page paint between the two blocks of analysis.
@@ -115,7 +143,8 @@ export async function understandTake({ samples = null, sampleRate = 0, features 
   const gate = completionGate({ transcript, lyrics, singing, features: feats });
   const floor = lyricalFloor({ gate, transcript, lyrics, singing, features: feats });
   const imagery = floor.applied ? null : imageryFloor({ gate, transcript, lyrics, singing });
-  const decision = decideTier({ gate, quality: singing?.quality, floor, imagery });
+  const reliableWords = floor.applied || imagery?.applied ? null : wordsFloor({ gate, transcript, lyrics, singing });
+  const decision = decideTier({ gate, quality: singing?.quality, floor, imagery, words: reliableWords });
   const tier = forcedTier ?? decision.tier;
   const semantics = semanticsFor(tier, transcript, lyrics);
   return {
@@ -128,12 +157,17 @@ export async function understandTake({ samples = null, sampleRate = 0, features 
     singing,
     wordsRequested: ask,
     wordsSkipped: words && !ask ? `less than ${MIN_SOUND_FOR_WORDS_SEC}s of sound` : null,
+    // Seconds above the recording's own noise floor, when the absolute
+    // sounding time alone was too short to listen (quiet singers).
+    audibleSec: audible,
     transcript, lyrics,
     gate, decision,
     // Whether the sustained-lyrical-singing floor lifted a failed gate to Gathered, and why.
     lyricalFloor: floor,
     // Whether the concrete imagery floor lifted a failed gate to Gathered, and why.
     imageryFloor: imagery,
+    // Whether reliable, meaningful lyrics lifted a failed gate to Gathered, and why.
+    wordsFloor: reliableWords,
     tier, tierSource: forcedTier ? 'override' : 'decision',
     semantics,
     expression: expressionFor(feats, singing),

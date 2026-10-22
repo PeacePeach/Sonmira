@@ -25,6 +25,7 @@ import { join, extname, basename } from 'node:path';
 import { REFERENCE_LIBRARY } from '../direct/references.js';
 import { FAMILIES } from '../direct/families.js';
 import { createLibrary, LIBRARY } from '../direct/library.js';
+import { adminBlobPath, adminNamespace, applyOverlay, loadOverlay, overlayEnabled } from './reference-admin.js';
 
 const MIME = { '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' };
 const mimeOf = (path) => MIME[extname(path).toLowerCase()] || 'image/jpeg';
@@ -75,8 +76,10 @@ export function blobStore({ client, token, now = Date.now } = {}) {
       });
       cache = { at: now(), entries };
     },
+    // A reference added in the admin portal lives outside references/
+    // (its path starts with admin:, see reference-admin.js).
     async loadImage(ref) {
-      const bytes = await fetchBlob(BLOB_PREFIX + ref.path, false);
+      const bytes = await fetchBlob(adminBlobPath(ref.path) ?? BLOB_PREFIX + ref.path, false);
       if (!bytes) throw Object.assign(new Error(`reference ${ref.id} is missing from storage`), { code: 'reference_missing' });
       return { name: ref.path.split('/').pop(), mime: mimeOf(ref.path), bytes };
     },
@@ -100,6 +103,26 @@ export function blobStore({ client, token, now = Date.now } = {}) {
         throw Object.assign(new Error('reference storage unavailable'), { code: 'reference_store', cause: e });
       }
       return paths.filter(isImage);
+    },
+    // Raw access for the admin overlay (reference-admin.js), under any prefix.
+    raw: {
+      async list(prefix) {
+        const blobs = [];
+        let cursor;
+        do {
+          const r = await (await sdk).list({ prefix, cursor, ...auth });
+          for (const b of r.blobs) blobs.push({ pathname: b.pathname, size: b.size ?? null, uploadedAt: b.uploadedAt ?? null });
+          cursor = r.hasMore ? r.cursor : undefined;
+        } while (cursor);
+        return blobs;
+      },
+      get: (pathname) => fetchBlob(pathname, true),
+      // overwrite false fails when the blob exists: the store's own atomic
+      // create, used to claim ids.
+      put: async (pathname, body, { contentType, overwrite = false } = {}) => {
+        await (await sdk).put(pathname, body, { access: 'private', contentType, addRandomSuffix: false, allowOverwrite: overwrite, ...auth });
+      },
+      del: async (pathname) => { await (await sdk).del(pathname, auth); },
     },
   };
 }
@@ -161,16 +184,26 @@ export function discoverReferences(paths, registry = REFERENCE_LIBRARY) {
 // The registry and library /api/generate selects from: the bundled registry
 // plus the store's new images, listed at most every REGISTRY_TTL_MS. If the
 // listing fails, the bundled registry alone (painting never depends on it).
+//
+// On top of that, the admin portal's overlay (reference-admin.js): images
+// added there join their tier like a discovered upload, and archived ids
+// leave selection. An empty overlay leaves the registry exactly as it was.
 const discovered = new WeakMap();
-export async function registryFor(store, { now = Date.now } = {}) {
+export async function registryFor(store, { now = Date.now, fresh = false, env = process.env } = {}) {
   if (!store?.listPaths) return REFERENCE_LIBRARY;
   const hit = discovered.get(store);
-  if (hit && now() - hit.at < REGISTRY_TTL_MS) return hit.registry;
-  let registry = hit?.registry ?? REFERENCE_LIBRARY;
-  try { registry = discoverReferences(await store.listPaths()); } catch { /* keep the last good list */ }
-  discovered.set(store, { at: now(), registry });
+  if (!fresh && hit && now() - hit.at < REGISTRY_TTL_MS) return hit.registry;
+  let base = hit?.base ?? REFERENCE_LIBRARY;
+  try { base = discoverReferences(await store.listPaths()); } catch { /* keep the last good list */ }
+  let overlay = hit?.overlay ?? null;
+  if (store.raw && overlayEnabled(env)) {
+    try { overlay = await loadOverlay(store, adminNamespace(env)); } catch { /* keep the last good overlay */ }
+  } else overlay = null;
+  const registry = applyOverlay(base, overlay);
+  discovered.set(store, { at: now(), registry, base, overlay });
   return registry;
 }
+export function forgetRegistry(store) { discovered.delete(store); }
 export async function libraryFor(store, opts) {
   const registry = await registryFor(store, opts);
   return registry === REFERENCE_LIBRARY ? LIBRARY : createLibrary(registry);

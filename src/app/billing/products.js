@@ -5,10 +5,9 @@
 // for Xcode testing, and tests/billing-products.test.mjs keeps the two equal.
 
 export const FREE_PAINTINGS = 3;
-// Daily Ritual: one credit per subscription day, saved up to RITUAL_CAP, kept
-// for RITUAL_KEEP_DAYS after the paid subscription ends (src/app/billing/wallet.js).
+// Daily Ritual: one credit per subscription day, saved up to RITUAL_CAP; earned
+// credits never expire (src/app/billing/wallet.js).
 export const RITUAL_CAP = 30;
-export const RITUAL_KEEP_DAYS = 30;
 
 export const PRODUCTS = [
   {

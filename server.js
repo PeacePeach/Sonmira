@@ -23,6 +23,7 @@ async function handler(req, res) {
   try {
     let path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
     if (path.endsWith('/')) path += 'index.html';
+    if (['/support', '/privacy', '/terms'].includes(path)) path += '/index.html'; // mirrors the vercel.json rewrites
     const file = normalize(join(ROOT, path));
     if (!file.startsWith(ROOT)) { res.writeHead(403).end(); return; }
     const s = await stat(file).catch(() => null);

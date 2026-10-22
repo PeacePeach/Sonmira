@@ -53,9 +53,11 @@ Icons are outline only. No filled glyphs, no accent colors, and no motion of the
 | `dailyRitual` | sunrise | Settings → Daily Ritual |
 | `morePaintings` | circle-plus | Settings → More paintings |
 | `restore` | rotate-ccw | Settings → Restore purchases |
+| `nextCredit`, `aboutCredits` | clock, info | Available credits sheet |
 | `rate` | star | Settings (Coming soon) |
 | `privacy` | shield | Settings → Privacy policy |
 | `terms` | file-text | Settings → Terms |
+| `contact` | mail | Settings → Contact & Feedback |
 | `rename` | pencil | Painting title (tap to rename) |
 | `account` | user-round | reserved for the Account row |
 | `check`, `info`, `warning`, `error` | check, info, triangle-alert, circle-alert | in-app banners (success, information, warning, error) |

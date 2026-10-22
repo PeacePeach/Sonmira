@@ -211,7 +211,7 @@ export const createHandler = ({ store = referenceStoreFromEnv(), env = process.e
     // (direct/references.js: tested, shipped and rolled back with the deploy)
     // plus any new image uploaded to a family in the store (libraryFor). The
     // store's own registry.json is never read here.
-    const library = await libraryFor(store);
+    const library = await libraryFor(store, { env });
     const account = req.sonmiraInstallId;
     const key = String(req.headers?.['idempotency-key'] || '');
     const selected = await reserveRecentReference(kv, account, library, spec, key);

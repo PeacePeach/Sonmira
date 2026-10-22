@@ -78,7 +78,7 @@ test('a complete phrase, sung slowly: the gate decides as before (Resolved only 
   assert.equal(floor.tier, 'gathered');
 });
 
-test('lyrics alone lift nothing: humming, speech, fragments and unsure words stay Loose', async () => {
+test('humming, speech and unsure words stay Loose; reliable fragments are Gathered (Han, 22 Oct)', async () => {
   const long = join(singers.strong(), singers.strong()); // 5 sung phrases
   const cases = {
     // A short fragment in a take of several phrases: most phrases are wordless.
@@ -96,9 +96,11 @@ test('lyrics alone lift nothing: humming, speech, fragments and unsure words sta
     // One cut-off fragment, however slowly sung.
     oneFragment: await run(slow, { transcript: confident(EN), lyrics: reading({ structure: 'fragment', unfinished: true, linked: false, phraseComplete: false }) }),
   };
+  const gathered = ['fragmentEn', 'fragmentZh', 'oneFragment'];
   for (const [k, u] of Object.entries(cases)) {
-    assert.equal(u.tier, 'loose', k);
+    assert.equal(u.tier, gathered.includes(k) ? 'gathered' : 'loose', k);
     assert.equal(u.lyricalFloor.applied, false, k);
+    if (gathered.includes(k)) assert.equal(u.decision.stage, 'words_floor', k);
   }
   assert.match(cases.fragmentEn.lyricalFloor.reason, /lyric_words/);
   assert.match(cases.fragmentZh.lyricalFloor.reason, /lyric_words/);

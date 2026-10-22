@@ -11,36 +11,45 @@
 // The bytes are read server-side from the same store /api/generate uses
 // (private Vercel Blob, or SONMIRA_REFS_DIR locally) and streamed back, so
 // no Blob URL, path or token reaches the browser: only the reference id goes
-// in. Only ids in the active registry are served. Off in Production unless
+// in. Only ids in the active registry are served.
+//
+//   /api/reference?admin=1&action=… → the reference admin portal's API
+//   (server/reference-admin-api.js), on every deployment where
+//   SONMIRA_ADMIN_PASSWORD is set; it does its own authentication. Off in Production unless
 // SONMIRA_REFERENCE_VIEW=1 is set there: the comparison is a Preview tool.
 
 import { referenceStoreFromEnv, registryFor } from '../src/engine/providers/reference-store.js';
 import { REFERENCE_LIBRARY } from '../src/engine/direct/references.js';
+import { createHandler as createAdminHandler } from '../server/reference-admin-api.js';
 
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 export const referenceViewAllowed = (env) => env.VERCEL_ENV !== 'production' || env.SONMIRA_REFERENCE_VIEW === '1';
 
-export const createHandler = ({ store = referenceStoreFromEnv(), env = process.env } = {}) => async function handler(req, res) {
-  res.setHeader('cache-control', 'private, no-store');
-  res.setHeader('x-robots-tag', 'noindex, nofollow, noarchive');
-  const fail = (code, error) => { res.status(code).json({ ok: false, error }); };
-  if (req.method !== 'GET') return fail(405, 'GET only');
-  if (!referenceViewAllowed(env)) return fail(404, 'not available here');
-  if (!store) return fail(503, 'no reference store configured');
-  const q = req.query ?? Object.fromEntries(new URL(req.url ?? '/', 'http://x').searchParams);
-  if (q.check === '1') return res.status(200).json(await checkAll(store, await registryFor(store)));
-  const id = q.id;
-  if (!ID.test(String(id ?? ''))) return fail(400, 'invalid id');
-  try {
-    const ref = (await registryFor(store)).find((e) => e.id === id && e.active);
-    if (!ref) return fail(404, 'unknown reference');
-    const img = await store.loadImage(ref);
-    res.setHeader('content-type', img.mime);
-    res.status(200).end(Buffer.from(img.bytes));
-  } catch {
-    fail(502, 'reference unavailable');
-  }
+export const createHandler = ({ store = referenceStoreFromEnv(), env = process.env, now } = {}) => {
+  const admin = createAdminHandler({ store, env, now });
+  return async function handler(req, res) {
+    const q = req.query ?? Object.fromEntries(new URL(req.url ?? '/', 'http://x').searchParams);
+    if (q.admin === '1') return admin(req, res);
+    res.setHeader('cache-control', 'private, no-store');
+    res.setHeader('x-robots-tag', 'noindex, nofollow, noarchive');
+    const fail = (code, error) => { res.status(code).json({ ok: false, error }); };
+    if (req.method !== 'GET') return fail(405, 'GET only');
+    if (!referenceViewAllowed(env)) return fail(404, 'not available here');
+    if (!store) return fail(503, 'no reference store configured');
+    if (q.check === '1') return res.status(200).json(await checkAll(store, await registryFor(store, { env })));
+    const id = q.id;
+    if (!ID.test(String(id ?? ''))) return fail(400, 'invalid id');
+    try {
+      const ref = (await registryFor(store, { env })).find((e) => e.id === id && e.active);
+      if (!ref) return fail(404, 'unknown reference');
+      const img = await store.loadImage(ref);
+      res.setHeader('content-type', img.mime);
+      res.status(200).end(Buffer.from(img.bytes));
+    } catch {
+      fail(502, 'reference unavailable');
+    }
+  };
 };
 
 export default createHandler();

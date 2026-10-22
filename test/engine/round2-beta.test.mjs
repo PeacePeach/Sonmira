@@ -168,9 +168,12 @@ test('the existing Lyrical Floor and Resolved requirements are unchanged', async
   // Through the imagery floor a take is never Resolved, however well sung.
   const fragment = await run(singers.strong(), { transcript: transcriptOf(REGRESSION), lyrics: reading() });
   assert.equal(fragment.tier, 'gathered');
-  // A reading without sungImagery (an older reading): the decision is exactly as before.
+  // A reading without sungImagery (an older reading): no imagery floor, but
+  // the words are reliable, so the reliable lyrics floor keeps it Gathered (Han, 22 Oct).
   const older = await run(singers.weak(), { transcript: transcriptOf(REGRESSION), lyrics: { ...reading(), sungImagery: undefined } });
-  assert.equal(older.tier, 'loose');
+  assert.equal(older.imageryFloor.applied, false);
+  assert.equal(older.tier, 'gathered');
+  assert.equal(older.decision.stage, 'words_floor');
 });
 
 // ── 2. Gathered grounded in the lyrics ────────────────────────────────────

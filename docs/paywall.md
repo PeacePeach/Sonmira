@@ -20,7 +20,7 @@ listening to or sharing the ones someone already has.
 | | |
 | --- | --- |
 | Free | 3 successful paintings per person. No card, no account. |
-| Daily Ritual | Auto-renewable monthly subscription, `$5.99` fallback price. One painting credit per paid day, saved up to 30; what's left stays 30 days after the subscription ends. Rules in `docs/billing-iap.md` → *Daily Ritual credits*. |
+| Daily Ritual | Auto-renewable monthly subscription, `$5.99` fallback price. One painting credit per paid day, saved up to 30; earned credits never expire. Rules in `docs/billing-iap.md` → *Daily Ritual credits*. |
 | Little Moments | Consumable, `$2.99` fallback price, adds 10 paintings that never expire. Can be bought any number of times, including by subscribers. |
 
 Prices and product ids live in `src/app/billing/products.js`. The UI shows the
@@ -28,9 +28,10 @@ store's localized `displayPrice` and only falls back to the configured price
 before the store answers. The paywall opens with Little Moments selected
 (`DEFAULT_PRODUCT`) so it doesn't lean on the subscription.
 
-A painting is taken from the first source that has one: **Daily Ritual
-credits → free paintings → Little Moments credits** (the ones that can expire
-go first).
+People see one balance: every credit is one painting. Behind it a painting is
+taken from the first source that has one: **Daily Ritual credits → free
+paintings → Little Moments credits** (a Daily Ritual credit spent makes room
+under its cap of 30). The UI never names the order.
 
 ## Where the paywall appears
 
@@ -42,15 +43,21 @@ go first).
 - **Settings → Paintings → More paintings**, for buying ahead.
 
 Before *Create painting*, a quiet line says what the painting will use
-("Uses 1 of your 3 free paintings", "Uses 1 of your 4 Daily Ritual credits").
+("Uses 1 of your 12 paintings", "Uses your last painting").
 
-A subscriber who has used every credit so far sees *Your credits are used for
-now.*, when the next credit comes, and only Little Moments.
+Someone who already has Daily Ritual is never offered it again: every paywall
+they open shows Little Moments only. With nothing left they see *Your credits
+are used for now.* and when the next credit comes; otherwise *Your Daily Ritual
+is active.*
 
-Settings → Paintings shows the total, Daily Ritual's renewal date, the Daily
-Ritual credits (*12 of 30 · next tomorrow at 9:00 AM*, or *4 · kept until
-November 16* once auto-renew is off or the subscription has ended) and the
-Little Moments paintings (*never expire*).
+Settings → Paintings shows *Available* with the total (*12 paintings*) and a
+chevron; tapping it opens *Available credits* (`creditsSheet` in
+`src/app/paywall/copy.js`), in three states: a Daily Ritual credit is coming
+(*Next credit* says when), Daily Ritual is full at 30, or none is coming. Each
+ends with *Credits never expire*. The *Daily Ritual* row says *Active*, *Ends November 16* (auto-renew
+off) or *Ended October 2*, and opens Apple's subscription settings; it is
+hidden for someone who never subscribed. Then *More paintings* and *Restore
+purchases*.
 
 ## Counting only successful paintings
 

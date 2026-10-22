@@ -126,7 +126,7 @@ export const singers = {
 // Sung lyrics: one syllable per note (0.3–0.45 s by default), unvoiced
 // consonant noise between some syllables, a short slide into each note and
 // vibrato from 0.12 s. vib = depth in cents (±); amp = loudness.
-export function sungLyrics({ vib = 30, vibHz = 5.5, gap = 0.06, amp = 0.25, seed = 2, syl = [0.3, 0.45], glide = 0.08 } = {}) {
+export function sungLyrics({ vib = 30, vibHz = 5.5, gap = 0.06, amp = 0.25, seed = 2, syl = [0.3, 0.45], glide = 0.08, noise = 0.003 } = {}) {
   const r = rng(seed), melody = [0, 2, 4, 4, 2, 0, -1, 0, 2, 4, 5, 4, 2, 0, 0, 2, 4, 2, 0, -3];
   const segs = [];
   let t = 0.3;
@@ -143,7 +143,7 @@ export function sungLyrics({ vib = 30, vibHz = 5.5, gap = 0.06, amp = 0.25, seed
     const c = prev && u < glide ? -900 + 100 * prev.st + (target - (-900 + 100 * prev.st)) * (u / glide) : target;
     return c + (u > 0.12 ? vib * Math.sin(2 * Math.PI * vibHz * u) : 0);
   };
-  const x = sing(at, t + 0.4, { amp });
+  const x = sing(at, t + 0.4, { amp, noise });
   const rn = rng(seed + 9);
   for (let i = 1; i < segs.length; i++) {
     for (let j = Math.round(segs[i - 1].t1 * SR); j < Math.round(segs[i].t0 * SR); j++) x[j] += (rn() - 0.5) * 0.08 * (amp / 0.25);
