@@ -64,6 +64,8 @@ jobs:
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             archive | tail -n 60
           exit ${PIPESTATUS[0]}
+      - name: App Icon in the archive
+        run: scripts/check-ios-icon.sh "$RUNNER_TEMP/Sonmira.xcarchive/Products/Applications/App.app"
       - name: Upload to TestFlight
         run: |
           cat > "$RUNNER_TEMP/export.plist" <<PLIST
