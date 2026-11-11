@@ -82,7 +82,7 @@ export function timedFetch(ms, base = (...a) => globalThis.fetch(...a)) {
   return (url, init = {}) => {
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(Object.assign(new Error('provider timeout'), { code: 'timeout' })), ms);
-    timer.unref?.();
+    // Keep the timeout referenced: even a fetch stalled without active sockets must abort.
     init.signal?.addEventListener?.('abort', () => ctl.abort(init.signal.reason), { once: true });
     return base(url, { ...init, signal: ctl.signal });
   };
