@@ -1,5 +1,5 @@
-// Settings — functioning rows show a value and respond to taps; rows for
-// features that don't exist yet say "Coming soon" and do nothing.
+// Settings — every row works. (Features that don't exist yet are not listed:
+// App Review treats "Coming soon" rows as unfinished.)
 
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
@@ -75,30 +75,25 @@ export function mountSettings(app) {
       card('aboutCredits', c.keep.title, c.keep.text));
   };
 
-  // A row's label, with its leading icon (muted, or faint while the row is Coming soon).
+  // A row's label, with its leading icon.
   const lead = (label, name, tone = 'muted') => h('span', { class: 'row-label' }, name ? icon(name, { tone }) : null, label);
   const action = (label, val, onClick, ic) => h('button', { class: 'row action', onClick }, lead(label, ic), val);
   const link = (label, onClick, ic) => h('button', { class: 'row action', onClick }, lead(label, ic), icon('forward', { size: 'sm', tone: 'subtle' }));
-  const soon = (label, ic) => h('div', { class: 'row soon', 'aria-disabled': 'true' }, lead(label, ic, 'disabled'), h('span', { class: 'val' }, 'Coming soon'));
 
   const el = h('div', { class: 'settings', 'data-screen': 'settings' },
     h('div', { class: 'navrow' }, h('button', { class: 'icon-btn', 'aria-label': 'Back to diary', onClick: () => app.navigate('diary') }, icon('back', { size: 'lg' })), h('div')),
     h('h1', {}, 'Settings'),
     h('div', { class: 'section' }, 'Diary'),
     h('div', { class: 'group' },
-      action('Start day of week', weekVal, () => { app.setSettings({ weekStart: app.settings.weekStart ? 0 : 1 }); paint(); }, 'weekStart'),
-      soon('Daily reminder', 'reminder'),
-      soon('Diary lock', 'lock'),
-      soon('Backup / restore', 'backup')),
+      action('Start day of week', weekVal, () => { app.setSettings({ weekStart: app.settings.weekStart ? 0 : 1 }); paint(); }, 'weekStart')),
     h('div', { class: 'section' }, 'Paintings'),
     paintings,
-    h('div', { class: 'section' }, 'Account'),
-    h('div', { class: 'group' },
-      h('button', { class: 'row action', 'data-account-row': '', onClick: () => app.navigate('account') }, lead('Account', 'account'), h('span', { class: 'row-end' }, accountVal, icon('forward', { size: 'sm', tone: 'subtle' })))),
+    app.account?.signInOffered ? h('div', { class: 'section' }, 'Account') : null,
+    app.account?.signInOffered ? h('div', { class: 'group' },
+      h('button', { class: 'row action', 'data-account-row': '', onClick: () => app.navigate('account') }, lead('Account', 'account'), h('span', { class: 'row-end' }, accountVal, icon('forward', { size: 'sm', tone: 'subtle' })))) : null,
     h('div', { class: 'section' }, 'About'),
     h('div', { class: 'group' },
       link('Contact & Feedback', () => openFeedback(app), 'contact'),
-      soon('Rate Sonmira', 'rate'),
       link('Privacy policy', () => app.navigate('legal', { doc: 'privacy' }), 'privacy'),
       link('Terms', () => app.navigate('legal', { doc: 'terms' }), 'terms')),
     b.simulated ? h('div', { class: 'section' }, 'Development · purchase simulation') : null,

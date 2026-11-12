@@ -20,6 +20,7 @@ import { usesLabel } from '../paywall/copy.js';
 import { takeOf } from '../drafts/index.js';
 import { withGenerationKey, guardMessage } from '../protect/client.js';
 import { MAX_SECONDS } from '../settings.js';
+import { isNativeIOS } from '../native/platform.js';
 import { titleField, journalField } from '../ui/text-field.js';
 import { morph as morphCard } from '../ui/morph.js';
 
@@ -34,6 +35,8 @@ const STAGE_COPY = {
 };
 const MIN_LINE_MS = 1400; // each line stays readable; steps are never invented
 
+// In the iOS app the switch is in the Settings app, not in a browser.
+const MIC_DENIED_APP = ['The microphone is off.', 'Sonmira needs to hear you to paint. Turn on Microphone in Settings → Sonmira, then try again.'];
 const MIC_COPY = {
   denied: ['The microphone is off.', 'Sonmira needs to hear you to paint. Allow microphone access for this page in your browser settings, then try again.'],
   notfound: ['No microphone found.', 'Connect a microphone, or open Sonmira on your phone.'],
@@ -423,7 +426,7 @@ export function mountSing(app, { draft: draftKey = null } = {}) {
 
   function micError(kind) {
     phase = 'error';
-    const [title, body] = MIC_COPY[kind] || MIC_COPY.error;
+    const [title, body] = (kind === 'denied' && isNativeIOS() ? MIC_DENIED_APP : MIC_COPY[kind]) || MIC_COPY.error;
     show(h('div', { class: 'phase centered', 'data-phase': 'error', 'data-kind': kind },
       h('div', { class: 'error-copy' }, illustration('mic-off'), h('h1', { class: 'serif', style: 'font-size:30px' }, title), h('div', { class: 'lede' }, body)),
       h('div', { class: 'actions', style: 'width:100%' },

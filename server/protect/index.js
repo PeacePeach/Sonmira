@@ -3,8 +3,8 @@
 //   export default protect('generate', createHandler({ fetchImpl: timedFetch(100_000) }));
 //
 // For every POST, in this order, before any paid call:
-//   1. a signed install token from an invitation code, for an install that
-//      still holds its seat on that code                → 401 invite_required
+//   1. a signed install token (open access, or an invitation code on a test
+//      deployment), for an install that still holds its seat → 401 invite_required
 //   2. an Idempotency-Key per take and endpoint          → 400 idempotency_key_required
 //   3. same key already done → the stored response, no new paid call
 //      same key still running → 409 in_progress (the client waits and asks again)
@@ -20,15 +20,16 @@
 // kept for 24 h under its key, listed under the install so deleting the
 // account deletes it.
 //
-// GET (configuration) is passed straight through. Without KV, a secret or
-// invitation codes the guard refuses paid work instead of running open.
+// GET (configuration) is passed straight through. Without KV, a secret, and
+// either open access or invitation codes, the guard refuses paid work
+// instead of running unguarded.
 
-import { protectConfig, normalizeInvite, MICRO } from './config.js';
+import { protectConfig, normalizeInvite, MICRO, OPEN_INVITE } from './config.js';
 import { kvFromEnv, kvNamespace, saveLarge, loadLarge } from './kv.js';
 import { signToken, verifyToken, inviteId, INSTALL_ID } from './token.js';
 import { fakeProviderOn } from '../dev/mode.js';
 
-export { protectConfig } from './config.js';
+export { protectConfig, OPEN_INVITE, openAccessOn } from './config.js';
 export { memoryKV, redisKV, upstashExec } from './kv.js';
 export { signToken, verifyToken, inviteId } from './token.js';
 
@@ -41,6 +42,12 @@ const seatsOf = (invite) => `invite:${invite}:installs`;
 // without one is no-cost mode's in-memory store (server/dev/mode.js), where
 // each function has its own memory and nothing paid is at stake: there a
 // valid token is enough, as before seats were checked.
+// Is the code (or open access) a token names still admitted?
+const liveInvite = (cfg, invite) => (invite === OPEN_INVITE ? cfg.open : cfg.invites.some((c) => inviteId(c) === invite));
+// Can this deployment admit anyone at all: open access or at least one code.
+const admits = (cfg) => cfg.open || cfg.invites.length > 0;
+// Open access has no per-code size cap: everyone shares one seat list.
+const OPEN_SEATS = Number.MAX_SAFE_INTEGER;
 const seatHeld = async (kv, env, invite, installId) => (env.VERCEL && kv.kind === 'memory') || kv.isMember(seatsOf(invite), installId);
 
 export const MESSAGES = {
@@ -125,14 +132,14 @@ export function protect(endpoint, handler, deps = {}) {
     res.setHeader?.('cache-control', 'no-store');
     const deny = (status, code, extra = {}) => res.status(status).json({ ok: false, code, error: MESSAGES[code] || code, ...extra });
 
-    if (!kv || !cfg.secret || !cfg.invites.length) return deny(503, 'not_configured');
+    if (!kv || !cfg.secret || !admits(cfg)) return deny(503, 'not_configured');
     if (Number(header(req, 'content-length') || 0) > cfg.maxBody[endpoint]) return deny(413, 'too_large');
     let body;
     try { body = parseBody(req); } catch { return deny(400, 'bad_json'); }
     if (endpoint === 'understand' && typeof body.audio === 'string' && body.audio.length > cfg.maxAudioBase64) return deny(413, 'too_large');
 
     const who = verifyToken(cfg.secret, bearer(req));
-    if (!who || !cfg.invites.some((c) => inviteId(c) === who.invite)) return deny(401, 'invite_required');
+    if (!who || !liveInvite(cfg, who.invite)) return deny(401, 'invite_required');
     const key = header(req, 'idempotency-key');
     if (!KEY.test(key || '')) return deny(400, 'idempotency_key_required');
 
@@ -170,7 +177,8 @@ export function protect(endpoint, handler, deps = {}) {
         [`rl:${endpoint}:i:${who.installId}:${hour}`, cfg.limits[`${E}_HOUR`], 3600],
         [`rl:${endpoint}:i:${who.installId}:${day}`, cfg.limits[`${E}_DAY`], 2 * 86400],
       ];
-      if (endpoint === 'generate') limits.push([`rl:generate:c:${who.invite}:${day}`, cfg.limits.INVITE_GENERATE_DAY, 2 * 86400]);
+      // Per invitation code; open access is held by the limits above and the cap.
+      if (endpoint === 'generate' && who.invite !== OPEN_INVITE) limits.push([`rl:generate:c:${who.invite}:${day}`, cfg.limits.INVITE_GENERATE_DAY, 2 * 86400]);
       for (const [k, max, ttl] of limits) {
         if ((await kv.hit(k, ttl)) > max) {
           await kv.del(rec);
@@ -244,11 +252,12 @@ export function protect(endpoint, handler, deps = {}) {
 }
 
 // Readiness of the guard, no values: paid work needs a store, a token secret
-// and at least one invitation code.
+// and open access or at least one invitation code.
 export function guardStatus(env, cfg = protectConfig(env), kv = kvFromEnv(env)) {
   return {
     guard: {
-      ready: Boolean(kv && cfg.secret && cfg.invites.length),
+      ready: Boolean(kv && cfg.secret && admits(cfg)),
+      openAccess: cfg.open,
       store: kv?.kind ?? 'none',
       namespace: kv?.kind === 'redis' ? `sonmira:${kvNamespace(env)}` : null,
       tokenSecret: Boolean(env.SONMIRA_TOKEN_SECRET),
@@ -259,8 +268,12 @@ export function guardStatus(env, cfg = protectConfig(env), kv = kvFromEnv(env)) 
   };
 }
 
-// POST /api/session { invite, installId } → { ok, token }
+// POST /api/session { open: true, installId } → { ok, token }  (open access)
+//                   { invite, installId } → { ok, token }
 //                   { accountToken, installId } → { ok, token }
+// With open access (the App Store release) any install is admitted without a
+// code, at most OPEN_INSTALLS_IP_DAY new installs per network address a day;
+// everything after admission (limits, ledger, spend cap) is the same.
 // One invitation code admits at most INSTALLS_PER_INVITE installs; the same
 // install asking again gets a fresh token without using another place.
 // A signed-in account (deps.verifyAccount, the account service) gets a token
@@ -279,9 +292,9 @@ export function createSessionHandler(deps = {}) {
     const autoAccess = env.VERCEL_ENV === 'preview' && env.VERCEL_GIT_COMMIT_REF === 'claude/resolved-scene-palette-rules-i2ko7r';
     // Outside Production, GET also says whether paid work is set up: no
     // values, no paid call. The free check for a Preview.
-    if (req.method === 'GET') return res.status(200).json({ ok: true, autoAccess, ...(env.VERCEL_ENV === 'production' ? {} : guardStatus(env, cfg, kv)) });
+    if (req.method === 'GET') return res.status(200).json({ ok: true, autoAccess, openAccess: cfg.open, ...(env.VERCEL_ENV === 'production' ? {} : guardStatus(env, cfg, kv)) });
     if (req.method !== 'POST') return deny(405, 'method', 'POST only');
-    if (!kv || !cfg.secret || !cfg.invites.length) return deny(503, 'not_configured', 'Invitations aren’t set up on this server yet.');
+    if (!kv || !cfg.secret || !admits(cfg)) return deny(503, 'not_configured', 'Painting isn’t set up on this server yet.');
     if (Number(header(req, 'content-length') || 0) > cfg.maxBody.session) return deny(413, 'too_large', 'Request too large.');
     let body;
     try { body = parseBody(req); } catch { return deny(400, 'bad_json', 'Bad request.'); }
@@ -289,16 +302,34 @@ export function createSessionHandler(deps = {}) {
     // One spelling per id: the ledger and the account service key UUIDs in
     // lower case, so an upper-case twin must not get a token of its own.
     if (!INSTALL_ID.test(installId) || (UUID.test(installId) && installId !== installId.toLowerCase())) return deny(400, 'bad_install', 'Bad request.');
+    // Asked for open access where there is none (a test deployment): the
+    // client falls back to its other ways in. Nothing is counted.
+    if (body.open === true && body.invite == null && body.accountToken == null && !cfg.open) return deny(401, 'invite_required', 'An invitation code is needed to paint.');
+    // Open access: one seat list for everyone, no code.
+    const admitOpen = async () => {
+      const set = seatsOf(OPEN_INVITE);
+      if (!(await kv.isMember(set, installId)) && (await kv.hit(`rl:open:ip:${clientIp(req)}:${utcDay(now())}`, 86400)) > cfg.limits.OPEN_INSTALLS_IP_DAY) {
+        log({ endpoint: 'session', outcome: 'open_rate_limited' });
+        return deny(429, 'rate_limited', 'Too many tries. Please wait a while.');
+      }
+      await kv.join(set, installId, OPEN_SEATS, SEAT_TTL);
+      await kv.set(`seat:${installId}`, OPEN_INVITE, SEAT_TTL);
+      log({ endpoint: 'session', outcome: 'ok_open', install: installId.slice(0, 8) });
+      return res.status(200).json({ ok: true, token: signToken(cfg.secret, { installId, invite: OPEN_INVITE, now: now() }) });
+    };
     try {
       if ((await kv.hit(`rl:session:ip:${clientIp(req)}:${utcHour(now())}`, 3600)) > cfg.limits.SESSION_IP_HOUR) return deny(429, 'rate_limited', 'Too many tries. Please wait a while.');
       if (body.accountToken != null && body.invite == null) {
         const a = deps.verifyAccount ? await deps.verifyAccount(String(body.accountToken)) : null;
         const invite = a?.accountId === installId ? await kv.get(`seat:${installId}`) : null;
-        const live = invite && cfg.invites.some((c) => inviteId(c) === invite) && (await kv.isMember(seatsOf(invite), installId));
+        const live = invite && liveInvite(cfg, invite) && (await kv.isMember(seatsOf(invite), installId));
         log({ endpoint: 'session', outcome: live ? 'ok_account' : 'account_no_seat', install: installId.slice(0, 8) });
+        // A signed-in account without a live seat joins open access when it is on.
+        if (!live && cfg.open && a?.accountId === installId) return admitOpen();
         if (!live) return deny(401, 'invite_required', 'An invitation code is needed to paint.');
         return res.status(200).json({ ok: true, token: signToken(cfg.secret, { installId, invite, now: now() }) });
       }
+      if (body.open === true && body.invite == null) return admitOpen();
       const code = autoAccess && body.preview === true && body.invite == null
         ? cfg.invites[0]
         : cfg.invites.find((c) => c === normalizeInvite(body.invite));
@@ -328,7 +359,7 @@ export function createAuthorize(deps = {}) {
     const kv = deps.kv !== undefined ? deps.kv : kvFromEnv(env);
     if (!kv || !cfg.secret || typeof id !== 'string') return false;
     const who = verifyToken(cfg.secret, bearer(req));
-    if (!who || who.installId !== id || !cfg.invites.some((c) => inviteId(c) === who.invite)) return false;
+    if (!who || who.installId !== id || !liveInvite(cfg, who.invite)) return false;
     return seatHeld(kv, env, who.invite, who.installId);
   };
 }

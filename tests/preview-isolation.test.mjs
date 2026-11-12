@@ -60,7 +60,7 @@ test('GET /api/session reports Preview readiness with no secret, and nothing ext
   };
   const secret = 'preview-secret-0123456789abcdef0123';
   const ready = await get({ VERCEL: '1', VERCEL_ENV: 'preview', ...KV, SONMIRA_TOKEN_SECRET: secret, SONMIRA_INVITE_CODES: 'HAN-TEST-28', SONMIRA_FAKE_PROVIDER: '0', SONMIRA_DAILY_CAP_USD: '3' });
-  assert.deepEqual(ready.guard, { ready: true, store: 'redis', namespace: 'sonmira:preview:', tokenSecret: true, inviteCodes: 1, dailyCapUsd: 3, fakeProvider: false });
+  assert.deepEqual(ready.guard, { ready: true, store: 'redis', namespace: 'sonmira:preview:', tokenSecret: true, inviteCodes: 1, dailyCapUsd: 3, fakeProvider: false, openAccess: false });
   assert.doesNotMatch(JSON.stringify(ready), /preview-secret|HANTEST28|HAN-TEST-28|kv-token/);
   const missing = await get({ VERCEL: '1', VERCEL_ENV: 'preview' });
   assert.equal(missing.guard.ready, false);

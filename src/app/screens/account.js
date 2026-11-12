@@ -33,6 +33,8 @@ export function staysHere() {
 
 export function mountAccount(app) {
   const acc = app.account;
+  // Not offered in this build (createAccountForDevice): back to Settings.
+  if (!acc.signInOffered) { queueMicrotask(() => app.navigate('settings')); return { el: h('div') }; }
   const el = h('div', { class: 'settings account', 'data-screen': 'account' });
   let busy = false;
 

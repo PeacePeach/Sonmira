@@ -2,7 +2,11 @@
 // of new code. Money is counted in micro-dollars (1 USD = 1,000,000).
 //
 //   SONMIRA_TOKEN_SECRET     required: signs install tokens (32+ random chars)
-//   SONMIRA_INVITE_CODES     required: comma-separated beta invitation codes
+//   SONMIRA_OPEN_ACCESS      public access without an invitation code: on by
+//                            default in Production (the App Store release),
+//                            off elsewhere; '1' turns it on, '0' off
+//   SONMIRA_INVITE_CODES     optional: comma-separated invitation codes, for
+//                            deployments without open access (test previews)
 //   SONMIRA_DAILY_CAP_USD    hard daily spend cap, UTC day (default 3)
 //   SONMIRA_COST_IMAGE_USD   reserved per image generation (default 0.15)
 //   SONMIRA_COST_TRANSCRIBE_USD / SONMIRA_COST_TEXT_USD / SONMIRA_COST_EVAL_USD
@@ -22,6 +26,8 @@ const LIMITS = {
   INVITE_GENERATE_DAY: 60,
   // installs one invitation code can register
   INSTALLS_PER_INVITE: 5,
+  // new installs admitted by open access per network address and UTC day
+  OPEN_INSTALLS_IP_DAY: 30,
   // any guarded request per network address
   IP_HOUR: 60,
   // invitation attempts per network address
@@ -30,6 +36,13 @@ const LIMITS = {
 
 const usd = (v, d) => { const n = Number(v); return Math.round((Number.isFinite(n) && n >= 0 ? n : d) * MICRO); };
 const int = (v, d) => { const n = Number(v); return Number.isInteger(n) && n >= 0 ? n : d; };
+// Open access: the server admits any install without a code, behind the
+// same signed token, rate limits, paintings ledger and daily spend cap. Its
+// tokens carry this id where an invitation code's id would be (those are 16
+// hex characters, so the two never meet).
+export const OPEN_INVITE = 'open';
+export const openAccessOn = (env = process.env) => env.SONMIRA_OPEN_ACCESS === '1' || (env.SONMIRA_OPEN_ACCESS !== '0' && env.VERCEL_ENV === 'production');
+
 export const normalizeInvite = (c) => String(c ?? '').trim().toUpperCase().replace(/[\s-]+/g, '');
 
 export function protectConfig(env = process.env) {
@@ -39,6 +52,7 @@ export function protectConfig(env = process.env) {
     // through to unguarded paid calls.
     off: env.SONMIRA_PROTECT === 'off' && !env.VERCEL && !env.VERCEL_ENV,
     secret: env.SONMIRA_TOKEN_SECRET || (fakeProviderOn(env) ? PREVIEW_SECRET : ''),
+    open: openAccessOn(env),
     invites: String(env.SONMIRA_INVITE_CODES || (fakeProviderOn(env) ? PREVIEW_INVITE : '')).split(',').map(normalizeInvite).filter((c) => c.length >= 6),
     capMicros: usd(env.SONMIRA_DAILY_CAP_USD, 3),
     cost: {
