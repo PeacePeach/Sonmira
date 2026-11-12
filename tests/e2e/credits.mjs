@@ -25,7 +25,9 @@ const CODE = 'BETA-TEST-01';
 
 function startServer(port, env) {
   const proc = spawn(process.execPath, [fileURLToPath(new URL('./guarded-server.mjs', import.meta.url))], {
-    env: { ...process.env, PORT: String(port), QUIET: '1', SONMIRA_FAKE_PROVIDER: '1', SONMIRA_TOKEN_SECRET: 'e2e-secret-0123456789abcdefghij', SONMIRA_INVITE_CODES: CODE, SONMIRA_LIMIT_INSTALLS_PER_INVITE: '100', SONMIRA_LIMIT_IP_HOUR: '1000', SONMIRA_LIMIT_SESSION_IP_HOUR: '1000', SONMIRA_LIMIT_GENERATE_HOUR: '100', ...env },
+    env: { ...process.env, PORT: String(port), QUIET: '1', SONMIRA_FAKE_PROVIDER: '1', SONMIRA_TOKEN_SECRET: 'e2e-secret-0123456789abcdefghij', SONMIRA_INVITE_CODES: CODE, SONMIRA_LIMIT_INSTALLS_PER_INVITE: '100', SONMIRA_LIMIT_IP_HOUR: '1000', SONMIRA_LIMIT_SESSION_IP_HOUR: '1000', SONMIRA_LIMIT_GENERATE_HOUR: '100',
+      // As in Production: open access, so the iOS app (which never asks for a code) paints.
+      SONMIRA_OPEN_ACCESS: '1', ...env },
     stdio: ['ignore', 'pipe', 'inherit'],
   });
   return new Promise((resolve) => proc.stdout.on('data', (d) => { if (String(d).includes('guarded server')) resolve({ base: `http://localhost:${port}/`, stop: () => proc.kill() }); }));
@@ -42,6 +44,7 @@ const drafts = (page) => page.evaluate(async () => (await window.sonmira.drafts.
 const entries = (page) => page.evaluate(() => window.sonmira.entries.map((e) => e.id));
 
 const IOS = !!process.env.IOS;
+const OPEN = true;
 function fakeIOS() {
   const id = (globalThis.__acct ??= localStorage.getItem('e2e.acct') || crypto.randomUUID());
   localStorage.setItem('e2e.acct', id);
@@ -78,7 +81,8 @@ async function record(page) {
 }
 async function create(page) {
   await page.click('text=Create painting');
-  if (!page.invited) {
+  // Open access: no invitation prompt (tests/e2e/readiness.mjs covers codes).
+  if (!page.invited && !OPEN) {
     await page.waitForSelector('[aria-label="Invitation code"]');
     await page.fill('[aria-label="Invitation code"]', CODE);
     await page.click('[data-sheet] .pill');
