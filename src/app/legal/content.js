@@ -6,7 +6,7 @@
 //
 // Every statement about data must match the code. Retention periods quoted
 // here come from: server/protect/config.js (24 h results), server/protect/
-// index.js (invitation seat 1 year, rate counters), api/generate.js
+// index.js (access seat 1 year, rate counters), api/generate.js
 // (reference history 1 year, look history 90 days), server/billing/ledger.js
 // (balance and transaction records 5 years after the last change).
 //
@@ -14,7 +14,7 @@
 // a block is a paragraph (string) or { list: [string] }. Plain text only:
 // the public pages turn email addresses and https:// URLs into links.
 
-export const UPDATED = 'October 22, 2026';
+export const UPDATED = 'November 12, 2026';
 export const CONTACT = 'sonmirasupport@gmail.com';
 export const PUBLIC_URLS = { privacy: 'https://sonmira.vercel.app/privacy', terms: 'https://sonmira.vercel.app/terms' };
 const APPLE_EULA = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
@@ -67,8 +67,8 @@ export const PRIVACY = {
       blocks: [
         'Sonmira does not ask for your name, email address or phone number to use the app. Each installation has a random anonymous identifier. It is used to count paintings, attach purchases to your balance, apply limits and keep the 24-hour results described above.',
         { list: [
-          'Invitation codes. While access requires an invitation code, the server keeps a coded (hashed) form of the code your device used, linked to your anonymous identifier, for up to one year.',
-          'Abuse, fraud and cost limits. The server counts requests per anonymous identifier, per invitation code and per network (IP) address. The counters for your network address expire within about an hour, and the others within two days.',
+          'Access record. So that paintings are requested only through Sonmira, the server keeps a record that your anonymous identifier may use the painting service, for up to one year after it was last renewed.',
+          'Abuse, fraud and cost limits. The server counts requests per anonymous identifier and per network (IP) address. The counters for your network address expire within a day, and the others within two days.',
           'Sign in with Apple (optional). If you sign in, the server links your anonymous identifier to a keyed, coded (hashed) form of your Apple user identifier, so your balance and purchases can be found again on a new iPhone. We never ask Apple for your name or email. Your diary is not part of your account. This link is kept until you delete your account.',
           'Server logs. Our servers record technical events, for example whether a request succeeded, how long it took, your anonymous identifier or part of it, and purchase transaction identifiers. They do not contain your recordings, words or paintings. Logs are kept by our hosting provider for the period its service retains them.',
         ] },
@@ -116,7 +116,7 @@ export const PRIVACY = {
       blocks: [
         { list: [
           'Your diary. You can delete any entry in the app, and deleting the app removes your whole diary from that device.',
-          'Delete your account. If you signed in with Apple, you can delete your account in Settings → Account. Sonmira then asks Apple to revoke its Sign in with Apple access and deletes from our database your account link, your balance (including unused paintings and credits), your invitation place and any stored 24-hour results. You can also choose to erase the diary on that device. Deleting your account does not cancel a subscription.',
+          'Delete your account. If you signed in with Apple, you can delete your account in Settings → Account. Sonmira then asks Apple to revoke its Sign in with Apple access and deletes from our database your account link, your balance (including unused paintings and credits), your access record and any stored 24-hour results. You can also choose to erase the diary on that device. Deleting your account does not cancel a subscription.',
           'What may remain after deletion. Some records are not removed by account deletion and expire on their own: the records that tie Apple transactions and merged balances to your anonymous identifier (five years, as described in section 5), the reference and style history (one year and 90 days), request counters (up to two days), our hosting provider’s logs, and copies held by OpenAI or Apple under their own policies. We keep these only for the purposes described in this policy, such as preventing fraud and meeting legal obligations.',
           'Without an account, your server-side information is tied only to a random identifier that we cannot link to your name or email, so we may not be able to find it from an email request. Most of it expires on its own as described above.',
           `Privacy requests. Depending on where you live, including Canada and several U.S. states, you may have the right to request access to or correction of your personal information, to ask us to delete it, to withdraw consent, or to complain about how it is handled. To make a request, email ${CONTACT}. We may need information to confirm that the request is yours, and we will respond as required by applicable law. We will not treat you differently for making a request. If you are in Canada, you may also contact the Office of the Privacy Commissioner of Canada or your provincial privacy commissioner.`,
@@ -127,7 +127,7 @@ export const PRIVACY = {
     {
       heading: '9. Data security',
       blocks: [
-        'Information sent between the app and our servers is encrypted in transit (HTTPS). Service keys stay on our servers and never reach the app. We store coded (hashed) forms of Apple user identifiers and invitation codes rather than the originals, and access to paid features is protected by signed tokens and limits. No method of transmission or storage is completely secure, so we cannot guarantee absolute security.',
+        'Information sent between the app and our servers is encrypted in transit (HTTPS). Service keys stay on our servers and never reach the app. We store coded (hashed) forms of Apple user identifiers rather than the originals, and access to paid features is protected by signed tokens and limits. No method of transmission or storage is completely secure, so we cannot guarantee absolute security.',
       ],
     },
     {
@@ -163,7 +163,7 @@ export const TERMS = {
       heading: '1. What Sonmira is',
       blocks: [
         'Sonmira is a personal singing diary. You record a short song, and Sonmira uses AI services to create a watercolor-style painting inspired by it. Sonmira is for personal, non-commercial use.',
-        'Sonmira is in early release. Access may require an invitation code, and features, limits and availability may change.',
+        'Features, limits and availability may change over time.',
       ],
     },
     {
@@ -214,7 +214,7 @@ export const TERMS = {
     {
       heading: '8. Acceptable use',
       blocks: [
-        'Please do not misuse Sonmira. For example, do not try to get around painting limits, invitation codes or payments; interfere with or overload our servers; access Sonmira by automated means; reverse engineer it except where the law allows; or use it to create unlawful, harmful or infringing content. We may limit, suspend or end access for anyone who does, and where reasonable we will tell you why.',
+        'Please do not misuse Sonmira. For example, do not try to get around painting limits or payments; interfere with or overload our servers; access Sonmira by automated means; reverse engineer it except where the law allows; or use it to create unlawful, harmful or infringing content. We may limit, suspend or end access for anyone who does, and where reasonable we will tell you why.',
       ],
     },
     {

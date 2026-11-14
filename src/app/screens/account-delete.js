@@ -73,7 +73,7 @@ export function mountAccountDelete(app) {
     h('div', { class: 'navrow' }, h('button', { class: 'icon-btn', 'aria-label': 'Back to account', onClick: () => !busy && app.navigate('account') }, icon('back', { size: 'lg' })), h('div')),
     h('h1', {}, 'Delete account'),
     h('div', { class: 'prose' },
-      h('p', {}, 'This removes your account from Sonmira: the link to your Apple ID, the paintings you have left, your Little Moments credits and your beta access. It can’t be undone.'),
+      h('p', {}, 'This removes your account from Sonmira: the link to your Apple ID, the paintings you have left and your Little Moments credits. It can’t be undone.'),
       h('p', {}, 'Your diary, recordings and paintings on this iPhone aren’t part of your account. They stay here unless you choose otherwise below.'),
       subscribed ? h('p', { 'data-sub-note': '' }, 'Deleting your account doesn’t cancel Daily Ritual. To stop it renewing, cancel it in your Apple ID settings. ', h('button', { class: 'acct-link', onClick: manage }, 'Manage Daily Ritual')) : null),
     h('div', { class: 'acct-erase-wrap' }, erase),

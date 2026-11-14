@@ -23,7 +23,7 @@ import { mountAccountDelete } from './screens/account-delete.js';
 import { createAccountForDevice } from './account/setup.js';
 import { localStorageBox } from './account/index.js';
 import { wantsUxPreview, previewBilling, previewBadge } from './ux-preview.js';
-import { isNativeIOS } from './native/platform.js';
+import { isNativeIOS, isReleaseSite } from './native/platform.js';
 import { releaseArtwork } from './ui/painting.js';
 import { bakeGrain } from './ui/wash.js';
 import { hideLaunch } from './ui/launch.js';
@@ -35,6 +35,10 @@ const root = document.getElementById('app');
 const now = new Date();
 // ?ux-preview on localhost or a Vercel preview only (ux-preview.js): mock engine, sample voice, nothing counted.
 const uxPreview = wantsUxPreview({ search: location.search, hostname: location.hostname, native: isNativeIOS() });
+// Developer tools (?dev, ?engine=, the invitation prompt) exist only on
+// localhost and test deployments: never in the iOS app or on the released
+// site, whatever the URL says.
+const devHost = !isNativeIOS() && !isReleaseSite();
 
 export const app = {
   root,
@@ -43,7 +47,7 @@ export const app = {
   storage: { persistent: true },
   // preview: the hosted preview link, where the microphone is not available,
   // so takes use the sample voice and the diary starts with example entries.
-  dev: { enabled: new URLSearchParams(location.search).has('dev') || location.hash === '#dev', completeness: null, simulate: uxPreview, preview: !!window.SONMIRA_PREVIEW, uxPreview },
+  dev: { enabled: devHost && (new URLSearchParams(location.search).has('dev') || location.hash === '#dev'), completeness: null, simulate: uxPreview, preview: !!window.SONMIRA_PREVIEW, uxPreview },
   ui: { view: 'list', selDay: null, calY: now.getFullYear(), calM: now.getMonth() },
   entries: [],
   current: null,
@@ -107,7 +111,7 @@ export const app = {
 async function boot() {
   // API calls carry the local day, and reach the hosted API from the bundled iOS build.
   installApiFetch();
-  const [engine, storage] = await Promise.all([getEngine(uxPreview ? 'mock' : undefined), initStorage()]);
+  const [engine, storage] = await Promise.all([getEngine(uxPreview ? 'mock' : devHost ? undefined : 'ai'), initStorage()]);
   app.engine = engine;
   app.storage = storage;
   // Paid, billing and sign-in requests carry the install token (server/protect),
@@ -115,7 +119,8 @@ async function boot() {
   let identified;
   const identity = new Promise((r) => { identified = r; });
   app.api = installApiClient({
-    askInvite: (o) => askInviteCode(app, o),
+    // Production has open access (server/protect); only a test deployment asks for a code.
+    askInvite: devHost ? (o) => askInviteCode(app, o) : undefined,
     installId: async () => (await identity).id,
     accountToken: () => localStorageBox.read()?.token ?? null,
   });

@@ -5,3 +5,4 @@ qa/out/
 .vercel/
 .env*.local
 www/
+.e2e-shots/

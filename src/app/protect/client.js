@@ -8,8 +8,10 @@
 //
 // The engine keeps calling fetch as it does today; installApiClient() wraps
 // the global fetch for those two paths only. It also
-//   - asks for an invitation code (askInvite) when the server needs one, then
-//     sends the request again;
+//   - gets a token without asking anything when the server has open access
+//     (the App Store release); only a test deployment without it asks for an
+//     invitation code (askInvite, never given in the iOS app or on the
+//     released site), then sends the request again;
 //   - waits and asks again while the server says the same key is still
 //     running (409 in_progress), within the caller's own timeout.
 //
@@ -27,7 +29,7 @@
 const TOKEN = 'sonmira.access';
 const INSTALL = 'sonmira.install';
 const GUARDED = { '/api/generate': 'generate', '/api/understand': 'understand' };
-// method + path → may it ask for an invitation code?
+// method + path → may it get a token (open access, or a code) if there is none?
 const AUTHED = { 'POST /api/billing/transactions': true, 'GET /api/billing/status': false, 'POST /api/account/apple': false };
 
 // The install id a token was issued for (its signed body), or null.
@@ -111,8 +113,9 @@ export function createApiClient({ fetchImpl, storage = globalThis.localStorage, 
     return { res, body: await res.json().catch(() => null) };
   }
 
-  // A signed-in account first; then, if allowed, one invitation prompt at a
-  // time, however many requests need it.
+  // A signed-in account first; then, if allowed, open access; then (test
+  // deployments only) one invitation prompt at a time, however many requests
+  // need it.
   let asking = null, previewAccess;
   async function previewEnabled() {
     previewAccess ??= fetchImpl(new URL('/api/session', origin).href)
@@ -132,6 +135,13 @@ export function createApiClient({ fetchImpl, storage = globalThis.localStorage, 
     }
     if (!ask) return null;
     asking ??= (async () => {
+      // Open access: no code, no prompt. A server without it says
+      // invite_required and nothing is counted.
+      try {
+        const r = await session({ open: true, installId: await currentId() });
+        if (r.res.ok && r.body?.token) { setToken(r.body.token); return r.body.token; }
+        if (r.body?.code !== 'invite_required') return null;
+      } catch { return null; /* offline: the request fails as it would anyway */ }
       if (await previewEnabled()) {
         // Keep the server's signed token, seats, rate limits and spend cap.
         // Only the named Preview deployment allows this admission path.
@@ -188,7 +198,7 @@ export function createApiClient({ fetchImpl, storage = globalThis.localStorage, 
       let token = await getToken();
       if (!token) {
         token = await obtainToken();
-        if (!token) return jsonResponse(401, { ok: false, code: 'invite_required', error: 'An invitation code is needed to paint.' });
+        if (!token) return jsonResponse(401, { ok: false, code: 'invite_required', error: 'Sonmira couldn’t start painting just now.' });
       }
       const headers = new Headers(init.headers);
       headers.set('authorization', `Bearer ${token}`);
@@ -217,7 +227,8 @@ export function installApiClient(opts = {}) {
 // Calm copy for the guard's refusals, for the generation error screen. The
 // take is always kept (as a draft), so every line says it can wait.
 const COPY = {
-  invite_required: 'Sonmira needs an invitation code to paint. Your song is kept.',
+  // No token: offline while getting one, or (test deployments) no code given.
+  invite_required: 'Sonmira couldn’t start painting just now. Your song is kept, so try again in a moment.',
   rate_limited: 'You’ve painted a lot in a short while. Your song is kept, so try again a little later.',
   spend_cap: 'Sonmira has painted all it can for today. Your song is kept, so try again tomorrow.',
   in_progress: 'Your painting is still being made. Your song is kept, so try again in a moment.',

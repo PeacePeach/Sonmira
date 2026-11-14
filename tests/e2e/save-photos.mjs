@@ -246,7 +246,7 @@ async function run() {
       const { ctx, page } = await openSheet(browser, { plugin: false });
       assert.equal((await page.textContent('[data-share] [data-save]')).trim(), 'Save to Photos', 'in the app Save always means Photos');
       await page.click('[data-share] [data-save]');
-      await page.waitForFunction(() => /latest Sonmira from TestFlight/.test(document.querySelector('[data-share] .share-message')?.textContent));
+      await page.waitForFunction(() => /latest version of Sonmira/.test(document.querySelector('[data-share] .share-message')?.textContent));
       await page.waitForTimeout(500);
       assert.equal(await page.evaluate(() => window.__shared.length), 0, 'Save to Photos never opens the share sheet');
       assert.ok(!(await message(page)).startsWith('Saved'), 'no false confirmation');

@@ -25,10 +25,10 @@ export const SAVED_TO_PHOTOS = 'Saved to Photos';
 export const TOAST_MS = 2000;
 const PHOTOS_ERRORS = {
   denied: 'Sonmira can’t add to Photos. Turn it on in Settings → Sonmira → Photos, then try again.',
-  unavailable: 'Save to Photos needs the latest Sonmira from TestFlight. Update the app, then try again.',
+  unavailable: 'Save to Photos needs the latest version of Sonmira. Update the app, then try again.',
   failed: 'It couldn’t be saved to Photos. Please try again.',
 };
-// the reason, for a beta tester's report: the native error code or message
+// the reason, for a support report: the native error code or message
 const reason = (e) => { const c = e?.cause?.code || e?.cause?.message || ''; return c ? ` (${String(c).slice(0, 60)})` : ''; };
 
 /**

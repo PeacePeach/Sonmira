@@ -171,7 +171,8 @@ test('a changed id never uses the old token; a signed-in account gets its own wi
   id = 'account-aaaaaaaaaaaaaaaa'; session = 'acct-session';
   assert.equal((await post(client, '/api/generate', { spec: {} })).status, 200);
   assert.equal(asked, 1); // no second code
-  assert.equal(s.seen.filter((x) => x.path === '/api/session' && x.method === 'POST').length, 3);
+  // 3 admissions, each after one open-access try this test server refuses (nothing counted).
+  assert.equal(s.seen.filter((x) => x.path === '/api/session' && x.method === 'POST').length, 5);
 });
 
 test('billing and sign-in requests carry the token for the id they name; only a purchase may ask for a code', async () => {
